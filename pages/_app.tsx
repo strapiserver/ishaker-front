@@ -3,7 +3,9 @@ import type { AppProps } from "next/app";
 import { ChakraProvider } from "@chakra-ui/react";
 import { DefaultSeo } from "next-seo";
 import Head from "next/head";
+import { Provider } from "react-redux";
 import theme from "../styles/theme";
+import store from "../redux/store";
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
@@ -14,19 +16,21 @@ function MyApp({ Component, pageProps }: AppProps) {
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
         />
       </Head>
-      <ChakraProvider theme={theme}>
-        <DefaultSeo
-          titleTemplate="%s | iShaker"
-          defaultTitle="iShaker"
-          description="A polished digital home for iShaker."
-          openGraph={{
-            type: "website",
-            locale: "en_US",
-            siteName: "iShaker",
-          }}
-        />
-        <Component {...pageProps} />
-      </ChakraProvider>
+      <Provider store={store}>
+        <ChakraProvider theme={theme}>
+          <DefaultSeo
+            titleTemplate="%s | iShaker"
+            defaultTitle="iShaker"
+            description="A polished digital home for iShaker."
+            openGraph={{
+              type: "website",
+              locale: "en_US",
+              siteName: "iShaker",
+            }}
+          />
+          <Component {...pageProps} />
+        </ChakraProvider>
+      </Provider>
     </>
   );
 }
