@@ -1,9 +1,11 @@
-import { Box } from "@chakra-ui/react";
+import { Box, BoxProps } from "@chakra-ui/react";
 import { useEffect, useRef, useState } from "react";
 import { SmokeBack } from "./SmokeBack";
 import { SmokeFront } from "./SmokeFront";
 
-export function SmokeScene() {
+type SmokeSceneProps = BoxProps;
+
+export function SmokeScene(props: SmokeSceneProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [isActive, setIsActive] = useState(false);
 
@@ -36,11 +38,19 @@ export function SmokeScene() {
       position="relative"
       isolation="isolate"
       mx="auto"
-      my={{ base: "16", md: "100px" }}
-      w={{ base: "min(96vw, 560px)", lg: "min(96vw, 900px)" }}
-      maxW="100%"
+      mt={{ base: "0", lg: "10" }}
+      mb="0"
+      order={{ base: 1, lg: 2 }}
+      justifySelf={{ base: "center", lg: "end" }}
+      w={{
+        base: "min(96vw, 560px)",
+        md: "min(88vw, 760px)",
+        lg: "min(45vw, 784px)",
+      }}
+      maxW={{ base: "100%", lg: "none" }}
       aspectRatio="1520 / 280"
       overflow="visible"
+      {...props}
     >
       <SmokeBack isActive={isActive} />
 
@@ -53,8 +63,8 @@ export function SmokeScene() {
         left="50%"
         top="50%"
         zIndex={1}
-        w={{ base: "96%", md: "84%" }}
-        maxW="840px"
+        w={{ base: "96%", md: "90%", lg: "92%" }}
+        maxW={{ base: "840px", lg: "728px" }}
         transform="translate(-50%, -50%)"
         objectFit="contain"
         pointerEvents="none"

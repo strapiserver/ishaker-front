@@ -1,17 +1,14 @@
 import {
   Badge,
-  Box,
   Button,
   Container,
   Flex,
-  Heading,
   SimpleGrid,
   Stack,
-  Text,
 } from "@chakra-ui/react";
-import Image from "next/image";
 import { FaArrowRight } from "react-icons/fa";
 import CustomTitle from "./CutsomTitle";
+import { SmokeScene } from "./shakers";
 
 type HeroSectionProps = {
   muted: string;
@@ -20,19 +17,28 @@ type HeroSectionProps = {
 
 export function HeroSection({ muted, headingColor }: HeroSectionProps) {
   return (
-    <Container maxW="7xl" pt={{ base: "8", md: "14" }} pb="10">
+    <Container maxW="7xl" pt={{ base: "8", md: "14" }} pb="10" mb="100">
       <SimpleGrid
         columns={{ base: 1, lg: 2 }}
-        spacing={{ base: "8", lg: "12" }}
+        spacing={{ base: "6", lg: "12" }}
         alignItems="center"
       >
-        <Stack spacing="6" maxW="2xl" zIndex="1">
+        <Stack
+          spacing="6"
+          maxW="2xl"
+          zIndex="1"
+          order={{ base: 2, lg: 1 }}
+          align={{ base: "center", lg: "flex-start" }}
+          textAlign={{ base: "center", lg: "left" }}
+        >
           <Badge
-            alignSelf="flex-start"
+            alignSelf={{ base: "center", lg: "flex-start" }}
             px="3"
             py="1"
+            mt={{ base: "20", lg: "0" }}
+            mb="-4"
             borderRadius="full"
-            colorScheme="orange"
+            colorScheme="green"
             variant="subtle"
             textTransform="none"
             fontSize="sm"
@@ -57,7 +63,11 @@ export function HeroSection({ muted, headingColor }: HeroSectionProps) {
             }}
           />
 
-          <Flex gap="3" wrap="wrap">
+          <Flex
+            gap="3"
+            wrap="wrap"
+            justify={{ base: "center", lg: "flex-start" }}
+          >
             <Button
               as="a"
               href="/step1"
@@ -72,27 +82,13 @@ export function HeroSection({ muted, headingColor }: HeroSectionProps) {
           </Flex>
         </Stack>
 
-        <Box
-          position="relative"
-          minH={{ base: "340px", md: "520px" }}
-          borderRadius="2xl"
-          overflow="hidden"
-          boxShadow="0 26px 80px rgba(0,0,0,0.45)"
-        >
-          <Image
-            src="/intro.png"
-            alt="iShaker intro image"
-            fill
-            priority
-            sizes="(max-width: 992px) 100vw, 50vw"
-            style={{ objectFit: "cover" }}
-          />
-          <Box
-            position="absolute"
-            inset="0"
-            bgGradient="linear(to-t, blackAlpha.600, transparent 55%)"
-          />
-        </Box>
+        <SmokeScene
+          ml={{ base: "10", lg: "0" }}
+          mb="5"
+          mt={{ base: "180", lg: "200" }}
+          justifySelf={{ base: "center", lg: "end" }}
+          placeSelf={{ base: "center", lg: "center end" }}
+        />
       </SimpleGrid>
     </Container>
   );

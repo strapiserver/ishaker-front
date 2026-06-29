@@ -44,6 +44,7 @@ export default function ({
       {...props}
     >
       <Text
+        as={as}
         fontWeight="bold"
         color="inherit"
         fontSize="inherit"

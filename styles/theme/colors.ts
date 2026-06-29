@@ -32,11 +32,11 @@ export const colors3D = {
     "blackAlpha.300",
   ],
   peach: [
-    "pink.300",
+    "green.300",
     "orange.300",
     "orange.400",
-    "pink.400",
-    "pink.500",
+    "green.400",
+    "green.500",
     "orange.500",
   ],
   violet: [

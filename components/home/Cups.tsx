@@ -1,17 +1,113 @@
 import { Box, Container, SimpleGrid, Stack } from "@chakra-ui/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Courosel, type TasteSlide } from "./Courosel";
 import CustomTitle from "./CutsomTitle";
 import { useSplashAnimation } from "./Splash";
 
-type CupsProps = {
-  tastes?: TasteSlide[];
+const STRAPI_URL = "https://ishaker.xyz";
+const TASTE_SOURCE_URL = `${STRAPI_URL}/api/tastes?pagination[pageSize]=50&populate[0]=main&populate[1]=splash&populate[2]=circle`;
+
+type StrapiMedia = {
+  attributes?: {
+    formats?: {
+      medium?: {
+        url?: string | null;
+      };
+      small?: {
+        url?: string | null;
+      };
+      thumbnail?: {
+        url?: string | null;
+      };
+    } | null;
+    url?: string | null;
+  };
 };
 
-export function Cups({ tastes = [] }: CupsProps) {
+type Taste = {
+  attributes?: {
+    circle?: {
+      data?: StrapiMedia | null;
+    };
+    isWebsiteVisible?: boolean | null;
+    main?: {
+      data?: StrapiMedia | null;
+    };
+    name?: string | null;
+    splash?: {
+      data?: StrapiMedia[];
+    };
+  };
+};
+
+type TastesResponse = {
+  data?: Taste[];
+};
+
+function normalizeMediaUrl(url?: string | null) {
+  if (!url) {
+    return null;
+  }
+
+  return url.startsWith("http") ? url : `${STRAPI_URL}${url}`;
+}
+
+function getMediaUrl(media?: StrapiMedia | null) {
+  return normalizeMediaUrl(
+    media?.attributes?.formats?.medium?.url ??
+      media?.attributes?.formats?.small?.url ??
+      media?.attributes?.formats?.thumbnail?.url ??
+      media?.attributes?.url,
+  );
+}
+
+function getSplashSet(taste: Taste) {
+  return (
+    taste.attributes?.splash?.data
+      ?.map((frame) => getMediaUrl(frame))
+      .filter((url): url is string => Boolean(url)) ?? []
+  );
+}
+
+function isTasteWebsiteVisible(taste: Taste) {
+  return taste.attributes?.isWebsiteVisible !== false;
+}
+
+function getTasteSlides(response: TastesResponse) {
+  return (
+    response.data
+      ?.filter(isTasteWebsiteVisible)
+      .map((taste) => {
+        const circleImage = getMediaUrl(taste.attributes?.circle?.data);
+        const mainImage = getMediaUrl(taste.attributes?.main?.data);
+        const splashFrames = getSplashSet(taste);
+
+        if (!circleImage || !mainImage || !splashFrames.length) {
+          return null;
+        }
+
+        return {
+          circleImage,
+          mainImage,
+          name: taste.attributes?.name ?? mainImage,
+          splashFrames,
+        };
+      })
+      .filter((taste): taste is TasteSlide => Boolean(taste)) ?? []
+  );
+}
+
+export function Cups() {
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const didRequestTastes = useRef(false);
+  const fadeFrameRef = useRef<number | null>(null);
   const [isActive, setIsActive] = useState(false);
-  const splashes = tastes.map((taste) => taste.splashFrames);
+  const [hasCarouselFadedIn, setHasCarouselFadedIn] = useState(false);
+  const [tastes, setTastes] = useState<TasteSlide[]>([]);
+  const splashes = useMemo(
+    () => tastes.map((taste) => taste.splashFrames),
+    [tastes],
+  );
   const { activeFrame, activeIndex, isFading } = useSplashAnimation(
     splashes,
     isActive,
@@ -39,6 +135,53 @@ export function Cups({ tastes = [] }: CupsProps) {
 
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!isActive || didRequestTastes.current) {
+      return undefined;
+    }
+
+    didRequestTastes.current = true;
+
+    async function loadTastes() {
+      try {
+        const response = await fetch(TASTE_SOURCE_URL);
+
+        if (!response.ok) {
+          throw new Error(`Taste request failed with ${response.status}`);
+        }
+
+        const tastesResponse = (await response.json()) as TastesResponse;
+        setTastes(getTasteSlides(tastesResponse));
+      } catch (error) {
+        console.error("[cups] Failed to load taste data:", error);
+      }
+    }
+
+    loadTastes();
+
+    return undefined;
+  }, [isActive]);
+
+  useEffect(() => {
+    if (!tastes.length) {
+      setHasCarouselFadedIn(false);
+      return undefined;
+    }
+
+    setHasCarouselFadedIn(false);
+    fadeFrameRef.current = window.requestAnimationFrame(() => {
+      fadeFrameRef.current = window.requestAnimationFrame(() => {
+        setHasCarouselFadedIn(true);
+      });
+    });
+
+    return () => {
+      if (fadeFrameRef.current !== null) {
+        window.cancelAnimationFrame(fadeFrameRef.current);
+      }
+    };
+  }, [tastes.length]);
 
   return (
     <Container maxW="7xl" py={{ base: "8", md: "12" }}>
@@ -76,7 +219,11 @@ export function Cups({ tastes = [] }: CupsProps) {
           justifySelf={{ base: "center", lg: "end" }}
           w="100%"
         >
-          <Courosel activeIndex={activeIndex} tastes={tastes} />
+          <Courosel
+            activeIndex={activeIndex}
+            hasLoaded={hasCarouselFadedIn}
+            tastes={tastes}
+          />
           <Box
             ref={rootRef}
             aria-label="iShaker cups with animated splash"

@@ -1,9 +1,6 @@
 import {
   Box,
   Container,
-  FormControl,
-  FormLabel,
-  Input,
   SimpleGrid,
   Stack,
   Text,
@@ -12,11 +9,9 @@ import {
 import Image from "next/image";
 import CustomTitle from "../home/CutsomTitle";
 
-export function SerialNumberSection() {
-  const panelBg = useColorModeValue("bg.10", "bg.800");
+export function SetupBegin() {
   const borderColor = useColorModeValue("blackAlpha.100", "whiteAlpha.100");
   const muted = useColorModeValue("bg.600", "bg.300");
-  const headingColor = useColorModeValue("bg.1000", "bg.50");
 
   return (
     <Container maxW="7xl" py={{ base: "10", md: "16" }}>
@@ -33,7 +28,7 @@ export function SerialNumberSection() {
             color="peach.300"
             fontWeight="700"
           >
-            Step 1
+            Setup your machine
           </Text>
           <CustomTitle
             as="h1"
@@ -51,31 +46,6 @@ export function SerialNumberSection() {
               fontWeight: "normal",
             }}
           />
-
-          <Box
-            bg={panelBg}
-            border="1px solid"
-            borderColor={borderColor}
-            borderRadius="2xl"
-            p={{ base: "5", md: "6" }}
-          >
-            <FormControl>
-              <FormLabel color={headingColor} fontWeight="600">
-                Serial number
-              </FormLabel>
-              <Input
-                placeholder="Enter numbers only"
-                size="lg"
-                bg="whiteAlpha.50"
-                borderColor={borderColor}
-                _hover={{ borderColor: "peach.300" }}
-                _focusVisible={{
-                  borderColor: "peach.300",
-                  boxShadow: "0 0 0 1px var(--chakra-colors-peach-300)",
-                }}
-              />
-            </FormControl>
-          </Box>
         </Stack>
 
         <Box
@@ -88,7 +58,7 @@ export function SerialNumberSection() {
           boxShadow="0 26px 80px rgba(0,0,0,0.35)"
         >
           <Image
-            src="/backdoor.png"
+            src="/intro.png"
             alt="Back of the machine door with serial number location"
             fill
             priority

@@ -1,7 +1,7 @@
 import { Box, Container } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 
-const SPLASH_FRAME_MS = 55;
+export const SPLASH_FRAME_MS = 66;
 const SPLASH_FADE_MS = 200;
 const SPLASH_FADE_FRAME_COUNT = Math.ceil(SPLASH_FADE_MS / SPLASH_FRAME_MS);
 

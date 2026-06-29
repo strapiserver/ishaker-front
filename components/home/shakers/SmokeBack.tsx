@@ -11,27 +11,27 @@ export function SmokeBack({ isActive }: SmokeBackProps) {
       <SmokeCloud
         src="/smoke1.png"
         direction="left"
-        duration="4.2s"
+        duration="6s"
         isActive={isActive}
         xOffsetBefore="0%"
         xOffsetAfter="10%"
         yOffsetBefore="-50%"
         yOffsetAfter="-60%"
-        scaleBefore={1.2}
-        scaleAfter={1.4}
+        scaleBefore={1.5}
+        scaleAfter={2}
       />
       <SmokeCloud
         src="/smoke1.png"
         direction="right"
-        duration="4.2s"
+        duration="6s"
         isActive={isActive}
         isReversed
         xOffsetBefore="-20%"
         xOffsetAfter="-10%"
         yOffsetBefore="-50%"
         yOffsetAfter="-60%"
-        scaleBefore={1.2}
-        scaleAfter={1.4}
+        scaleBefore={1.5}
+        scaleAfter={2}
       />
     </Box>
   );

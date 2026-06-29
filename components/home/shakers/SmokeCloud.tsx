@@ -48,6 +48,7 @@ export function SmokeCloud({
   const yOffsetValue = isActive ? yOffsetAfter : yOffsetBefore;
   const directionalXOffset = getDirectionalXOffset(direction, xOffsetValue);
   const animatedScale = isActive ? scaleAfter : scaleBefore;
+  const opacity = isActive ? 0 : 0.5;
   const scale = isReversed ? -animatedScale : animatedScale;
   const transform = `translate(${directionalXOffset}, ${yOffsetValue}) scale(${scale})`;
 
@@ -63,9 +64,9 @@ export function SmokeCloud({
       w="75%"
       h="150%"
       objectFit="contain"
-      opacity={0.3}
+      opacity={opacity}
       transform={transform}
-      transition={`transform ${duration} ease-out`}
+      transition={`transform ${duration} ease-out, opacity ${duration} ease-out`}
       pointerEvents="none"
     />
   );
