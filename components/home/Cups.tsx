@@ -111,7 +111,6 @@ function getTasteSlides(response: TastesResponse) {
 
 export function Cups() {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const didRequestTastes = useRef(false);
   const fadeFrameRef = useRef<number | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [hasCarouselFadedIn, setHasCarouselFadedIn] = useState(false);
@@ -149,15 +148,13 @@ export function Cups() {
   }, []);
 
   useEffect(() => {
-    if (!isActive || didRequestTastes.current) {
-      return undefined;
-    }
-
-    didRequestTastes.current = true;
+    const controller = new AbortController();
 
     async function loadTastes() {
       try {
-        const response = await fetch(TASTE_SOURCE_URL);
+        const response = await fetch(TASTE_SOURCE_URL, {
+          signal: controller.signal,
+        });
 
         if (!response.ok) {
           throw new Error(`Taste request failed with ${response.status}`);
@@ -166,14 +163,18 @@ export function Cups() {
         const tastesResponse = (await response.json()) as TastesResponse;
         setTastes(getTasteSlides(tastesResponse));
       } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
         console.error("[cups] Failed to load taste data:", error);
       }
     }
 
     loadTastes();
 
-    return undefined;
-  }, [isActive]);
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     if (!tastes.length) {
