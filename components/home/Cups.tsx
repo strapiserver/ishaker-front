@@ -6,7 +6,18 @@ import { useSplashAnimation } from "./Splash";
 
 const STRAPI_URL =
   process.env.NEXT_PUBLIC_STRAPI_URL || "https://admin.ishaker.xyz";
-const TASTE_SOURCE_URL = `${STRAPI_URL}/api/tastes?pagination[pageSize]=50&populate[0]=main&populate[1]=splash&populate[2]=circle`;
+const TASTE_SOURCE_QUERY = [
+  "pagination[pageSize]=50",
+  "fields[0]=name",
+  "fields[1]=isWebsiteVisible",
+  "populate[main][fields][0]=url",
+  "populate[main][fields][1]=formats",
+  "populate[splash][fields][0]=url",
+  "populate[splash][fields][1]=formats",
+  "populate[circle][fields][0]=url",
+  "populate[circle][fields][1]=formats",
+].join("&");
+const TASTE_SOURCE_URL = `${STRAPI_URL}/api/tastes?${TASTE_SOURCE_QUERY}`;
 
 type StrapiMedia = {
   attributes?: {
@@ -55,9 +66,9 @@ function normalizeMediaUrl(url?: string | null) {
 
 function getMediaUrl(media?: StrapiMedia | null) {
   return normalizeMediaUrl(
-    media?.attributes?.formats?.medium?.url ??
-      media?.attributes?.formats?.small?.url ??
+    media?.attributes?.formats?.small?.url ??
       media?.attributes?.formats?.thumbnail?.url ??
+      media?.attributes?.formats?.medium?.url ??
       media?.attributes?.url,
   );
 }
