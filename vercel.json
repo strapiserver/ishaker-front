@@ -1,0 +1,6 @@
+{
+  "env": {
+    "NEXT_PUBLIC_STRAPI_URL": "https://admin.ishaker.xyz",
+    "STRAPI_URL": "https://admin.ishaker.xyz"
+  }
+}

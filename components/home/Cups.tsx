@@ -4,7 +4,8 @@ import { Courosel, type TasteSlide } from "./Courosel";
 import CustomTitle from "./CutsomTitle";
 import { useSplashAnimation } from "./Splash";
 
-const STRAPI_URL = "https://ishaker.xyz";
+const STRAPI_URL =
+  process.env.NEXT_PUBLIC_STRAPI_URL || "https://admin.ishaker.xyz";
 const TASTE_SOURCE_URL = `${STRAPI_URL}/api/tastes?pagination[pageSize]=50&populate[0]=main&populate[1]=splash&populate[2]=circle`;
 
 type StrapiMedia = {

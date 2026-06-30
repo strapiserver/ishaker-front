@@ -1,5 +1,10 @@
 import normalize from "./normalizer";
 
+const DEFAULT_STRAPI_URL =
+  process.env.NODE_ENV === "production"
+    ? "https://admin.ishaker.xyz"
+    : "http://localhost:1337";
+
 const unwrap = (data: any) => {
   if (
     typeof data === "object" &&
@@ -16,7 +21,7 @@ export const getStrapiBaseUrl = () =>
   (
     process.env.STRAPI_URL ||
     process.env.NEXT_PUBLIC_STRAPI_URL ||
-    "http://localhost:1337"
+    DEFAULT_STRAPI_URL
   ).replace(/\/$/, "");
 
 export const initCMSFetcher = () => {
