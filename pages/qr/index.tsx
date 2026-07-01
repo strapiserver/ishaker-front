@@ -4,6 +4,7 @@ import {
   Container,
   Heading,
   Stack,
+  Text,
   useColorModeValue,
 } from "@chakra-ui/react";
 import { NextSeo } from "next-seo";
@@ -15,7 +16,7 @@ export default function QrPage() {
   const pageBg = useColorModeValue("bg.50", "bg.900");
   const borderColor = useColorModeValue("blackAlpha.100", "whiteAlpha.100");
   const headingColor = useColorModeValue("bg.1000", "bg.50");
-  const qrBg = useColorModeValue("white", "whiteAlpha.900");
+  const qrBg = useColorModeValue("bg.500", "bg.100");
 
   return (
     <>
@@ -32,6 +33,7 @@ export default function QrPage() {
           display="flex"
           alignItems="center"
           justifyContent="center"
+          bg="radial-gradient(circle at center, rgba(118, 248, 95, 0.2) 0%, rgba(27, 24, 24, 0) 56%)"
           py={{ base: "12", md: "16" }}
         >
           <Stack
@@ -41,13 +43,13 @@ export default function QrPage() {
             w="full"
           >
             <Heading
-              as="h1"
-              fontSize={{ base: "3xl", md: "5xl" }}
+              as="h2"
+              fontSize={{ base: "2xl", md: "3xl" }}
               lineHeight="1.1"
               color={headingColor}
-              maxW="720px"
+              maxW="520px"
             >
-              Scan this QR to continue
+              Scan this QR to continue registration process on your phone.
             </Heading>
 
             <Box
@@ -68,16 +70,19 @@ export default function QrPage() {
                 style={{ objectFit: "contain", padding: "20px" }}
               />
             </Box>
-
             <Button
               as="a"
-              href="/setup"
+              href="/"
               variant="primary"
               size={{ base: "md", md: "lg" }}
               rightIcon={<FaArrowRight />}
             >
-              Continue here
+              Already registered
             </Button>
+
+            <Text mt="5" color="bg.600">
+              This window will be closed automatically soon
+            </Text>
           </Stack>
         </Container>
       </Box>
