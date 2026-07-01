@@ -41,3 +41,53 @@ export const MachineBySerialQuery = `
     }
   }
 `;
+
+export const AdminClientsQuery = `
+  query AdminClients {
+    clients(
+      filters: { status: { eq: "client" } }
+      pagination: { pageSize: 100 }
+      sort: ["company:ASC"]
+    ) {
+      data {
+        id
+        attributes {
+          company
+          country
+          state
+          city
+          status
+          contact {
+            __typename
+            ... on ComponentTelegramTelegram {
+              telegram
+            }
+            ... on ComponentWhatsappWhatsapp {
+              whatsapp
+            }
+          }
+          machines(sort: ["title:ASC"]) {
+            data {
+              id
+              attributes {
+                title
+                anydesk_id
+                serial_number
+                tailscale_ip
+                type
+                machine_type {
+                  data {
+                    id
+                    attributes {
+                      name
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;

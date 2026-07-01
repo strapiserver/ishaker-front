@@ -25,7 +25,7 @@ export function SetupBegin() {
             fontSize="sm"
             letterSpacing="0.08em"
             textTransform="uppercase"
-            color="peach.300"
+            color="acid.300"
             fontWeight="700"
           >
             Setup your machine

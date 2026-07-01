@@ -1,0 +1,110 @@
+import { Box, Button, Flex, FormControl, FormLabel, Heading, Input, Text } from "@chakra-ui/react";
+import { NextSeo } from "next-seo";
+import { useRouter } from "next/router";
+import { FormEvent, useState } from "react";
+
+export default function AdminLoginPage() {
+  const router = useRouter();
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    setIsLoading(true);
+
+    const response = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+
+    setIsLoading(false);
+
+    if (!response.ok) {
+      setError("Invalid password");
+      return;
+    }
+
+    router.replace("/admin/dashboard");
+  };
+
+  return (
+    <>
+      <NextSeo title="Admin Login" noindex nofollow />
+      <Flex
+        minH="100vh"
+        bg="bg.1000"
+        color="bg.100"
+        align="center"
+        justify="center"
+        px={{ base: 5, md: 8 }}
+      >
+        <Box w="100%" maxW="420px">
+          <Text color="acid.300" fontSize="sm" fontWeight="700" letterSpacing="0" mb={3}>
+            iShaker Admin
+          </Text>
+          <Heading as="h1" color="bg.50" fontSize={{ base: "34px", md: "42px" }} lineHeight="1" mb={4}>
+            Private cabinet
+          </Heading>
+          <Text color="bg.300" mb={8}>
+            Enter the server password to continue to the client machine dashboard.
+          </Text>
+
+          <Box
+            as="form"
+            onSubmit={onSubmit}
+            bg="bg.900"
+            border="1px solid"
+            borderColor="whiteAlpha.100"
+            borderRadius="8px"
+            p={{ base: 5, md: 6 }}
+            boxShadow="0 18px 55px rgba(0, 0, 0, 0.28)"
+          >
+            <FormControl>
+              <FormLabel color="bg.100" fontWeight="700">Password</FormLabel>
+              <Input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+                bg="bg.800"
+                borderColor="whiteAlpha.200"
+                color="bg.50"
+                h="48px"
+                _hover={{ borderColor: "acid.300" }}
+                _focus={{
+                  borderColor: "acid.300",
+                  boxShadow: "0 0 0 1px var(--chakra-colors-acid-300)",
+                }}
+              />
+            </FormControl>
+
+            {error ? (
+              <Text color="red.300" fontSize="sm" mt={3}>
+                {error}
+              </Text>
+            ) : null}
+
+            <Button
+              type="submit"
+              isLoading={isLoading}
+              isDisabled={!password}
+              mt={6}
+              w="100%"
+              h="48px"
+              bg="acid.300"
+              color="bg.1000"
+              borderRadius="8px"
+              _hover={{ bg: "acid.200" }}
+              _active={{ bg: "acid.400" }}
+            >
+              Sign in
+            </Button>
+          </Box>
+        </Box>
+      </Flex>
+    </>
+  );
+}

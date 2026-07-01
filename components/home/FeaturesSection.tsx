@@ -1,4 +1,11 @@
-import { Box, Container, Flex, Heading, SimpleGrid, Text } from "@chakra-ui/react";
+import {
+  Box,
+  Container,
+  Flex,
+  Heading,
+  SimpleGrid,
+  Text,
+} from "@chakra-ui/react";
 import { features } from "./data";
 
 type FeaturesSectionProps = {
@@ -7,7 +14,11 @@ type FeaturesSectionProps = {
   muted: string;
 };
 
-export function FeaturesSection({ panelBg, borderColor, muted }: FeaturesSectionProps) {
+export function FeaturesSection({
+  panelBg,
+  borderColor,
+  muted,
+}: FeaturesSectionProps) {
   return (
     <Container maxW="7xl" py={{ base: "10", md: "14" }}>
       <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing="5">
@@ -27,7 +38,7 @@ export function FeaturesSection({ panelBg, borderColor, muted }: FeaturesSection
               align="center"
               justify="center"
               borderRadius="full"
-              bg="peach.300"
+              bg="acid.300"
               color="bg.900"
               mb="5"
             >

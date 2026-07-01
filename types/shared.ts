@@ -3,7 +3,7 @@ export type ITone =
   | "dark"
   | "black"
   | "error"
-  | "peach"
+  | "acid"
   | "violet"
   | "gray"
   | "light"
@@ -15,8 +15,4 @@ export type IVariant =
   | "extra_contrast"
   | "primary";
 
-export type ITextVariant =
-  | IVariant
-  | "shaded"
-  | "red"
-  | "green";
+export type ITextVariant = IVariant | "shaded" | "red" | "green";

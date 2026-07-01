@@ -28,7 +28,7 @@ export default function ({
 }: CustomTitleProps) {
   const [peripheryColor, centerColor] = useToken(
     "colors",
-    useColorModeValue(["bg.500", "violet.700"], ["bg.200", "peach.300"]),
+    useColorModeValue(["bg.500", "violet.700"], ["bg.200", "acid.300"]),
   );
 
   return (

@@ -33,7 +33,7 @@ const createGradient = (theme: any, tone: ITone, glowing = false) => {
 };
 
 const toastToneMap: Record<string, ITone> = {
-  success: "peach",
+  success: "acid",
   error: "error",
   warning: "gray",
   info: "violet",
@@ -46,7 +46,11 @@ const getToastTone = (status?: string): ITone => {
 const components: Record<string, any> = {
   Alert: {
     baseStyle: (props: any) => {
-      const gradient = createGradient(props.theme, getToastTone(props.status), true);
+      const gradient = createGradient(
+        props.theme,
+        getToastTone(props.status),
+        true,
+      );
 
       return {
         container: {
@@ -70,7 +74,11 @@ const components: Record<string, any> = {
   },
   Toast: {
     baseStyle: (props: any) => {
-      const gradient = createGradient(props.theme, getToastTone(props.status), true);
+      const gradient = createGradient(
+        props.theme,
+        getToastTone(props.status),
+        true,
+      );
 
       return {
         container: {
@@ -96,13 +104,13 @@ const components: Record<string, any> = {
     variants: {
       primary_bright: (props: any) => ({
         bgGradient: mode(
-          "linear(to-br, peach.100, peach.300)",
+          "linear(to-br, acid.100, acid.300)",
           "linear(to-br, bg.300, bg.400)",
         )(props),
       }),
       primary_regular: (props: any) => ({
         bgGradient: mode(
-          "linear(to-br, peach.300, peach.400)",
+          "linear(to-br, acid.300, acid.400)",
           "linear(to-br, bg.400, bg.500)",
         )(props),
       }),
@@ -120,7 +128,7 @@ const components: Record<string, any> = {
         color: mode("bg.1000", "bg.50")(props),
       }),
       primary: (props: any) => ({
-        color: mode("violet.700", "peach.300")(props),
+        color: mode("violet.700", "acid.300")(props),
       }),
       shaded: (props: any) => ({
         color: mode("bg.500", "bg.500")(props),
@@ -151,7 +159,7 @@ const components: Record<string, any> = {
       primary: ({ theme, colorMode }: any) =>
         colorMode === "light"
           ? createGradient(theme, "violet", true)
-          : createGradient(theme, "peach", true),
+          : createGradient(theme, "acid", true),
       no_contrast: ({ theme, colorMode }: any) =>
         colorMode === "light"
           ? createGradient(theme, "gray", true)

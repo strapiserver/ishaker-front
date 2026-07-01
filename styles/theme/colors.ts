@@ -31,7 +31,7 @@ export const colors3D = {
     "whiteAlpha.300",
     "blackAlpha.300",
   ],
-  peach: [
+  acid: [
     "green.300",
     "orange.300",
     "orange.400",
@@ -88,7 +88,7 @@ export const colors = {
     "900": "#1b1818",
     "1000": "#141313",
   },
-  peach: {
+  acid: {
     "10": "#f3fff1",
     "50": "#dcffd5",
     "100": "#c3ffb8",

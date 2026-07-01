@@ -31,6 +31,7 @@ export const fetchMachineBySerial = createAsyncThunk<
   const normalizedSerial = serial.trim();
   const response = await fetch(
     `/api/strapi/machine-by-serial?serial=${encodeURIComponent(normalizedSerial)}`,
+    { signal: thunkAPI.signal },
   );
   const payload = await response.json();
 
@@ -60,6 +61,8 @@ const strapiSlice = createSlice({
       state.lastSerialQuery = action.meta.arg.trim();
     });
     builder.addCase(fetchMachineBySerial.fulfilled, (state, action) => {
+      if (action.meta.arg.trim() !== state.lastSerialQuery) return;
+
       const { machine, client } = action.payload;
 
       state.selectedMachine = machine;
@@ -70,6 +73,8 @@ const strapiSlice = createSlice({
       state.serialLookupError = machine ? null : "machine not found";
     });
     builder.addCase(fetchMachineBySerial.rejected, (state, action) => {
+      if (action.meta.arg.trim() !== state.lastSerialQuery) return;
+
       state.selectedMachine = null;
       state.selectedClient = null;
       state.machines = [];

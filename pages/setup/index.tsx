@@ -1,7 +1,7 @@
 import { Box, useColorModeValue } from "@chakra-ui/react";
 import { NextSeo } from "next-seo";
 import { Header } from "../../components/home/Header";
-import { SetupBegin } from "../../components/setup/SetupBegin";
+import { SerialNumberSection } from "../../components/step1/SerialNumberSection";
 
 export default function Step1Page() {
   const pageBg = useColorModeValue("bg.50", "bg.900");
@@ -16,7 +16,7 @@ export default function Step1Page() {
       <Box minH="100vh" bg={pageBg} overflow="hidden">
         <Header borderColor={borderColor} />
         <Box as="main">
-          <SetupBegin />
+          <SerialNumberSection />
         </Box>
       </Box>
     </>

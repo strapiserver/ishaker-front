@@ -18,7 +18,25 @@ export type Machine = {
   last_seen_at?: string;
   admin_comment?: string;
   client?: Client | null;
+  machine_type?: {
+    id: string | number;
+    name?: string;
+  } | null;
 };
+
+export type ClientContact =
+  | {
+      __typename?: "ComponentTelegramTelegram";
+      telegram?: string;
+    }
+  | {
+      __typename?: "ComponentWhatsappWhatsapp";
+      whatsapp?: string;
+    }
+  | {
+      __typename?: string;
+      [key: string]: unknown;
+    };
 
 export type Client = {
   id: string | number;
@@ -26,6 +44,8 @@ export type Client = {
   country?: string;
   state?: string;
   city?: string;
+  status?: "admin" | "client" | "blocked";
+  contact?: ClientContact[];
   machines?: Machine[];
 };
 

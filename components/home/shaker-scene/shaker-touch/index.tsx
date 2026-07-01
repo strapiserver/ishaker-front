@@ -103,7 +103,7 @@ export function ShakerTouch({
               fontWeight="900"
               lineHeight="1"
             >
-              $9,900
+              $8,500
             </Text>
           </Stack>
           <Button

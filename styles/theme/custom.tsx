@@ -22,7 +22,7 @@ export const RegularBox = (props: any) => {
     no_contrast: useColorModeValue("bg.100", "bg.700"),
     contrast: useColorModeValue("bg.50", "bg.800"),
     extra_contrast: useColorModeValue("bg.10", "bg.900"),
-    primary: useColorModeValue("violet.300", "peach.500"),
+    primary: useColorModeValue("violet.300", "acid.500"),
   };
   const color = useColorModeValue("bg.700", "bg.100");
 
@@ -68,11 +68,11 @@ export const ShadedButton = (props: any) => {
       cursor="pointer"
       bgColor="rgba(200,200,200,0.05)"
       _hover={{
-        color: useColorModeValue("violet.800", "peach.100"),
+        color: useColorModeValue("violet.800", "acid.100"),
         bgColor: "transparent",
       }}
       _active={{
-        color: useColorModeValue("violet.700", "peach.400"),
+        color: useColorModeValue("violet.700", "acid.400"),
       }}
       borderRadius="2xl"
       {...chakraProps}
@@ -116,7 +116,9 @@ export const ResponsiveText = (props: any) => {
     <Text
       whiteSpace="nowrap"
       fontSize={sizes[size]}
-      fontFamily={/\d/.test(size) ? `"Montserrat Alternates", sans-serif` : "unset"}
+      fontFamily={
+        /\d/.test(size) ? `"Montserrat Alternates", sans-serif` : "unset"
+      }
       variant={variant || variants[size]}
       {...chakraProps}
     >
@@ -126,8 +128,10 @@ export const ResponsiveText = (props: any) => {
 };
 
 export const ResponsiveButton = (props: any) => {
-  const { children, ...chakraProps }: { children: ReactElement; size?: string } =
-    props;
+  const {
+    children,
+    ...chakraProps
+  }: { children: ReactElement; size?: string } = props;
 
   return (
     <Button

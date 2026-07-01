@@ -16,7 +16,7 @@ export default function Step2Page() {
   const imageBg = "bg.1000";
   const imageShadow = useColorModeValue(
     "0 24px 70px rgba(15, 23, 42, 0.22)",
-    "0 28px 80px rgba(0, 0, 0, 0.42)"
+    "0 28px 80px rgba(0, 0, 0, 0.42)",
   );
 
   return (
@@ -34,7 +34,7 @@ export default function Step2Page() {
                 fontSize="sm"
                 letterSpacing="0.08em"
                 textTransform="uppercase"
-                color="peach.300"
+                color="acid.300"
                 fontWeight="700"
               >
                 Step 2
