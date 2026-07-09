@@ -50,6 +50,14 @@ const getRequiredEnv = (name: string) => {
   return value;
 };
 
+const TELEMETRY_ENV_KEYS = [
+  "TELEMETRY_API_BASE",
+  "TELEMETRY_KEYCLOAK_TOKEN_URL",
+  "TELEMETRY_CLIENT_ID",
+  "TELEMETRY_SERVICE_USERNAME",
+  "TELEMETRY_SERVICE_PASSWORD",
+];
+
 const getTelemetryEnv = () => ({
   baseUrl: getRequiredEnv("TELEMETRY_API_BASE").replace(/\/$/, ""),
   tokenUrl: getRequiredEnv("TELEMETRY_KEYCLOAK_TOKEN_URL"),
@@ -102,7 +110,13 @@ const requestToken = async (refreshToken?: string) => {
   const payload = await response.json();
 
   if (!response.ok || !payload?.access_token) {
-    throw new Error("Telemetry token request failed");
+    const error = new Error("Telemetry token request failed") as Error & {
+      status?: number;
+      response?: unknown;
+    };
+    error.status = response.status;
+    error.response = payload;
+    throw error;
   }
 
   cachedToken = {
@@ -173,13 +187,10 @@ const telemetryFetch = async <T>(path: string, init?: RequestInit) => {
 };
 
 export const isTelemetryConfigured = () =>
-  Boolean(
-    process.env.TELEMETRY_API_BASE &&
-      process.env.TELEMETRY_KEYCLOAK_TOKEN_URL &&
-      process.env.TELEMETRY_CLIENT_ID &&
-      process.env.TELEMETRY_SERVICE_USERNAME &&
-      process.env.TELEMETRY_SERVICE_PASSWORD,
-  );
+  TELEMETRY_ENV_KEYS.every((key) => Boolean(process.env[key]));
+
+export const getMissingTelemetryEnvKeys = () =>
+  TELEMETRY_ENV_KEYS.filter((key) => !process.env[key]);
 
 export const listTelemetryOrganizations = () =>
   telemetryFetch<TelemetryOrganization[]>("/telemetry-organization/organization/list");
@@ -243,7 +254,7 @@ const normalizeName = (value: string) =>
   value
     .toLowerCase()
     .replace(/\([^)]*\)/g, " ")
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 
 export const resolveTelemetryOrganizationId = async (client: {
@@ -258,6 +269,7 @@ export const resolveTelemetryOrganizationId = async (client: {
 
   const organizations = await listTelemetryOrganizations();
   const target = normalizeName(client.company);
+  if (!target) return null;
 
   const exact = organizations.find((org) => normalizeName(org.name) === target);
   if (exact) return exact.id;

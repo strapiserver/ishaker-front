@@ -7,6 +7,7 @@ import {
   changeTelemetryMachineOrganization,
   createTelemetryOrganization,
   findTelemetryMachineBySerial,
+  getMissingTelemetryEnvKeys,
   getTelemetryUserUuid,
   isTelemetryConfigured,
   provisionTelemetryMachineSetup,
@@ -41,15 +42,43 @@ const getErrorPayload = (error: unknown) => {
   };
 };
 
+const getTelemetryErrorPayload = (error: unknown) => {
+  const apiError = error as {
+    status?: number;
+    response?: unknown;
+    message?: string;
+  };
+
+  return {
+    status: apiError.status && apiError.status >= 400 ? apiError.status : 502,
+    message: apiError.message || "Telemetry sync failed.",
+    details: apiError.response || null,
+  };
+};
+
 const getId = (value: unknown) => {
   const id = (value as { id?: string | number } | null)?.id;
   return id === undefined || id === null ? null : id;
 };
 
-const getTelemetryId = (value: unknown) => {
+const getTelemetryId = (value: unknown): number | null => {
   const id = getId(value);
   if (typeof id === "number") return id;
   if (typeof id === "string" && /^\d+$/.test(id)) return Number(id);
+
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const nestedId =
+      getTelemetryId(record.machine) ||
+      getTelemetryId(record.organization) ||
+      getTelemetryId(record.data);
+    if (nestedId) return nestedId;
+
+    const explicitId = record.machineId || record.organizationId;
+    if (typeof explicitId === "number") return explicitId;
+    if (typeof explicitId === "string" && /^\d+$/.test(explicitId)) return Number(explicitId);
+  }
+
   return null;
 };
 
@@ -57,6 +86,10 @@ const getRegistrationCode = (payload: any) =>
   asString(payload?.registrationKey) ||
   asString(payload?.registrationCode) ||
   asString(payload?.registration_code) ||
+  asString(payload?.qrPayload?.registrationKey) ||
+  asString(payload?.qrPayload?.registrationCode) ||
+  asString(payload?.machine?.registrationKey) ||
+  asString(payload?.machine?.registrationCode) ||
   asString(payload?.key) ||
   asString(payload?.machineKey);
 
@@ -68,10 +101,6 @@ const contactLabel = (params: {
 }) => {
   if (params.messengerType === "whatsapp") {
     return `${params.messengerCountryCode} ${params.messengerValue}`.trim();
-  }
-
-  if (params.messengerType === "telegram") {
-    return `@${params.messengerValue.replace(/^@/, "")}`;
   }
 
   return params.email;
@@ -94,13 +123,6 @@ const buildClientContact = (params: {
     contacts.push({
       __component: "whatsapp.whatsapp",
       whatsapp: contactLabel(params),
-    } as any);
-  }
-
-  if (params.messengerType === "telegram") {
-    contacts.push({
-      __component: "telegram.telegram",
-      telegram: contactLabel(params),
     } as any);
   }
 
@@ -227,12 +249,15 @@ const syncTelemetry = async (params: {
   messengerValue: string;
 }) => {
   if (!isTelemetryConfigured()) {
-    return { status: "skipped", note: "Telemetry sync skipped: environment is not configured." };
+    const missing = getMissingTelemetryEnvKeys();
+    throw new Error(
+      `Telemetry environment is not configured. Missing: ${missing.join(", ")}`,
+    );
   }
 
   const userUuid = await getTelemetryUserUuid();
   if (!userUuid) {
-    return { status: "skipped", note: "Telemetry sync skipped: root user UUID could not be read." };
+    throw new Error("Telemetry root user UUID could not be read.");
   }
 
   const existingOrganizationId = await resolveTelemetryOrganizationId(params.client);
@@ -261,15 +286,15 @@ const syncTelemetry = async (params: {
   }
 
   if (!organizationId) {
-    return { status: "failed", note: "Telemetry sync failed: organization was not resolved." };
+    throw new Error("Telemetry organization was not resolved after create.");
   }
 
-  let strapiTelemetryNote = "";
+  let telemetryNoteSuffix = "";
   if (params.client.telemetry_organization_id !== organizationId) {
     await updateClientPortalAccess(params.client.id, params.email, organizationId).catch((error) => {
       console.error("[portal/register-machine] telemetry org id save failed:", error);
-      strapiTelemetryNote =
-        " Strapi telemetry organization id was not saved; deploy the client telemetry_organization_id field if this repeats.";
+      telemetryNoteSuffix =
+        " Strapi telemetry organization id was not saved; check that the client.telemetry_organization_id field is deployed.";
     });
   }
 
@@ -287,7 +312,7 @@ const syncTelemetry = async (params: {
         status: "moved",
         organizationId,
         machineId: existingMachine.machine.id,
-        note: `Telemetry machine moved from organization ${existingMachine.organizationId} to ${organizationId}.${strapiTelemetryNote}`,
+        note: `Telemetry machine moved from organization ${existingMachine.organizationId} to ${organizationId}.${telemetryNoteSuffix}`,
       };
     }
 
@@ -295,7 +320,7 @@ const syncTelemetry = async (params: {
       status: "exists",
       organizationId,
       machineId: existingMachine.machine.id,
-      note: `Telemetry machine already exists in organization ${organizationId}.${strapiTelemetryNote}`,
+      note: `Telemetry machine already exists in organization ${organizationId}.${telemetryNoteSuffix}`,
     };
   }
 
@@ -322,7 +347,7 @@ const syncTelemetry = async (params: {
     organizationId,
     machineId: getTelemetryId(provisioned),
     registrationCode,
-    note: `Telemetry machine provisioned in organization ${organizationId}.${strapiTelemetryNote}`,
+    note: `Telemetry machine provisioned in organization ${organizationId}.${telemetryNoteSuffix}`,
   };
 };
 
@@ -359,22 +384,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "password_mismatch" });
   }
 
-  if (messengerType === "whatsapp") {
-    if (
-      !WHATSAPP_COUNTRY_CODE_REGEX.test(messengerCountryCode) ||
-      !WHATSAPP_LOCAL_NUMBER_REGEX.test(messengerValue)
-    ) {
-      return res.status(400).json({
-        error: "invalid_whatsapp",
-        message: "Enter a valid WhatsApp number.",
-      });
-    }
+  if (messengerType !== "whatsapp") {
+    return res.status(400).json({
+      error: "invalid_messenger",
+      message: "WhatsApp is required for registration.",
+    });
   }
 
-  if (messengerType === "telegram" && !/^[A-Za-z0-9_]{5,32}$/.test(messengerValue)) {
+  if (
+    !WHATSAPP_COUNTRY_CODE_REGEX.test(messengerCountryCode) ||
+    !WHATSAPP_LOCAL_NUMBER_REGEX.test(messengerValue)
+  ) {
     return res.status(400).json({
-      error: "invalid_telegram",
-      message: "Enter a valid Telegram username.",
+      error: "invalid_whatsapp",
+      message: "Enter a valid WhatsApp number.",
     });
   }
 
@@ -410,6 +433,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
+  let telemetryResult: {
+    status: string;
+    organizationId?: number | null;
+    machineId?: number | null;
+    registrationCode?: string;
+    note?: string;
+  };
+  try {
+    telemetryResult = await syncTelemetry({
+      client,
+      machine: matchedMachine,
+      company,
+      contactName,
+      email: email.toLowerCase(),
+      messengerType,
+      messengerCountryCode,
+      messengerValue,
+    });
+  } catch (error) {
+    console.error("[portal/register-machine] telemetry sync failed:", error);
+    const payload = getTelemetryErrorPayload(error);
+    return res.status(payload.status).json({
+      error: "telemetry_sync_failed",
+      message: payload.message,
+      details: payload.details,
+    });
+  }
+
   const registerResponse = await fetch(`${getStrapiBaseUrl()}/api/auth/local/register`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -434,25 +485,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  const telemetryResult = await syncTelemetry({
-    client,
-    machine: matchedMachine,
-    company,
-    contactName,
-    email: email.toLowerCase(),
-    messengerType,
-    messengerCountryCode,
-    messengerValue,
-  }).catch((error) => {
-    console.error("[portal/register-machine] telemetry sync failed:", error);
-    return {
-      status: "failed",
-      note: `Telemetry sync failed: ${
-        error instanceof Error ? error.message : "unknown error"
-      }.`,
-    };
-  });
-
   const data = {
     serial_number: serialNumber,
     machine_title: matchedMachine?.title || asString(req.body?.machineTitle),
@@ -464,9 +496,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     notes: [
       asString(req.body?.notes),
       messengerType && messengerValue
-        ? messengerType === "whatsapp"
-          ? `WhatsApp: ${messengerCountryCode} ${messengerValue}`.trim()
-          : `Telegram: @${messengerValue.replace(/^@/, "")}`
+        ? `WhatsApp: ${messengerCountryCode} ${messengerValue}`.trim()
         : "",
       telemetryResult?.note || "",
     ]
