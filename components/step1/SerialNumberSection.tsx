@@ -22,6 +22,7 @@ import {
   clearMachineLookup,
   fetchMachineBySerial,
 } from "../../redux/strapiSlice";
+import { mergeRegistrationDraft } from "../../lib/portal/registration";
 import CustomTitle from "../home/CutsomTitle";
 
 const SERIAL_DEBOUNCE_MS = 3000;
@@ -29,7 +30,7 @@ const SERIAL_DEBOUNCE_MS = 3000;
 export function SerialNumberSection() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { selectedMachine, serialLookupStatus } = useAppSelector(
+  const { selectedMachine, selectedClient, serialLookupStatus } = useAppSelector(
     (state) => state.strapi,
   );
 
@@ -72,6 +73,14 @@ export function SerialNumberSection() {
 
   const handleNext = () => {
     if (!canContinue) return;
+    mergeRegistrationDraft({
+      machineId: selectedMachine?.id,
+      serialNumber: selectedMachine?.serial_number || trimmedSerial,
+      machineTitle: selectedMachine?.title,
+      machineTypeName: selectedMachine?.machine_type?.name,
+      clientId: selectedClient?.id,
+      company: selectedClient?.company || "",
+    });
     router.push("/step2");
   };
 
@@ -160,6 +169,21 @@ export function SerialNumberSection() {
             >
               Next
             </Button>
+            {selectedMachine ? (
+              <Stack spacing="1" mt="4">
+                <Text color={headingColor} fontWeight="700">
+                  {selectedMachine.title || "Machine found"}
+                </Text>
+                <Text color={muted} fontSize="sm">
+                  Serial: {selectedMachine.serial_number}
+                </Text>
+                {selectedClient?.company ? (
+                  <Text color={muted} fontSize="sm">
+                    Current client: {selectedClient.company}
+                  </Text>
+                ) : null}
+              </Stack>
+            ) : null}
           </Box>
         </Stack>
 

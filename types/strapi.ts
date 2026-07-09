@@ -41,6 +41,7 @@ export type ClientContact =
 export type Client = {
   id: string | number;
   company: string;
+  telemetry_organization_id?: number | null;
   country?: string;
   state?: string;
   city?: string;

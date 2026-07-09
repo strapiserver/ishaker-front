@@ -2,7 +2,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { fetchStrapiRest, initCMSFetcher } from "../../../services/fetchers";
 import { MachineBySerialQuery } from "../../../services/queries";
 import normalize from "../../../services/normalizer";
-import { requestStrapiAsService } from "../../../services/server/strapiClient";
+import {
+  requestStrapiAsService,
+  requestStrapiRestAsService,
+} from "../../../services/server/strapiClient";
 import type { Client, Machine, MachineLookupResponse } from "../../../types/strapi";
 
 const first = <T,>(value: T[] | T | null | undefined): T | null => {
@@ -41,6 +44,20 @@ const loadViaRest = async (serial: string) => {
   return normalizeMachineClient(machine);
 };
 
+const loadViaServiceRest = async (serial: string) => {
+  const params = new URLSearchParams();
+  params.set("filters[serial_number][$eq]", serial);
+  params.set("populate", "client");
+  params.set("pagination[pageSize]", "1");
+  params.set("sort", "title:ASC");
+
+  const result = await requestStrapiRestAsService<Machine[]>(
+    `/api/machines?${params.toString()}`,
+  );
+  const machine = first<Machine>(result);
+  return normalizeMachineClient(machine);
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<MachineLookupResponse | { error: string }>,
@@ -60,9 +77,9 @@ export default async function handler(
   }
 
   try {
-    const graphqlResult = await loadViaGraphql(serial);
-    if (graphqlResult.machine) {
-      return res.status(200).json(graphqlResult);
+    const serviceRestResult = await loadViaServiceRest(serial);
+    if (serviceRestResult.machine) {
+      return res.status(200).json(serviceRestResult);
     }
 
     const restResult = await loadViaRest(serial);
@@ -73,6 +90,11 @@ export default async function handler(
     const serviceResult = await loadViaServiceGraphql(serial);
     if (serviceResult.machine) {
       return res.status(200).json(serviceResult);
+    }
+
+    const graphqlResult = await loadViaGraphql(serial);
+    if (graphqlResult.machine) {
+      return res.status(200).json(graphqlResult);
     }
 
     return res.status(200).json(restResult);

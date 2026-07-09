@@ -8,7 +8,7 @@ import {
 } from "@chakra-ui/react";
 import { FaArrowRight } from "react-icons/fa";
 import CustomTitle from "./CutsomTitle";
-import { SmokeScene } from "./shakers";
+import { SmokeScene } from "./smoke";
 
 type HeroSectionProps = {
   muted: string;

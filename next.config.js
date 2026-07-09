@@ -1,10 +1,8 @@
-/** @type {import('next').NextConfig} */
-
 const withBundleAnalyzer = require("@next/bundle-analyzer")({
   enabled: process.env.ANALYZE === "true",
 });
 
-const nextConfig = {
+module.exports = withBundleAnalyzer({
   reactStrictMode: true,
   typescript: {
     ignoreBuildErrors: true,
@@ -12,6 +10,14 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-};
+  webpack: (config, { dev }) => {
+    if (dev) {
+      // Avoid webpack pack-file corruption under repeated local restarts.
+      config.cache = {
+        type: "memory",
+      };
+    }
 
-module.exports = withBundleAnalyzer(nextConfig);
+    return config;
+  },
+});

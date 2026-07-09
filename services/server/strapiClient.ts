@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { getStrapiBaseUrl } from "../fetchers";
+import normalize from "../normalizer";
 
 const LOGIN_MUTATION = `
   mutation Login($identifier: String!, $password: String!, $provider: String!) {
@@ -166,3 +167,51 @@ export const requestStrapiAsService = async <T = any>(
     return requestGraphql<T>(query, variables, jwt);
   }
 };
+
+const requestStrapiRest = async <T = any>(
+  path: string,
+  init?: RequestInit,
+  jwt?: string,
+) => {
+  const response = await fetch(`${getStrapiBaseUrl()}${path}`, {
+    ...init,
+    headers: {
+      "content-type": "application/json",
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      ...(init?.headers || {}),
+    },
+  });
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok || payload?.error) {
+    const error = new Error("Strapi REST request failed") as Error & {
+      response?: any;
+      status?: number;
+    };
+    error.response = payload;
+    error.status = response.status;
+    throw error;
+  }
+
+  return normalize(payload) as T;
+};
+
+export const requestStrapiRestAsService = async <T = any>(
+  path: string,
+  init?: RequestInit,
+) => {
+  let jwt = await getStrapiJwt(false);
+
+  try {
+    return await requestStrapiRest<T>(path, init, jwt);
+  } catch {
+    jwt = await getStrapiJwt(true);
+    return requestStrapiRest<T>(path, init, jwt);
+  }
+};
+
+export const requestStrapiRestWithJwt = async <T = any>(
+  path: string,
+  jwt: string,
+  init?: RequestInit,
+) => requestStrapiRest<T>(path, init, jwt);
