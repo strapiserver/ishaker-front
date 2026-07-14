@@ -50,15 +50,15 @@ const localStrapiEnv = readLocalStrapiEnv();
 
 const getServiceCredentials = () => {
   const identifier =
-    process.env.STRAPI_AUTH_IDENTIFIER ||
-    process.env.STRAPI_MACHINE_USER_LOGIN ||
     localStrapiEnv.STRAPI_AUTH_IDENTIFIER ||
-    localStrapiEnv.STRAPI_MACHINE_USER_LOGIN;
+    localStrapiEnv.STRAPI_MACHINE_USER_LOGIN ||
+    process.env.STRAPI_AUTH_IDENTIFIER ||
+    process.env.STRAPI_MACHINE_USER_LOGIN;
   const password =
-    process.env.STRAPI_AUTH_PASSWORD ||
-    process.env.STRAPI_MACHINE_USER_PASSWORD ||
     localStrapiEnv.STRAPI_AUTH_PASSWORD ||
-    localStrapiEnv.STRAPI_MACHINE_USER_PASSWORD;
+    localStrapiEnv.STRAPI_MACHINE_USER_PASSWORD ||
+    process.env.STRAPI_AUTH_PASSWORD ||
+    process.env.STRAPI_MACHINE_USER_PASSWORD;
 
   if (!identifier || !password) {
     throw new Error(
@@ -173,10 +173,13 @@ const requestStrapiRest = async <T = any>(
   init?: RequestInit,
   jwt?: string,
 ) => {
+  const isMultipart =
+    typeof FormData !== "undefined" && init?.body instanceof FormData;
+
   const response = await fetch(`${getStrapiBaseUrl()}${path}`, {
     ...init,
     headers: {
-      "content-type": "application/json",
+      ...(!isMultipart ? { "content-type": "application/json" } : {}),
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       ...(init?.headers || {}),
     },

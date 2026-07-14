@@ -19,12 +19,15 @@ type PortalShellProps = PropsWithChildren<{
   title: string;
   description?: string;
   clientName?: string;
+  access?: "client" | "product";
 }>;
 
 const navItems = [
   { href: "/machines", label: "Machines" },
+  { href: "/product-lines", label: "Product lines" },
   { href: "/sales", label: "Sales" },
   { href: "/promos", label: "Promos" },
+  { href: "/catalog", label: "Catalog" },
 ];
 
 const whatsappBotUrl = process.env.NEXT_PUBLIC_WHATSAPP_BOT_URL || "#";
@@ -33,9 +36,14 @@ export function PortalShell({
   title,
   description,
   clientName,
+  access = "client",
   children,
 }: PortalShellProps) {
   const router = useRouter();
+  const visibleNavItems =
+    access === "product"
+      ? navItems.filter((item) => item.href === "/product-lines")
+      : navItems;
 
   const handleLogout = async () => {
     await fetch("/api/portal/logout", { method: "POST" });
@@ -52,7 +60,7 @@ export function PortalShell({
               <Stack spacing="0">
                 <Text
                   as={Link}
-                  href="/machines"
+                  href={access === "product" ? "/product-lines" : "/machines"}
                   color="acid.300"
                   fontWeight="800"
                   letterSpacing="0.06em"
@@ -68,8 +76,10 @@ export function PortalShell({
               </Stack>
 
               <HStack spacing="2" flexWrap="wrap">
-                {navItems.map((item) => {
-                  const active = router.pathname === item.href;
+                {visibleNavItems.map((item) => {
+                  const active =
+                    router.pathname === item.href ||
+                    router.pathname.startsWith(`${item.href}/`);
                   return (
                     <Button
                       key={item.href}

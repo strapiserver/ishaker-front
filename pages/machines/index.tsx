@@ -5,6 +5,7 @@ import {
   SimpleGrid,
   Stack,
   Text,
+  Icon,
 } from "@chakra-ui/react";
 import Link from "next/link";
 import type { GetServerSideProps } from "next";
@@ -12,6 +13,7 @@ import { PortalShell } from "../../components/portal/PortalShell";
 import { requirePortalSession } from "../../lib/portal/auth";
 import type { PortalMachineSummary, PortalSession } from "../../types/portal";
 import type { Machine } from "../../types/strapi";
+import { FaPlus } from "react-icons/fa";
 
 type MachinesPageProps = {
   session: PortalSession;
@@ -46,6 +48,19 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
       description="Read-only machine list for the authenticated client. Live telemetry fields can be layered in once the exact manage API endpoints are wired."
       clientName={session.client.company}
     >
+      <Button
+        as={Link}
+        href="/product-lines/new"
+        variant="primary"
+        w="full"
+        minH={{ base: "96px", md: "116px" }}
+        mb="8"
+        fontSize={{ base: "lg", md: "xl" }}
+        leftIcon={<Icon as={FaPlus} boxSize={{ base: "5", md: "7" }} />}
+      >
+        New product line
+      </Button>
+
       <SimpleGrid columns={{ base: 1, xl: 2 }} spacing="5">
         {machines.map((machine) => (
           <Box
@@ -86,6 +101,14 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
 export const getServerSideProps: GetServerSideProps<MachinesPageProps> = async (context) => {
   const result = await requirePortalSession(context);
   if ("redirect" in result) return { redirect: result.redirect };
+  if (result.session.access === "product") {
+    return {
+      redirect: {
+        destination: "/product-lines",
+        permanent: false,
+      },
+    };
+  }
 
   return {
     props: {

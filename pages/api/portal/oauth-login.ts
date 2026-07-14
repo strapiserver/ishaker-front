@@ -1,5 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { fetchPortalUser, setPortalSession } from "../../../lib/portal/auth";
+import {
+  fetchPortalUser,
+  isProductClientUser,
+  setPortalSession,
+} from "../../../lib/portal/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -14,10 +18,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const user = await fetchPortalUser(jwt);
-    if (!user?.client?.id) {
+    if (!user?.client?.id && !isProductClientUser(user)) {
       return res.status(403).json({
         error: "client_not_linked",
-        message: "This Google account is not linked to a client account.",
+        message:
+          "This Google account is not linked to a client or Product Client account.",
       });
     }
 

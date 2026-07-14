@@ -35,7 +35,7 @@ export default function LoginPage() {
     setIsLoading(false);
 
     if (!response.ok) {
-      setError("Invalid email or password.");
+      setError("Invalid email/username or password.");
       return;
     }
 
@@ -54,7 +54,7 @@ export default function LoginPage() {
             Sign in
           </Heading>
           <Text color="bg.300" mb="8">
-            Use the email and password assigned to this client account in Strapi.
+            Use the email or username and password assigned to this client account in Strapi.
           </Text>
 
           <Box
@@ -68,12 +68,12 @@ export default function LoginPage() {
           >
             <Stack spacing="4">
               <FormControl>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>Email or username</FormLabel>
                 <Input
-                  type="email"
+                  type="text"
                   value={identifier}
                   onChange={(event) => setIdentifier(event.target.value)}
-                  autoComplete="email"
+                  autoComplete="username"
                   bg="bg.800"
                   borderColor="whiteAlpha.200"
                 />

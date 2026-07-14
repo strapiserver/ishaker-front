@@ -38,10 +38,13 @@ export const clearPortalSession = (res: NextApiResponse) => {
 
 export const fetchPortalUser = async (jwt: string) => {
   return requestStrapiRestWithJwt<PortalUser>(
-    "/api/users/me?populate=client",
+    "/api/users/me?populate[0]=client&populate[1]=role",
     jwt,
   );
 };
+
+export const isProductClientUser = (user?: PortalUser | null) =>
+  user?.role?.type === "product_client" || user?.role?.name === "Product Client";
 
 const fetchClientById = async (clientId: string | number) => {
   const params = new URLSearchParams();
@@ -84,7 +87,21 @@ export const resolvePortalSession = async (
   if (!jwt) return null;
 
   const user = await fetchPortalUser(jwt);
-  if (!user?.client?.id) return null;
+  if (!user?.id) return null;
+
+  if (!user.client?.id) {
+    if (!isProductClientUser(user)) return null;
+
+    return {
+      user,
+      client: {
+        id: 0,
+        company: user.username || user.email || "Product Client",
+      },
+      machines: [],
+      access: "product",
+    };
+  }
 
   const client = await fetchClientById(user.client.id);
   if (!client?.id) return null;
@@ -93,6 +110,7 @@ export const resolvePortalSession = async (
     user,
     client,
     machines: (client.machines || []) as Machine[],
+    access: isProductClientUser(user) ? "product" : "client",
   };
 };
 
@@ -111,6 +129,17 @@ export const requirePortalSession = async (
   try {
     const session = await resolvePortalSession(context.req.headers.cookie);
     if (session) {
+      if (
+        session.access === "product" &&
+        !context.resolvedUrl.startsWith("/product-lines")
+      ) {
+        return {
+          redirect: {
+            destination: "/product-lines",
+            permanent: false,
+          },
+        };
+      }
       return { session };
     }
   } catch (error) {

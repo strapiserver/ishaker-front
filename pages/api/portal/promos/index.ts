@@ -37,6 +37,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: "unauthorized" });
   }
 
+  if (session.access !== "client") {
+    return res.status(403).json({ error: "client_access_required" });
+  }
+
   if (req.method === "POST") {
     const code = asString(req.body?.code);
     const discountType = asString(req.body?.discountType) as "PERCENT" | "FIXED";

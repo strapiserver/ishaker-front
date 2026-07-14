@@ -26,12 +26,18 @@ export type PortalUser = {
   client?: {
     id: string | number;
   } | null;
+  role?: {
+    id: string | number;
+    name?: string;
+    type?: string;
+  } | null;
 };
 
 export type PortalSession = {
   user: PortalUser;
   client: Client;
   machines: Machine[];
+  access: "client" | "product";
 };
 
 export type PortalMachineSummary = Machine & {
@@ -50,4 +56,65 @@ export type PromoCode = {
   notes?: string;
   machine?: Machine | null;
   client?: Client | null;
+};
+
+export type TasteMedia = {
+  id: string | number;
+  name?: string;
+  url: string;
+};
+
+export type PortalTaste = {
+  id: string | number;
+  name: string;
+  color?: string;
+  isWebsiteVisible?: boolean;
+  submission_status?: "pending" | "approved" | "rejected";
+  main?: TasteMedia | null;
+  circle?: TasteMedia | null;
+  client?: Client | null;
+};
+
+export type PortalMedia = {
+  id: string | number;
+  name?: string;
+  url?: string;
+  formats?: Record<
+    string,
+    {
+      url?: string;
+      width?: number;
+      height?: number;
+    }
+  > | null;
+};
+
+export type PortalSplash = {
+  id: string | number;
+  name: string;
+  color?: string | null;
+  isEmpty?: boolean;
+  images?: PortalMedia[];
+};
+
+export type PortalCup = {
+  id: string | number;
+  name: string;
+  image?: PortalMedia | null;
+  default_splash?: PortalSplash | null;
+};
+
+export type PortalBrand = {
+  id: string | number;
+  name: string;
+  logo?: PortalMedia | null;
+};
+
+export type PortalProductLine = {
+  id: string | number;
+  name: string;
+  author?: Pick<PortalUser, "id" | "username" | "email"> | null;
+  base_product_line?: Pick<PortalProductLine, "id" | "name"> | null;
+  cup?: PortalCup | null;
+  brand?: PortalBrand | null;
 };
