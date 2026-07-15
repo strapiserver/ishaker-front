@@ -24,14 +24,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     params.set("fields[2]", "isEmpty");
     params.set("populate[images][fields][0]", "url");
     params.set("populate[images][fields][1]", "formats");
+    params.set("populate[images][fields][2]", "name");
 
     const splash = await requestStrapiRestAsService<PortalSplash>(
       `/api/splashes/${id}?${params.toString()}`,
     );
-
-    if (splash.isEmpty !== true) {
-      return res.status(404).json({ error: "splash_not_found" });
-    }
 
     return res.status(200).json({ splash });
   } catch (error) {

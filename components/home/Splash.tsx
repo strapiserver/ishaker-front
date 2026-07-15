@@ -2,8 +2,8 @@ import { Box, Container } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 
 export const SPLASH_FRAME_MS = 66;
-const SPLASH_FADE_MS = 200;
-const SPLASH_FADE_FRAME_COUNT = Math.ceil(SPLASH_FADE_MS / SPLASH_FRAME_MS);
+export const SPLASH_LAST_FRAME_MS = 3000;
+export const SPLASH_FADE_MS = 500;
 
 type SplashProps = {
   splashes?: string[][];
@@ -21,7 +21,6 @@ export function useSplashAnimation(
   isActive: boolean,
 ): SplashAnimation {
   const [isFading, setIsFading] = useState(false);
-  const [isFadeComplete, setIsFadeComplete] = useState(false);
   const [splashIndex, setSplashIndex] = useState(0);
   const [frameIndex, setFrameIndex] = useState(0);
   const activeSplash = splashes[splashIndex] ?? [];
@@ -39,7 +38,6 @@ export function useSplashAnimation(
       setSplashIndex(0);
       setFrameIndex(0);
       setIsFading(false);
-      setIsFadeComplete(false);
     }
   }, [splashIndex, splashes.length]);
 
@@ -47,51 +45,33 @@ export function useSplashAnimation(
     if (!isActive) {
       setFrameIndex(0);
       setIsFading(false);
-      setIsFadeComplete(false);
     }
   }, [isActive]);
-
-  useEffect(() => {
-    if (!isFading) {
-      return undefined;
-    }
-
-    const fadeTimeout = window.setTimeout(() => {
-      setIsFadeComplete(true);
-    }, SPLASH_FADE_MS);
-
-    return () => window.clearTimeout(fadeTimeout);
-  }, [isFading]);
 
   useEffect(() => {
     if (!isActive || !activeSplash.length) {
       return undefined;
     }
 
-    const frameTimeout = window.setTimeout(() => {
-      if (frameIndex >= activeSplash.length - 1) {
-        if (!isFadeComplete) {
-          return;
-        }
-
+    const isLastFrame = frameIndex >= activeSplash.length - 1;
+    if (isLastFrame) {
+      const fadeTimeout = window.setTimeout(() => {
+        setIsFading(true);
+      }, SPLASH_LAST_FRAME_MS - SPLASH_FADE_MS);
+      const repeatTimeout = window.setTimeout(() => {
         setSplashIndex((current) => (current + 1) % splashes.length);
         setFrameIndex(0);
         setIsFading(false);
-        setIsFadeComplete(false);
-        return;
-      }
+      }, SPLASH_LAST_FRAME_MS);
 
-      const nextFrame = frameIndex + 1;
-      const fadeStartFrame = Math.max(
-        activeSplash.length - SPLASH_FADE_FRAME_COUNT,
-        0,
-      );
+      return () => {
+        window.clearTimeout(fadeTimeout);
+        window.clearTimeout(repeatTimeout);
+      };
+    }
 
-      if (nextFrame >= fadeStartFrame) {
-        setIsFading(true);
-      }
-
-      setFrameIndex(nextFrame);
+    const frameTimeout = window.setTimeout(() => {
+      setFrameIndex((current) => current + 1);
     }, SPLASH_FRAME_MS);
 
     return () => window.clearTimeout(frameTimeout);
@@ -99,7 +79,6 @@ export function useSplashAnimation(
     activeSplash.length,
     frameIndex,
     isActive,
-    isFadeComplete,
     splashes.length,
   ]);
 

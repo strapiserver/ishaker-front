@@ -7,7 +7,7 @@ import {
   Heading,
   Image,
   SimpleGrid,
-  Stack,
+  VStack,
   Text,
   useColorModeValue,
 } from "@chakra-ui/react";
@@ -79,7 +79,11 @@ export function ArticlePage({ article }: { article: Article }) {
       <Box as="main" position="relative">
         <Container maxW="6xl" pt={{ base: "12", md: "20" }} pb={{ base: "16", md: "28" }}>
           <SimpleGrid columns={{ base: 1, lg: machines.length ? 2 : 1 }} spacing={{ base: "10", lg: "16" }} alignItems="center" mb={{ base: "12", md: "16" }}>
-            <Stack spacing="6" maxW={machines.length ? "760px" : "900px"}>
+            <VStack
+              spacing="6"
+              maxW={machines.length ? "760px" : "900px"}
+              align="stretch"
+            >
               <Badge alignSelf="flex-start" px="3" py="1.5" borderRadius="full" bg="acid.300" color="bg.1000" fontSize="xs" letterSpacing="0.13em">
                 iShaker support
               </Badge>
@@ -91,16 +95,16 @@ export function ArticlePage({ article }: { article: Article }) {
                   {article.subheader}
                 </Text>
               ) : null}
-            </Stack>
+            </VStack>
 
             {machines.length ? (
               <Box bg="whiteAlpha.50" border="1px solid" borderColor="whiteAlpha.100" borderRadius="2xl" p={{ base: "4", md: "5" }} backdropFilter="blur(12px)">
                 <Text color="acid.300" fontSize="xs" fontWeight="900" textTransform="uppercase" letterSpacing="0.15em" mb="4">
                   This guide applies to
                 </Text>
-                <Stack spacing="3">
+                <VStack spacing="3" align="stretch">
                   {machines.map((machineType) => <MachineTypeCard key={machineType.id} machineType={machineType} />)}
-                </Stack>
+                </VStack>
               </Box>
             ) : null}
           </SimpleGrid>

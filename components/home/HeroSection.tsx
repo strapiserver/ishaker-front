@@ -4,7 +4,7 @@ import {
   Container,
   Flex,
   SimpleGrid,
-  Stack,
+  VStack,
 } from "@chakra-ui/react";
 import { FaArrowRight } from "react-icons/fa";
 import CustomTitle from "./CutsomTitle";
@@ -23,7 +23,7 @@ export function HeroSection({ muted, headingColor }: HeroSectionProps) {
         spacing={{ base: "6", lg: "12" }}
         alignItems="center"
       >
-        <Stack
+        <VStack
           spacing="6"
           maxW="2xl"
           zIndex="1"
@@ -80,7 +80,7 @@ export function HeroSection({ muted, headingColor }: HeroSectionProps) {
               Already registered
             </Button>
           </Flex>
-        </Stack>
+        </VStack>
 
         <SmokeScene
           ml={{ base: "10", lg: "0" }}

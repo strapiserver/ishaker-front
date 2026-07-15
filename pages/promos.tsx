@@ -6,7 +6,7 @@ import {
   Input,
   Select,
   SimpleGrid,
-  Stack,
+  VStack,
   Text,
 } from "@chakra-ui/react";
 import type { GetServerSideProps } from "next";
@@ -92,7 +92,7 @@ export default function PromosPage({ session, promos, loadError }: PromosPagePro
     >
       <SimpleGrid columns={{ base: 1, xl: 2 }} spacing="6">
         <Box bg="bg.900" border="1px solid" borderColor="whiteAlpha.100" borderRadius="2xl" p="6">
-          <Stack spacing="4">
+          <VStack spacing="4" align="stretch">
             <Text color="acid.300" fontWeight="800">
               Existing promo codes
             </Text>
@@ -112,7 +112,7 @@ export default function PromosPage({ session, promos, loadError }: PromosPagePro
             ) : (
               <Text color="bg.300">No promo codes yet.</Text>
             )}
-          </Stack>
+          </VStack>
         </Box>
 
         <Box
@@ -124,7 +124,7 @@ export default function PromosPage({ session, promos, loadError }: PromosPagePro
           borderRadius="2xl"
           p="6"
         >
-          <Stack spacing="4">
+          <VStack spacing="4" align="stretch">
             <Text color="acid.300" fontWeight="800">
               Create a promo code
             </Text>
@@ -170,7 +170,7 @@ export default function PromosPage({ session, promos, loadError }: PromosPagePro
             >
               Create promo code
             </Button>
-          </Stack>
+          </VStack>
         </Box>
       </SimpleGrid>
     </PortalShell>

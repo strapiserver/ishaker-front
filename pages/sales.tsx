@@ -1,7 +1,7 @@
 import {
   Box,
   SimpleGrid,
-  Stack,
+  VStack,
   Stat,
   StatLabel,
   StatNumber,
@@ -45,14 +45,14 @@ export default function SalesPage({ session }: SalesPageProps) {
       </SimpleGrid>
 
       <Box bg="bg.900" border="1px solid" borderColor="whiteAlpha.100" borderRadius="2xl" p="6">
-        <Stack spacing="3">
+        <VStack spacing="3" align="stretch">
           <Text color="acid.300" fontWeight="800">
             Telemetry sales integration pending
           </Text>
           <Text color="bg.300">
             To finish this page, I need the exact endpoint mappings used by the existing Python telemetry client for `get_sales`, `get_sales_stats`, and `get_sales_qty`.
           </Text>
-        </Stack>
+        </VStack>
       </Box>
     </PortalShell>
   );

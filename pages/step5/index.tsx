@@ -2,7 +2,7 @@ import {
   Box,
   Button,
   Container,
-  Stack,
+  VStack,
   Text,
   useColorModeValue,
 } from "@chakra-ui/react";
@@ -30,7 +30,7 @@ export default function Step5Page() {
         <Header borderColor={borderColor} />
         <Container maxW="4xl" py={{ base: "10", md: "16" }}>
           <Box bg={panelBg} border="1px solid" borderColor={borderColor} borderRadius="3xl" p={{ base: "6", md: "8" }}>
-            <Stack spacing="5">
+            <VStack spacing="5" align="stretch">
               <Text fontSize="sm" textTransform="uppercase" color="acid.300" fontWeight="700">
                 Step 5
               </Text>
@@ -50,7 +50,7 @@ export default function Step5Page() {
               <Button as={Link} href="/machines" variant="primary" alignSelf="flex-start">
                 Open client cabinet
               </Button>
-            </Stack>
+            </VStack>
           </Box>
         </Container>
       </Box>

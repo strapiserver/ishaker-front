@@ -6,6 +6,7 @@ import Head from "next/head";
 import { Provider } from "react-redux";
 import theme from "../styles/theme";
 import store from "../redux/store";
+import { Footer } from "../components/Footer";
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
@@ -29,6 +30,7 @@ function MyApp({ Component, pageProps }: AppProps) {
             }}
           />
           <Component {...pageProps} />
+          <Footer />
         </ChakraProvider>
       </Provider>
     </>

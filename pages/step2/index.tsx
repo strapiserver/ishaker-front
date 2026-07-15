@@ -5,7 +5,7 @@ import {
   FormControl,
   FormLabel,
   Input,
-  Stack,
+  VStack,
   Text,
   useColorModeValue,
 } from "@chakra-ui/react";
@@ -53,7 +53,7 @@ export default function Step2Page() {
       <Box minH="100vh" bg={pageBg}>
         <Header borderColor={borderColor} />
         <Container maxW="5xl" py={{ base: "8", md: "12" }}>
-          <Stack spacing="5" maxW="2xl" mb="8">
+          <VStack spacing="5" maxW="2xl" mb="8" align="stretch">
             <Text fontSize="sm" textTransform="uppercase" color="acid.300" fontWeight="700">
               Step 2
             </Text>
@@ -67,16 +67,16 @@ export default function Step2Page() {
               mb="0"
               subtitleProps={{ mx: "0", color: muted }}
             />
-          </Stack>
+          </VStack>
 
-          <Stack spacing="6">
+          <VStack spacing="6" align="stretch">
             <Box bg={panelBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" p="6">
               <Text color="bg.50" fontWeight="700">{machineLabel}</Text>
               <Text color={muted} mt="1">Serial number: {serialNumber}</Text>
             </Box>
 
             <Box bg={panelBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" p="6">
-              <Stack spacing="4">
+              <VStack spacing="4" align="stretch">
                 <FormControl>
                   <FormLabel>Your name or company name</FormLabel>
                   <Input value={company} onChange={(event) => setCompany(event.target.value)} />
@@ -97,13 +97,13 @@ export default function Step2Page() {
                     placeholder="Anything useful before the portal account is approved"
                   />
                 </FormControl>
-              </Stack>
+              </VStack>
             </Box>
 
             <Button alignSelf="flex-start" variant="primary" onClick={handleNext} isDisabled={!company}>
               Continue
             </Button>
-          </Stack>
+          </VStack>
         </Container>
       </Box>
     </>

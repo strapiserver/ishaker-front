@@ -3,7 +3,7 @@ import {
   Button,
   Container,
   Heading,
-  Stack,
+  VStack,
   Text,
   useColorModeValue,
 } from "@chakra-ui/react";
@@ -36,7 +36,7 @@ export default function QrPage() {
           bg="radial-gradient(circle at center, rgba(118, 248, 95, 0.2) 0%, rgba(27, 24, 24, 0) 56%)"
           py={{ base: "12", md: "16" }}
         >
-          <Stack
+          <VStack
             spacing={{ base: "7", md: "8" }}
             align="center"
             textAlign="center"
@@ -83,7 +83,7 @@ export default function QrPage() {
             <Text mt="5" color="bg.600">
               This window will be closed automatically soon
             </Text>
-          </Stack>
+          </VStack>
         </Container>
       </Box>
     </>

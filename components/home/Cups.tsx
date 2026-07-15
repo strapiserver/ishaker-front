@@ -1,21 +1,22 @@
-import { Box, Container, SimpleGrid, Stack } from "@chakra-ui/react";
+import { Box, Container, SimpleGrid, VStack } from "@chakra-ui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Courosel, type TasteSlide } from "./Courosel";
 import CustomTitle from "./CutsomTitle";
-import { useSplashAnimation } from "./Splash";
+import { SPLASH_FADE_MS, useSplashAnimation } from "./Splash";
 
 const STRAPI_URL =
   process.env.NEXT_PUBLIC_STRAPI_URL || "https://admin.ishaker.xyz";
 const TASTE_SOURCE_QUERY = [
-  "pagination[pageSize]=50",
+  "pagination[pageSize]=1000",
   "fields[0]=name",
   "fields[1]=isWebsiteVisible",
   "populate[main][fields][0]=url",
   "populate[main][fields][1]=formats",
-  "populate[splash][fields][0]=url",
-  "populate[splash][fields][1]=formats",
-  "populate[circle][fields][0]=url",
-  "populate[circle][fields][1]=formats",
+  "populate[default_splash][populate][images][fields][0]=url",
+  "populate[default_splash][populate][images][fields][1]=formats",
+  "populate[default_splash][populate][images][fields][2]=name",
+  "populate[default_circle][populate][images][fields][0]=url",
+  "populate[default_circle][populate][images][fields][1]=formats",
 ].join("&");
 const TASTE_SOURCE_URL = `${STRAPI_URL}/api/tastes?${TASTE_SOURCE_QUERY}`;
 
@@ -32,22 +33,35 @@ type StrapiMedia = {
         url?: string | null;
       };
     } | null;
+    name?: string | null;
     url?: string | null;
   };
 };
 
 type Taste = {
   attributes?: {
-    circle?: {
-      data?: StrapiMedia | null;
+    default_circle?: {
+      data?: {
+        attributes?: {
+          images?: {
+            data?: StrapiMedia[];
+          };
+        };
+      } | null;
     };
     isWebsiteVisible?: boolean | null;
     main?: {
       data?: StrapiMedia | null;
     };
     name?: string | null;
-    splash?: {
-      data?: StrapiMedia[];
+    default_splash?: {
+      data?: {
+        attributes?: {
+          images?: {
+            data?: StrapiMedia[];
+          };
+        };
+      } | null;
     };
   };
 };
@@ -75,7 +89,17 @@ function getMediaUrl(media?: StrapiMedia | null) {
 
 function getSplashSet(taste: Taste) {
   return (
-    taste.attributes?.splash?.data
+    [
+      ...(taste.attributes?.default_splash?.data?.attributes?.images?.data ||
+        []),
+    ]
+      .sort((left, right) =>
+        (left.attributes?.name || "").localeCompare(
+          right.attributes?.name || "",
+          undefined,
+          { numeric: true, sensitivity: "base" },
+        ),
+      )
       ?.map((frame) => getMediaUrl(frame))
       .filter((url): url is string => Boolean(url)) ?? []
   );
@@ -90,7 +114,9 @@ function getTasteSlides(response: TastesResponse) {
     response.data
       ?.filter(isTasteWebsiteVisible)
       .map((taste) => {
-        const circleImage = getMediaUrl(taste.attributes?.circle?.data);
+        const circleImage = getMediaUrl(
+          taste.attributes?.default_circle?.data?.attributes?.images?.data?.[0],
+        );
         const mainImage = getMediaUrl(taste.attributes?.main?.data);
         const splashFrames = getSplashSet(taste);
 
@@ -203,7 +229,7 @@ export function Cups() {
         spacing={{ base: "4", lg: "6" }}
         alignItems="center"
       >
-        <Stack
+        <VStack
           spacing="4"
           maxW="md"
           mx={{ base: "auto", lg: "0" }}
@@ -213,7 +239,7 @@ export function Cups() {
           <CustomTitle
             as="h2"
             title="20+ flavors"
-            subtitle="Browse protein, BCAA, isotonic, and water mixes as the cups fill with each animated splash."
+            subtitle="We create out own branded flavors and collaborate with other brands to create unique flavors."
             mt="0"
             mb="0"
             textAlign={{ base: "center", lg: "left" }}
@@ -224,9 +250,9 @@ export function Cups() {
               mx: "0",
             }}
           />
-        </Stack>
+        </VStack>
 
-        <Stack
+        <VStack
           spacing={{ base: "3", md: "4" }}
           align="center"
           justifySelf={{ base: "center", lg: "end" }}
@@ -277,7 +303,7 @@ export function Cups() {
                 transform="translateX(-50%)"
                 objectFit="contain"
                 opacity={isFading ? 0 : 1}
-                transition="opacity 0.2s ease"
+                transition={`opacity ${SPLASH_FADE_MS / 1000}s ease`}
                 pointerEvents="none"
               />
             ) : null}
@@ -296,7 +322,7 @@ export function Cups() {
               pointerEvents="none"
             />
           </Box>
-        </Stack>
+        </VStack>
       </SimpleGrid>
     </Container>
   );

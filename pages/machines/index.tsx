@@ -3,7 +3,8 @@ import {
   Box,
   Button,
   SimpleGrid,
-  Stack,
+  HStack,
+  VStack,
   Text,
   Icon,
 } from "@chakra-ui/react";
@@ -71,15 +72,15 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
             borderRadius="2xl"
             p="6"
           >
-            <Stack spacing="3">
-              <Stack direction="row" justify="space-between" align="center">
+            <VStack spacing="3" align="stretch">
+              <HStack justify="space-between" align="center">
                 <Text color="bg.50" fontWeight="800" fontSize="xl">
                   {machine.title || `Machine #${machine.id}`}
                 </Text>
                 <Badge colorScheme={machine.status === "working" ? "green" : "gray"}>
                   {machine.statusLabel}
                 </Badge>
-              </Stack>
+              </HStack>
               <Text color="bg.300">Serial: {machine.serial_number}</Text>
               {machine.machine_type?.name ? (
                 <Text color="bg.300">Type: {machine.machine_type.name}</Text>
@@ -90,7 +91,7 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
               <Button as={Link} href={`/machines/${machine.id}`} variant="contrast" alignSelf="flex-start">
                 Open details
               </Button>
-            </Stack>
+            </VStack>
           </Box>
         ))}
       </SimpleGrid>

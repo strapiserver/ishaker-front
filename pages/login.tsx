@@ -6,7 +6,7 @@ import {
   FormLabel,
   Heading,
   Input,
-  Stack,
+  VStack,
   Text,
 } from "@chakra-ui/react";
 import { NextSeo } from "next-seo";
@@ -39,7 +39,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.replace("/machines");
+    router.replace("/product-lines");
   };
 
   return (
@@ -66,7 +66,7 @@ export default function LoginPage() {
             borderRadius="2xl"
             p={{ base: "5", md: "6" }}
           >
-            <Stack spacing="4">
+            <VStack spacing="4" align="stretch">
               <FormControl>
                 <FormLabel>Email or username</FormLabel>
                 <Input
@@ -90,7 +90,7 @@ export default function LoginPage() {
                   borderColor="whiteAlpha.200"
                 />
               </FormControl>
-            </Stack>
+            </VStack>
 
             {error ? (
               <Text color="red.300" fontSize="sm" mt="4">

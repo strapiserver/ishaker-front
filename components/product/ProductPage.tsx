@@ -2,7 +2,7 @@ import {
   Box,
   Container,
   SimpleGrid,
-  Stack,
+  VStack,
   Table,
   TableContainer,
   Tbody,
@@ -84,7 +84,7 @@ export function ProductPage({
               spacing={{ base: "8", lg: "12" }}
               alignItems="center"
             >
-              <Stack
+              <VStack
                 spacing="6"
                 maxW="2xl"
                 order={{ base: 2, lg: 1 }}
@@ -105,7 +105,7 @@ export function ProductPage({
                     mx: "0",
                   }}
                 />
-              </Stack>
+              </VStack>
 
               <Box
                 position="relative"
@@ -184,7 +184,7 @@ export function ProductPage({
                 spacing={{ base: "8", lg: "12" }}
                 alignItems="center"
               >
-                <Stack spacing="3">
+                <VStack spacing="3" align="stretch">
                   <Text
                     as="h2"
                     fontSize={{ base: "3xl", md: "5xl" }}
@@ -201,7 +201,7 @@ export function ProductPage({
                     Example service curve showing how the machine keeps demand
                     covered across morning, lunch, and evening traffic.
                   </Text>
-                </Stack>
+                </VStack>
 
                 <Box h={{ base: "280px", md: "360px" }}>
                   <ResponsiveContainer width="100%" height="100%">

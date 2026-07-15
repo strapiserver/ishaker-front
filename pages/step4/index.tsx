@@ -3,7 +3,7 @@ import {
   Button,
   Container,
   SimpleGrid,
-  Stack,
+  VStack,
   Text,
   useColorModeValue,
 } from "@chakra-ui/react";
@@ -78,7 +78,7 @@ export default function Step4Page() {
       <Box minH="100vh" bg={pageBg}>
         <Header borderColor={borderColor} />
         <Container maxW="6xl" py={{ base: "8", md: "12" }}>
-          <Stack spacing="5" maxW="2xl" mb="8">
+          <VStack spacing="5" maxW="2xl" mb="8" align="stretch">
             <Text fontSize="sm" textTransform="uppercase" color="acid.300" fontWeight="700">
               Step 4
             </Text>
@@ -92,22 +92,22 @@ export default function Step4Page() {
               mb="0"
               subtitleProps={{ mx: "0", color: muted }}
             />
-          </Stack>
+          </VStack>
 
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing="6">
             <Box bg={panelBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" p="6">
               <Text color="acid.300" fontWeight="700" mb="3">Machine</Text>
-              <Stack spacing="2" color={muted}>
+              <VStack spacing="2" color={muted} align="stretch">
                 <Text>{draft?.machineTitle || "Selected machine"}</Text>
                 <Text>Serial: {draft?.serialNumber}</Text>
                 {draft?.machineTypeName ? <Text>Type: {draft.machineTypeName}</Text> : null}
                 {draft?.location ? <Text>Location: {draft.location}</Text> : null}
-              </Stack>
+              </VStack>
             </Box>
 
             <Box bg={panelBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" p="6">
               <Text color="acid.300" fontWeight="700" mb="3">Portal contact</Text>
-              <Stack spacing="2" color={muted}>
+              <VStack spacing="2" color={muted} align="stretch">
                 <Text>{draft?.company}</Text>
                 <Text>{draft?.contactName}</Text>
                 <Text>{draft?.email}</Text>
@@ -118,7 +118,7 @@ export default function Step4Page() {
                 ) : null}
                 <Text>Auth: {draft?.authProvider || "local"}</Text>
                 {draft?.notes ? <Text>Notes: {draft.notes}</Text> : null}
-              </Stack>
+              </VStack>
             </Box>
           </SimpleGrid>
 

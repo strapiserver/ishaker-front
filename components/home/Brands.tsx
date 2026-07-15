@@ -13,7 +13,7 @@ import CustomTitle from "./CutsomTitle";
 
 const STRAPI_URL =
   process.env.NEXT_PUBLIC_STRAPI_URL || "https://admin.ishaker.xyz";
-const BRAND_SOURCE_URL = `${STRAPI_URL}/api/brands?pagination[page]=1&pagination[pageSize]=100&sort[0]=updatedAt:desc&populate[logo][fields][0]=url&populate[logo][fields][1]=formats&fields[0]=name`;
+const BRAND_SOURCE_URL = `${STRAPI_URL}/api/brands?pagination[page]=1&pagination[pageSize]=1000&sort[0]=updatedAt:desc&populate[logo][fields][0]=url&populate[logo][fields][1]=formats&fields[0]=name`;
 const VISIBLE_BRAND_LIMIT = 40;
 
 type StrapiMedia = {

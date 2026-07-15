@@ -3,16 +3,6 @@ import path from "path";
 import { getStrapiBaseUrl } from "../fetchers";
 import normalize from "../normalizer";
 
-const LOGIN_MUTATION = `
-  mutation Login($identifier: String!, $password: String!, $provider: String!) {
-    login(
-      input: { identifier: $identifier, password: $password, provider: $provider }
-    ) {
-      jwt
-    }
-  }
-`;
-
 const AUTH_PROVIDER = "local";
 const TOKEN_REFRESH_SKEW_MS = 60_000;
 
@@ -50,15 +40,15 @@ const localStrapiEnv = readLocalStrapiEnv();
 
 const getServiceCredentials = () => {
   const identifier =
-    localStrapiEnv.STRAPI_AUTH_IDENTIFIER ||
-    localStrapiEnv.STRAPI_MACHINE_USER_LOGIN ||
     process.env.STRAPI_AUTH_IDENTIFIER ||
-    process.env.STRAPI_MACHINE_USER_LOGIN;
+    process.env.STRAPI_MACHINE_USER_LOGIN ||
+    localStrapiEnv.STRAPI_AUTH_IDENTIFIER ||
+    localStrapiEnv.STRAPI_MACHINE_USER_LOGIN;
   const password =
-    localStrapiEnv.STRAPI_AUTH_PASSWORD ||
-    localStrapiEnv.STRAPI_MACHINE_USER_PASSWORD ||
     process.env.STRAPI_AUTH_PASSWORD ||
-    process.env.STRAPI_MACHINE_USER_PASSWORD;
+    process.env.STRAPI_MACHINE_USER_PASSWORD ||
+    localStrapiEnv.STRAPI_AUTH_PASSWORD ||
+    localStrapiEnv.STRAPI_MACHINE_USER_PASSWORD;
 
   if (!identifier || !password) {
     throw new Error(
@@ -120,16 +110,21 @@ const requestGraphql = async <T = any>(
 
 const loginToStrapi = async () => {
   const { identifier, password } = getServiceCredentials();
-  const result = await requestGraphql<{ login?: { jwt?: string } }>(
-    LOGIN_MUTATION,
-    {
+  const response = await fetch(`${getStrapiBaseUrl()}/api/auth/local`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
       identifier,
       password,
       provider: AUTH_PROVIDER,
-    },
-  );
+    }),
+  });
+  const payload = await response.json().catch(() => null);
+  const jwt = payload?.jwt;
 
-  const jwt = result?.login?.jwt;
+  if (!response.ok) {
+    throw new Error("Strapi service login failed.");
+  }
   if (!jwt) {
     throw new Error("Strapi login did not return a JWT.");
   }

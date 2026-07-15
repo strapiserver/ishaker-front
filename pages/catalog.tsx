@@ -10,7 +10,7 @@ import {
   Image,
   Input,
   SimpleGrid,
-  Stack,
+  VStack,
   Text,
 } from "@chakra-ui/react";
 import type { GetServerSideProps } from "next";
@@ -103,16 +103,16 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
             {taste.main?.url ? (
               <Image src={mediaUrl(taste.main.url)} alt={taste.name} h="180px" w="full" objectFit="cover" />
             ) : null}
-            <Stack p="5" spacing="2">
+            <VStack p="5" spacing="2" align="stretch">
               <Text color="bg.50" fontWeight="800">{taste.name}</Text>
               {taste.submission_status === "pending" ? <Badge colorScheme="yellow" alignSelf="flex-start">Pending review</Badge> : null}
-            </Stack>
+            </VStack>
           </Box>
         ))}
       </SimpleGrid>
 
       <Box as="form" onSubmit={submit} bg="bg.900" border="1px solid" borderColor="whiteAlpha.100" borderRadius="2xl" p={{ base: "5", md: "7" }} maxW="760px">
-        <Stack spacing="5">
+        <VStack spacing="5" align="stretch">
           <Box>
             <Text color="bg.50" fontSize="2xl" fontWeight="800">Add a custom taste</Text>
             <Text color="bg.300" mt="1">Your submission stays hidden until the iShaker team reviews and approves it.</Text>
@@ -151,7 +151,7 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
           <Button type="submit" variant="primary" alignSelf="flex-start" isLoading={isSubmitting} isDisabled={!name || !main || !circle}>
             Submit custom taste
           </Button>
-        </Stack>
+        </VStack>
       </Box>
     </PortalShell>
   );
@@ -161,31 +161,20 @@ export const getServerSideProps: GetServerSideProps<CatalogPageProps> = async (c
   const result = await requirePortalSession(context);
   if ("redirect" in result) return { redirect: result.redirect };
 
-  const globalParams = new URLSearchParams();
-  globalParams.set("filters[isWebsiteVisible][$eq]", "true");
-  globalParams.set("populate[0]", "main");
-  globalParams.set("populate[1]", "circle");
-  globalParams.set("sort[0]", "name:ASC");
+  const tasteParams = new URLSearchParams();
+  tasteParams.set("populate[main][fields][0]", "url");
+  tasteParams.set("populate[default_circle][populate][images][fields][0]", "url");
+  tasteParams.set("sort[0]", "name:ASC");
+  tasteParams.set("pagination[pageSize]", "1000");
 
-  const ownParams = new URLSearchParams();
-  ownParams.set("filters[client][id][$eq]", String(result.session.client.id));
-  ownParams.set("populate[0]", "main");
-  ownParams.set("populate[1]", "circle");
-  ownParams.set("populate[2]", "client");
-  ownParams.set("sort[0]", "createdAt:DESC");
-
-  let globalTastes: PortalTaste[] = [];
-  let ownTastes: PortalTaste[] = [];
+  let tastes: PortalTaste[] = [];
   try {
-    globalTastes = await requestStrapiRestAsService<PortalTaste[]>(`/api/tastes?${globalParams.toString()}`);
-    ownTastes = await requestStrapiRestAsService<PortalTaste[]>(`/api/tastes?${ownParams.toString()}`);
+    tastes = await requestStrapiRestAsService<PortalTaste[]>(
+      `/api/tastes?${tasteParams.toString()}`,
+    );
   } catch (error) {
     console.error("[catalog] taste loading failed:", error);
   }
-
-  const tastes = [...ownTastes, ...globalTastes].filter(
-    (taste, index, all) => all.findIndex((candidate) => String(candidate.id) === String(taste.id)) === index,
-  );
 
   return { props: { session: result.session, tastes } };
 };

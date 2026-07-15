@@ -6,7 +6,7 @@ import {
   HStack,
   Icon,
   Image,
-  Stack,
+  VStack,
   Text,
 } from "@chakra-ui/react";
 import { NextSeo } from "next-seo";
@@ -57,10 +57,10 @@ export function PortalShell({
         <Box borderBottom="1px solid" borderColor="whiteAlpha.100">
           <Container maxW="7xl" py="4">
             <Flex align="center" justify="space-between" gap="4" wrap="wrap">
-              <Stack spacing="0">
+              <VStack spacing="0" align="stretch">
                 <Text
                   as={Link}
-                  href={access === "product" ? "/product-lines" : "/machines"}
+                  href="/product-lines"
                   color="acid.300"
                   fontWeight="800"
                   letterSpacing="0.06em"
@@ -73,7 +73,7 @@ export function PortalShell({
                     {clientName}
                   </Text>
                 ) : null}
-              </Stack>
+              </VStack>
 
               <HStack spacing="2" flexWrap="wrap">
                 {visibleNavItems.map((item) => {
@@ -121,8 +121,14 @@ export function PortalShell({
             }}
             transition="transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease"
           >
-            <Flex direction={{ base: "column", lg: "row" }} minH={{ base: "auto", lg: "250px" }}>
-              <Box flex={{ lg: "0 0 43%" }} minH={{ base: "220px", md: "280px", lg: "250px" }}>
+            <Flex
+              direction={{ base: "column", lg: "row" }}
+              minH={{ base: "auto", lg: "250px" }}
+            >
+              <Box
+                flex={{ lg: "0 0 60%" }}
+                minH={{ base: "220px", md: "280px", lg: "250px" }}
+              >
                 <Image
                   src="/whatsapp_bot_banner.jpg"
                   alt="WhatsApp AI support bot for iShaker machines"
@@ -133,7 +139,8 @@ export function PortalShell({
               </Box>
 
               <Flex
-                flex="1"
+                flex={{ base: "1", lg: "0 0 40%" }}
+                minW="0"
                 direction="column"
                 justify="center"
                 gap="5"
@@ -141,7 +148,7 @@ export function PortalShell({
                 py={{ base: "6", md: "8" }}
                 bgGradient="linear(to-br, rgba(10,17,24,0.92), rgba(9,64,43,0.88))"
               >
-                <Stack spacing="3" maxW="2xl">
+                <VStack spacing="3" maxW="2xl" align="stretch">
                   <Text
                     fontSize="sm"
                     fontWeight="800"
@@ -157,10 +164,17 @@ export function PortalShell({
                     lineHeight="1.1"
                     fontWeight="900"
                   >
-                    Connect your machine to our WhatsApp bot for guided setup, live monitoring, and direct AI support.
+                    Connect your machine to our WhatsApp bot for guided setup,
+                    live monitoring, and direct AI support.
                   </Text>
-                  <Text color="whiteAlpha.800" fontSize={{ base: "md", md: "lg" }} maxW="xl">
-                    The bot can help check machine health, adjust settings, assist with diagnostics, and answer most day-to-day operational questions in one chat.
+                  <Text
+                    color="whiteAlpha.800"
+                    fontSize={{ base: "md", md: "lg" }}
+                    maxW="xl"
+                  >
+                    The bot can help check machine health, adjust settings,
+                    assist with diagnostics, and answer most day-to-day
+                    operational questions in one chat.
                   </Text>
                   <HStack
                     spacing="3"
@@ -171,19 +185,19 @@ export function PortalShell({
                     borderRadius="xl"
                     px="4"
                     py="3"
-                    color="red.100"
+                    color="yellow.200"
                     maxW="xl"
                   >
-                    <Icon as={FaExclamationCircle} boxSize="4" color="red.200" mt="0.5" />
-                    <Text fontSize="sm" lineHeight="1.5">
-                      Connect with THE SAME number you specified during registration.
+                    <Icon as={FaExclamationCircle} boxSize="4" mt="0.5" />
+                    <Text fontSize="xs" lineHeight="1.5">
+                      Use the same number you specified during registration.
                     </Text>
                   </HStack>
-                </Stack>
+                </VStack>
 
                 <Button
                   as="span"
-                  alignSelf="flex-start"
+                  alignSelf="flex-end"
                   leftIcon={<Icon as={FaWhatsapp} boxSize="5" />}
                   size="lg"
                   px="7"
@@ -203,12 +217,16 @@ export function PortalShell({
             </Flex>
           </Box>
 
-          <Stack spacing="2" mb="8">
-            <Text color="bg.50" fontSize={{ base: "3xl", md: "4xl" }} fontWeight="800">
+          <VStack spacing="2" mb="8" align="stretch">
+            <Text
+              color="bg.50"
+              fontSize={{ base: "3xl", md: "4xl" }}
+              fontWeight="800"
+            >
               {title}
             </Text>
             {description ? <Text color="bg.300">{description}</Text> : null}
-          </Stack>
+          </VStack>
           {children}
         </Container>
       </Box>

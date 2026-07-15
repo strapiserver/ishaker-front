@@ -2,7 +2,7 @@ import {
   Box,
   Container,
   SimpleGrid,
-  Stack,
+  VStack,
   Text,
   useColorModeValue,
 } from "@chakra-ui/react";
@@ -20,7 +20,7 @@ export function SetupBegin() {
         spacing={{ base: "8", lg: "12" }}
         alignItems="center"
       >
-        <Stack spacing="5" maxW="xl">
+        <VStack spacing="5" maxW="xl" align="stretch">
           <Text
             fontSize="sm"
             letterSpacing="0.08em"
@@ -46,7 +46,7 @@ export function SetupBegin() {
               fontWeight: "normal",
             }}
           />
-        </Stack>
+        </VStack>
 
         <Box
           position="relative"

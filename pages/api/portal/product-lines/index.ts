@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getPortalSessionFromApiRequest } from "../../../../lib/portal/auth";
 import { requestStrapiRestAsService } from "../../../../services/server/strapiClient";
+import { capitalizeName } from "../../../../lib/formatName";
 import type {
   PortalBrand,
   PortalCup,
@@ -25,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getPortalSessionFromApiRequest(req);
   if (!session) return res.status(401).json({ error: "unauthorized" });
 
-  const name = asString(req.body?.name);
+  const name = capitalizeName(asString(req.body?.name));
   const baseProductLineId = asId(req.body?.baseProductLineId);
   const cupId = asId(req.body?.cupId);
   const brandId = asId(req.body?.brandId);
@@ -46,9 +47,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const [baseProductLine, cup, brand, customSplash] = await Promise.all([
-      requestStrapiRestAsService<PortalProductLine>(
-        `/api/product-lines/${baseProductLineId}?populate[0]=author`,
+    const baseProductLineParams = new URLSearchParams();
+    baseProductLineParams.set("filters[id][$eq]", baseProductLineId);
+    baseProductLineParams.set("filters[author][username][$eq]", "root");
+    baseProductLineParams.set("pagination[pageSize]", "1000");
+
+    const [baseProductLines, cup, brand, customSplash] = await Promise.all([
+      requestStrapiRestAsService<PortalProductLine[]>(
+        `/api/product-lines?${baseProductLineParams.toString()}`,
       ),
       requestStrapiRestAsService<PortalCup>(`/api/cups/${cupId}`),
       requestStrapiRestAsService<PortalBrand>(`/api/brands/${brandId}`),
@@ -56,8 +62,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ? requestStrapiRestAsService<PortalSplash>(`/api/splashes/${customSplashId}`)
         : Promise.resolve(null),
     ]);
+    const baseProductLine = baseProductLines[0];
 
-    if (baseProductLine.author?.username !== "root") {
+    if (!baseProductLine?.id) {
       return res.status(400).json({
         error: "invalid_base_product_line",
         message: "The base product line must belong to root.",
@@ -87,7 +94,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             name,
             base_product_line: baseProductLine.id,
             cup: cup.id,
-            brand: brand.id,
+            brands: [brand.id],
             author: session.user.id,
             ...(customSplash ? { custom_splash: customSplash.id } : {}),
           },

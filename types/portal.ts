@@ -58,21 +58,60 @@ export type PromoCode = {
   client?: Client | null;
 };
 
-export type TasteMedia = {
-  id: string | number;
-  name?: string;
-  url: string;
-};
-
 export type PortalTaste = {
   id: string | number;
   name: string;
   color?: string;
   isWebsiteVisible?: boolean;
   submission_status?: "pending" | "approved" | "rejected";
-  main?: TasteMedia | null;
-  circle?: TasteMedia | null;
+  main?: PortalMedia | null;
+  default_splash?: PortalSplash | null;
+  default_circle?: PortalCircle | null;
   client?: Client | null;
+};
+
+export type PortalCircle = {
+  id: string | number;
+  name?: string;
+  color?: string | null;
+  images?: PortalMedia[];
+};
+
+export type PortalComponent = {
+  id: string | number;
+  name: string;
+  unit?: "mg" | "g" | "mcg" | "kJ" | "kcal";
+  default_value?: number | string | null;
+};
+
+export type PortalNutritionFact = {
+  name: string;
+  qty: number | string;
+  unit?: string | null;
+};
+
+export type PortalProductDosage = {
+  full_drink_volume?: number | string | null;
+  water?: number | string | null;
+  product?: number | string | null;
+  conversion_factor?: number | string | null;
+  drink_volume_unit?: "ml" | "oz" | null;
+};
+
+export type PortalProduct = {
+  id: string | number;
+  name: string;
+  description?: string | null;
+  category?: "powder" | "concentrate" | null;
+  serving_qty?: number | string | null;
+  serving_unit?: "g" | "ml" | null;
+  components?: PortalComponent[];
+  nutrition?: PortalNutritionFact[];
+  dosage?: PortalProductDosage | null;
+  taste?: PortalTaste | null;
+  custom_main?: PortalMedia | null;
+  custom_circle?: PortalCircle | null;
+  custom_splash?: PortalSplash | null;
 };
 
 export type PortalMedia = {
@@ -113,8 +152,11 @@ export type PortalBrand = {
 export type PortalProductLine = {
   id: string | number;
   name: string;
+  isPopular?: boolean;
   author?: Pick<PortalUser, "id" | "username" | "email"> | null;
   base_product_line?: Pick<PortalProductLine, "id" | "name"> | null;
   cup?: PortalCup | null;
-  brand?: PortalBrand | null;
+  brands?: PortalBrand[];
+  custom_splash?: PortalSplash | null;
+  products?: Array<{ id: string | number }>;
 };

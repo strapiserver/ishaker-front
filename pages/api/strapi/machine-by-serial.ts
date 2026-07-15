@@ -36,7 +36,7 @@ const loadViaRest = async (serial: string) => {
   const params = new URLSearchParams();
   params.set("filters[serial_number][$eq]", serial);
   params.set("populate", "client");
-  params.set("pagination[pageSize]", "1");
+  params.set("pagination[pageSize]", "1000");
   params.set("sort", "title:ASC");
 
   const result = await fetchStrapiRest(`/api/machines?${params.toString()}`);
@@ -48,7 +48,7 @@ const loadViaServiceRest = async (serial: string) => {
   const params = new URLSearchParams();
   params.set("filters[serial_number][$eq]", serial);
   params.set("populate", "client");
-  params.set("pagination[pageSize]", "1");
+  params.set("pagination[pageSize]", "1000");
   params.set("sort", "title:ASC");
 
   const result = await requestStrapiRestAsService<Machine[]>(

@@ -1,7 +1,7 @@
 import {
   Box,
   SimpleGrid,
-  Stack,
+  VStack,
   Table,
   Tbody,
   Td,
@@ -110,7 +110,7 @@ export default function MachineDetailPage({
         </Box>
 
         <Box bg="bg.900" border="1px solid" borderColor="whiteAlpha.100" borderRadius="2xl" p="6">
-          <Stack spacing="3">
+          <VStack spacing="3" align="stretch">
             <Text color="acid.300" fontWeight="800">
               Telemetry connection
             </Text>
@@ -163,7 +163,7 @@ export default function MachineDetailPage({
                 ) : null}
               </>
             )}
-          </Stack>
+          </VStack>
         </Box>
 
         {telemetryPrices?.length ? (

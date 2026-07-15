@@ -5,7 +5,7 @@ import {
   Divider,
   Flex,
   ResponsiveValue,
-  Stack,
+  VStack,
   Text,
   useColorModeValue,
 } from "@chakra-ui/react";
@@ -41,7 +41,7 @@ export function ShakerS({
       mt={{ base: "-250px", lg: "0" }}
       mb={{ base: "100px", lg: "0" }}
     >
-      <Stack
+      <VStack
         spacing="3"
         position={{ base: "static", lg: "absolute" }}
         right={{ lg: "calc(100% + 28px)" }}
@@ -90,7 +90,7 @@ export function ShakerS({
           justify={{ base: "center", lg: "flex-end" }}
           wrap="wrap"
         >
-          <Stack spacing="0" align={{ base: "center", lg: "flex-end" }}>
+          <VStack spacing="0" align={{ base: "center", lg: "flex-end" }}>
             <Text
               color={textColor}
               fontSize="xs"
@@ -107,7 +107,7 @@ export function ShakerS({
             >
               $4,900
             </Text>
-          </Stack>
+          </VStack>
           <Button
             as="a"
             href="/step1"
@@ -118,7 +118,7 @@ export function ShakerS({
             See more
           </Button>
         </Flex>
-      </Stack>
+      </VStack>
       <Box
         position="relative"
         order={{ base: 1, lg: 0 }}

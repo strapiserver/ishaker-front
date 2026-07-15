@@ -29,7 +29,7 @@ export const getServerSideProps: GetServerSideProps<ArticleRouteProps> = async (
   const query = new URLSearchParams({
     "filters[code][$eq]": code,
     "filters[isOutdated][$eq]": "false",
-    "pagination[pageSize]": "1",
+    "pagination[pageSize]": "1000",
     "populate[machine_types][populate]": "preview",
   });
 

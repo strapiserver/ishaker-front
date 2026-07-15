@@ -1,4 +1,4 @@
-import { Box, SimpleGrid, Stack, Text } from "@chakra-ui/react";
+import { Box, SimpleGrid, Text, VStack } from "@chakra-ui/react";
 import { NextSeo } from "next-seo";
 import type { Client } from "../../types/strapi";
 import { AdminHeader } from "./AdminHeader";
@@ -42,11 +42,11 @@ export function AdminDashboard({ clients, loadError }: AdminDashboardProps) {
             </Box>
           ) : null}
 
-          <Stack spacing={5}>
+          <VStack spacing={5} align="stretch">
             {clients.map((client) => (
               <ClientCard key={client.id} client={client} />
             ))}
-          </Stack>
+          </VStack>
         </Box>
       </Box>
     </>

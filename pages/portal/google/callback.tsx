@@ -1,4 +1,4 @@
-import { Box, Button, Container, Spinner, Stack, Text } from "@chakra-ui/react";
+import { Box, Button, Container, Spinner, Text, VStack } from "@chakra-ui/react";
 import { NextSeo } from "next-seo";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -37,7 +37,7 @@ export default function GoogleCallbackPage() {
         return;
       }
 
-      router.replace("/machines");
+      router.replace("/product-lines");
     };
 
     run();
@@ -48,7 +48,7 @@ export default function GoogleCallbackPage() {
       <NextSeo title="Google Sign-In" noindex nofollow />
       <Box minH="100vh" bg="bg.1000" color="bg.100">
         <Container maxW="xl" py="20">
-          <Stack spacing="5" align="flex-start">
+          <VStack spacing="5" align="flex-start">
             <Text color="acid.300" fontWeight="800">
               Google sign-in
             </Text>
@@ -65,7 +65,7 @@ export default function GoogleCallbackPage() {
                 <Text color="bg.300">Completing your sign-in.</Text>
               </>
             )}
-          </Stack>
+          </VStack>
         </Container>
       </Box>
     </>

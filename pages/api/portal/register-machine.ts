@@ -132,7 +132,7 @@ const buildClientContact = (params: {
 const fetchClientByPortalEmail = async (email: string) => {
   const params = new URLSearchParams();
   params.set("filters[portal_email][$eqi]", email.toLowerCase());
-  params.set("pagination[pageSize]", "1");
+  params.set("pagination[pageSize]", "1000");
 
   const clients = await requestStrapiRestAsService<Client[]>(
     `/api/clients?${params.toString()}`,
@@ -144,7 +144,7 @@ const fetchClientByPortalEmail = async (email: string) => {
 const fetchClientByCompany = async (company: string) => {
   const params = new URLSearchParams();
   params.set("filters[company][$eqi]", company);
-  params.set("pagination[pageSize]", "1");
+  params.set("pagination[pageSize]", "1000");
 
   const clients = await requestStrapiRestAsService<Client[]>(
     `/api/clients?${params.toString()}`,

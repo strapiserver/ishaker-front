@@ -7,7 +7,7 @@ import {
   Heading,
   Image,
   SimpleGrid,
-  Stack,
+  VStack,
   Text,
   useColorModeValue,
 } from "@chakra-ui/react";
@@ -95,7 +95,7 @@ function ArticleCard({ article }: { article: Article }) {
         )}
       </AspectRatio>
 
-      <Stack spacing="4" p={{ base: "5", md: "6" }} flex="1">
+      <VStack spacing="4" p={{ base: "5", md: "6" }} flex="1" align="stretch">
         <Flex gap="2" wrap="wrap">
           {machineTypes.length ? (
             machineTypes.map((machine) => (
@@ -135,7 +135,7 @@ function ArticleCard({ article }: { article: Article }) {
             <FaArrowRight />
           </Box>
         </Flex>
-      </Stack>
+      </VStack>
     </Box>
   );
 }
@@ -152,7 +152,12 @@ export function ArticlesIndexPage({ articles }: { articles: Article[] }) {
       <Header borderColor={borderColor} />
 
       <Container as="main" maxW="7xl" position="relative" pt={{ base: "12", md: "20" }} pb={{ base: "16", md: "28" }}>
-        <Stack spacing="6" maxW="820px" mb={{ base: "10", md: "14" }}>
+        <VStack
+          spacing="6"
+          maxW="820px"
+          mb={{ base: "10", md: "14" }}
+          align="stretch"
+        >
           <Badge alignSelf="flex-start" px="3" py="1.5" borderRadius="full" bg="acid.300" color="bg.1000" fontSize="xs" letterSpacing="0.13em">
             Knowledge center
           </Badge>
@@ -165,7 +170,7 @@ export function ArticlesIndexPage({ articles }: { articles: Article[] }) {
           <Text color="bg.400" fontWeight="700">
             {articles.length} {articles.length === 1 ? "article" : "articles"}
           </Text>
-        </Stack>
+        </VStack>
 
         {articles.length ? (
           <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={{ base: "6", lg: "8" }}>

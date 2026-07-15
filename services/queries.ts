@@ -2,7 +2,7 @@ export const MachineBySerialQuery = `
   query MachineBySerial($serial: String) {
     machines(
       filters: { serial_number: { eq: $serial } }
-      pagination: { pageSize: 1 }
+      pagination: { pageSize: 1000 }
       sort: ["title:ASC"]
     ) {
       data {
@@ -46,7 +46,7 @@ export const AdminClientsQuery = `
   query AdminClients {
     clients(
       filters: { status: { eq: "client" } }
-      pagination: { pageSize: 100 }
+      pagination: { pageSize: 1000 }
       sort: ["company:ASC"]
     ) {
       data {
@@ -66,7 +66,7 @@ export const AdminClientsQuery = `
               whatsapp
             }
           }
-          machines(sort: ["title:ASC"]) {
+          machines(sort: ["title:ASC"], pagination: { pageSize: 1000 }) {
             data {
               id
               attributes {

@@ -43,8 +43,12 @@ export const fetchPortalUser = async (jwt: string) => {
   );
 };
 
+const normalizeRoleKey = (value?: string) =>
+  (value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+
 export const isProductClientUser = (user?: PortalUser | null) =>
-  user?.role?.type === "product_client" || user?.role?.name === "Product Client";
+  normalizeRoleKey(user?.role?.type) === "productclient" ||
+  normalizeRoleKey(user?.role?.name) === "productclient";
 
 const fetchClientById = async (clientId: string | number) => {
   const params = new URLSearchParams();
@@ -71,7 +75,7 @@ export const fetchMachineBySerialAsService = async (serialNumber: string) => {
   params.set("filters[serial_number][$eq]", serialNumber);
   params.set("populate[0]", "client");
   params.set("populate[1]", "machine_type");
-  params.set("pagination[pageSize]", "1");
+  params.set("pagination[pageSize]", "1000");
 
   const machines = await requestStrapiRestAsService<Machine[]>(
     `/api/machines?${params.toString()}`,

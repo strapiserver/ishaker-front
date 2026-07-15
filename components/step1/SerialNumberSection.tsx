@@ -9,7 +9,7 @@ import {
   InputRightElement,
   SimpleGrid,
   Spinner,
-  Stack,
+  VStack,
   Text,
   useColorModeValue,
 } from "@chakra-ui/react";
@@ -91,7 +91,7 @@ export function SerialNumberSection() {
         spacing={{ base: "8", lg: "12" }}
         alignItems="center"
       >
-        <Stack spacing="5" maxW="xl">
+        <VStack spacing="5" maxW="xl" align="stretch">
           <Text
             fontSize="sm"
             letterSpacing="0.08em"
@@ -170,7 +170,7 @@ export function SerialNumberSection() {
               Next
             </Button>
             {selectedMachine ? (
-              <Stack spacing="1" mt="4">
+              <VStack spacing="1" mt="4" align="stretch">
                 <Text color={headingColor} fontWeight="700">
                   {selectedMachine.title || "Machine found"}
                 </Text>
@@ -182,10 +182,10 @@ export function SerialNumberSection() {
                     Current client: {selectedClient.company}
                   </Text>
                 ) : null}
-              </Stack>
+              </VStack>
             ) : null}
           </Box>
-        </Stack>
+        </VStack>
 
         <Box
           position="relative"

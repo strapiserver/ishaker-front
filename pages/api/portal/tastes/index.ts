@@ -31,14 +31,6 @@ const decodeImage = (value: EncodedFile, field: string) => {
   return { name, type, buffer };
 };
 
-const slugify = (value: string) =>
-  value
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48) || "custom-taste";
-
 export const config = {
   api: {
     bodyParser: {
@@ -75,13 +67,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const main = decodeImage(req.body?.main || {}, "Main image");
-    const circle = decodeImage(req.body?.circle || {}, "Circle image");
+    const circleImage = decodeImage(req.body?.circle || {}, "Circle image");
     const elements = rawElements.map((file: EncodedFile, index: number) =>
       decodeImage(file, `Ingredient image ${index + 1}`),
     );
 
     const form = new FormData();
-    [main, circle, ...elements].forEach((file) => {
+    [main, circleImage, ...elements].forEach((file) => {
       form.append("files", new Blob([file.buffer], { type: file.type }), file.name);
     });
 
@@ -94,20 +86,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error("Strapi did not return the uploaded images.");
     }
 
+    const circle = await requestStrapiRestAsService<{ id: string | number }>(
+      "/api/circles",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          data: {
+            name: `${name} circle`,
+            color,
+            images: [uploaded[1].id],
+          },
+        }),
+      },
+    );
+
     const taste = await requestStrapiRestAsService("/api/tastes", {
       method: "POST",
       body: JSON.stringify({
         data: {
           name,
-          color,
-          mediaKey: `client-${session.client.id}-${slugify(name)}-${Date.now()}`,
           main: uploaded[0].id,
-          circle: uploaded[1].id,
+          default_circle: circle.id,
           elements: uploaded.slice(2).map((file) => file.id),
           isWebsiteVisible: false,
           submission_status: "pending",
-          author: session.user.id,
-          client: session.client.id,
         },
       }),
     });
