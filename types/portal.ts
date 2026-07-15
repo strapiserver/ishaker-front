@@ -158,5 +158,5 @@ export type PortalProductLine = {
   cup?: PortalCup | null;
   brands?: PortalBrand[];
   custom_splash?: PortalSplash | null;
-  products?: Array<{ id: string | number }>;
+  products?: PortalProduct[];
 };

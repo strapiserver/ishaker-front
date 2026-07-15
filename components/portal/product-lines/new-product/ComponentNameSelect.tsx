@@ -96,7 +96,7 @@ export function ComponentNameSelect({
           position="absolute"
           zIndex="dropdown"
           top="calc(100% + 8px)"
-          w="full"
+          w="200%"
           maxH="360px"
           overflow="hidden"
           border="1px solid"
@@ -104,6 +104,7 @@ export function ComponentNameSelect({
           borderRadius="md"
           boxShadow="xl"
           p="3"
+          bg="bg.800"
           onMouseDown={(event) => event.preventDefault()}
         >
           <Button

@@ -43,7 +43,51 @@ const getToastTone = (status?: string): ITone => {
   return toastToneMap[status ?? "info"] || "shaded";
 };
 
+const greenFieldFocus = {
+  borderColor: "acid.300 !important",
+  boxShadow:
+    "0 0 0 1px var(--chakra-colors-acid-300) !important",
+};
+
 const components: Record<string, any> = {
+  Input: {
+    baseStyle: {
+      field: {
+        _focus: greenFieldFocus,
+        _focusVisible: greenFieldFocus,
+      },
+    },
+  },
+  NumberInput: {
+    baseStyle: {
+      field: {
+        _focus: greenFieldFocus,
+        _focusVisible: greenFieldFocus,
+      },
+    },
+  },
+  PinInput: {
+    baseStyle: {
+      field: {
+        _focus: greenFieldFocus,
+        _focusVisible: greenFieldFocus,
+      },
+    },
+  },
+  Select: {
+    baseStyle: {
+      field: {
+        _focus: greenFieldFocus,
+        _focusVisible: greenFieldFocus,
+      },
+    },
+  },
+  Textarea: {
+    baseStyle: {
+      _focus: greenFieldFocus,
+      _focusVisible: greenFieldFocus,
+    },
+  },
   Alert: {
     baseStyle: (props: any) => {
       const gradient = createGradient(

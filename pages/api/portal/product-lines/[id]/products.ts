@@ -119,6 +119,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const productLineId = asId(Array.isArray(req.query.id) ? req.query.id[0] : req.query.id);
   const existingProductId = asId(req.body?.existingProductId);
+  const isEditing = req.body?.isEditing === true;
   const splashId = asId(req.body?.splashId);
   const circleId = asId(req.body?.circleId);
   const mainImageId = asId(req.body?.mainImageId);
@@ -180,7 +181,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const ownershipParams = new URLSearchParams();
   ownershipParams.set("filters[id][$eq]", productLineId);
   ownershipParams.set("filters[author][id][$eq]", String(session.user.id));
+  ownershipParams.set("populate[products][fields][0]", "name");
   ownershipParams.set("pagination[pageSize]", "1000");
+
+  const duplicateNameParams = new URLSearchParams();
+  duplicateNameParams.set("filters[name][$eqi]", name);
+  if (isEditing && existingProductId) {
+    duplicateNameParams.set("filters[id][$ne]", existingProductId);
+  }
+  duplicateNameParams.set("pagination[pageSize]", "1");
 
   const componentParams = new URLSearchParams();
   componentParams.set("fields[0]", "name");
@@ -204,8 +213,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         message: "Product line was not found or does not belong to you.",
       });
     }
+    if (
+      isEditing &&
+      !productLine.products?.some(
+        (product) => String(product.id) === existingProductId,
+      )
+    ) {
+      return res.status(404).json({
+        error: "product_not_found",
+        message: "Product was not found in this product line.",
+      });
+    }
 
-    const [splash, circle, mainImage, catalogComponents] = await Promise.all([
+    const [
+      splash,
+      circle,
+      mainImage,
+      catalogComponents,
+      duplicateProducts,
+    ] = await Promise.all([
       requestStrapiRestAsService<RelatedEntity>(`/api/splashes/${splashId}`),
       requestStrapiRestAsService<RelatedEntity>(`/api/circles/${circleId}`),
       requestStrapiRestAsService<RelatedEntity>(
@@ -216,7 +242,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             `/api/components?${componentParams.toString()}`,
           )
         : Promise.resolve([]),
+      !existingProductId || isEditing
+        ? requestStrapiRestAsService<CreatedProduct[]>(
+            `/api/products?${duplicateNameParams.toString()}`,
+          )
+        : Promise.resolve([]),
     ]);
+
+    if (duplicateProducts.length) {
+      return res.status(409).json({
+        error: "duplicate_name",
+        message: "A product with this name already exists.",
+      });
+    }
+
+    if (
+      existingProductId &&
+      !isEditing &&
+      productLine.products?.some(
+        (product) => String(product.id) === existingProductId,
+      )
+    ) {
+      return res.status(409).json({
+        error: "duplicate_product",
+        message: "This product has already been added to the product line.",
+      });
+    }
 
     if (!splash?.id || !circle?.id || !mainImage?.id) {
       return res.status(400).json({
@@ -290,6 +341,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         method: "PUT",
         body: JSON.stringify({
           data: {
+            ...(isEditing ? { name } : {}),
             ...(description ? { description } : { description: null }),
             category,
             serving_qty: servingQty,

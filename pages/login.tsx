@@ -29,7 +29,7 @@ export default function LoginPage() {
     const response = await fetch("/api/portal/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ identifier, password }),
+      body: JSON.stringify({ identifier: identifier.toLowerCase(), password }),
     });
 
     setIsLoading(false);
@@ -72,8 +72,11 @@ export default function LoginPage() {
                 <Input
                   type="text"
                   value={identifier}
-                  onChange={(event) => setIdentifier(event.target.value)}
+                  onChange={(event) =>
+                    setIdentifier(event.target.value.toLowerCase())
+                  }
                   autoComplete="username"
+                  autoCapitalize="none"
                   bg="bg.800"
                   borderColor="whiteAlpha.200"
                 />

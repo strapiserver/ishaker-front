@@ -2,16 +2,13 @@ import {
   Alert,
   AlertIcon,
   Box,
-  Button,
   Divider,
   FormControl,
   FormLabel,
-  HStack,
   Text,
   Textarea,
   VStack,
 } from "@chakra-ui/react";
-import Link from "next/link";
 import type { FormEventHandler } from "react";
 import type { PortalComponent } from "../../../../types/portal";
 import {
@@ -26,15 +23,13 @@ import {
 } from "../SearchableImageSelect";
 
 type NewProductFormProps = {
-  canSubmit: boolean;
   category: "powder" | "concentrate";
   componentRows: ProductComponentRow[];
   components: PortalComponent[];
   description: string;
   dosage: ProductDosageValue;
   error: string;
-  existingProductId: string;
-  isSubmitting: boolean;
+  formId: string;
   mainImageId: string;
   mainImageOptions: SearchableImageOption[];
   name: string;
@@ -66,15 +61,13 @@ type NewProductFormProps = {
 };
 
 export function NewProductForm({
-  canSubmit,
   category,
   componentRows,
   components,
   description,
   dosage,
   error,
-  existingProductId,
-  isSubmitting,
+  formId,
   mainImageId,
   mainImageOptions,
   name,
@@ -103,6 +96,7 @@ export function NewProductForm({
   return (
     <Box
       as="form"
+      id={formId}
       onSubmit={onSubmit}
       autoComplete="off"
       bg="bg.900"
@@ -203,21 +197,6 @@ export function NewProductForm({
             {error}
           </Alert>
         ) : null}
-
-        <HStack spacing="3">
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            isLoading={isSubmitting}
-            isDisabled={!canSubmit}
-          >
-            {existingProductId ? "Add product" : "Create product"}
-          </Button>
-          <Button as={Link} href="/product-lines" size="lg" variant="ghost">
-            Cancel
-          </Button>
-        </HStack>
       </VStack>
     </Box>
   );

@@ -9,7 +9,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const identifier =
-    typeof req.body?.identifier === "string" ? req.body.identifier.trim() : "";
+    typeof req.body?.identifier === "string"
+      ? req.body.identifier.trim().toLowerCase()
+      : "";
   const password = typeof req.body?.password === "string" ? req.body.password : "";
 
   if (!identifier || !password) {

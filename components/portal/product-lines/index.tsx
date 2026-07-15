@@ -52,12 +52,14 @@ export function ProductLinesPage({
 }
 
 export { CupPreview } from "./CupPreview";
+export { DeleteProductDialog } from "./DeleteProductDialog";
 export { DeleteProductLineDialog } from "./DeleteProductLineDialog";
 export { NewProductPage } from "./new-product";
 export type { NewProductPageProps } from "./new-product";
 export { NewProductLinePage } from "./NewProductLinePage";
 export type { NewProductLinePageProps } from "./NewProductLinePage";
 export { ProductLineCard } from "./ProductLineCard";
+export { ProductCard } from "./ProductCard";
 export { ProductLineForm } from "./ProductLineForm";
 export { SearchableImageSelect } from "./SearchableImageSelect";
 export type {

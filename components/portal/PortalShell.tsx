@@ -56,7 +56,7 @@ export function PortalShell({
       <Box minH="100vh" bg="bg.1000" color="bg.100">
         <Box borderBottom="1px solid" borderColor="whiteAlpha.100">
           <Container maxW="7xl" py="4">
-            <Flex align="center" justify="space-between" gap="4" wrap="wrap">
+            <Flex align="flex-start" justify="space-between" gap="4">
               <VStack spacing="0" align="stretch">
                 <Text
                   as={Link}
@@ -74,29 +74,34 @@ export function PortalShell({
                   </Text>
                 ) : null}
               </VStack>
-
-              <HStack spacing="2" flexWrap="wrap">
-                {visibleNavItems.map((item) => {
-                  const active =
-                    router.pathname === item.href ||
-                    router.pathname.startsWith(`${item.href}/`);
-                  return (
-                    <Button
-                      key={item.href}
-                      as={Link}
-                      href={item.href}
-                      variant={active ? "primary" : "contrast"}
-                      size="sm"
-                    >
-                      {item.label}
-                    </Button>
-                  );
-                })}
-                <Button onClick={handleLogout} variant="shaded" size="sm">
-                  Log out
-                </Button>
-              </HStack>
+              <Button
+                onClick={handleLogout}
+                variant="extra_contrast"
+                size="sm"
+                flexShrink={0}
+              >
+                Log out
+              </Button>
             </Flex>
+
+            <HStack spacing="2" flexWrap="wrap" mt="4">
+              {visibleNavItems.map((item) => {
+                const active =
+                  router.pathname === item.href ||
+                  router.pathname.startsWith(`${item.href}/`);
+                return (
+                  <Button
+                    key={item.href}
+                    as={Link}
+                    href={item.href}
+                    variant={active ? "primary" : "contrast"}
+                    size="sm"
+                  >
+                    {item.label}
+                  </Button>
+                );
+              })}
+            </HStack>
           </Container>
         </Box>
 

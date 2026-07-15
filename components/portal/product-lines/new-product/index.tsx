@@ -1,4 +1,10 @@
-import { SimpleGrid, useDisclosure } from "@chakra-ui/react";
+import {
+  Button,
+  HStack,
+  Link,
+  SimpleGrid,
+  useDisclosure,
+} from "@chakra-ui/react";
 import { useRouter } from "next/router";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
@@ -57,6 +63,7 @@ const DEFAULT_DOSAGE: ProductDosageValue = {
 };
 
 const componentUnits = new Set(["mg", "g", "mcg", "kJ", "kcal"]);
+const NEW_PRODUCT_FORM_ID = "new-product-form";
 
 const toDosageValue = (product?: PortalProduct): ProductDosageValue => ({
   drinkVolume:
@@ -64,8 +71,7 @@ const toDosageValue = (product?: PortalProduct): ProductDosageValue => ({
     product.dosage.full_drink_volume !== null
       ? String(product.dosage.full_drink_volume)
       : DEFAULT_DOSAGE.drinkVolume,
-  drinkVolumeUnit:
-    product?.dosage?.drink_volume_unit === "oz" ? "oz" : "ml",
+  drinkVolumeUnit: product?.dosage?.drink_volume_unit === "oz" ? "oz" : "ml",
   water:
     product?.dosage?.water !== undefined && product.dosage.water !== null
       ? String(product.dosage.water)
@@ -126,6 +132,7 @@ const toComponentRows = (product?: PortalProduct): ProductComponentRow[] => {
 export type NewProductPageProps = {
   circles: PortalCircle[];
   components: PortalComponent[];
+  initialProductId?: string;
   productLine: PortalProductLine;
   products: PortalProduct[];
   session: PortalSession;
@@ -136,6 +143,7 @@ export type NewProductPageProps = {
 export function NewProductPage({
   circles,
   components,
+  initialProductId = "",
   productLine,
   products,
   session,
@@ -145,20 +153,65 @@ export function NewProductPage({
   const router = useRouter();
   const splashDialog = useDisclosure();
   const tasteMainDialog = useDisclosure();
-  const [name, setName] = useState("");
-  const [existingProductId, setExistingProductId] = useState("");
-  const [splashId, setSplashId] = useState("");
-  const [circleId, setCircleId] = useState("");
-  const [mainImageId, setMainImageId] = useState("");
-  const [componentRows, setComponentRows] = useState<ProductComponentRow[]>([]);
-  const [dosage, setDosage] = useState<ProductDosageValue>(DEFAULT_DOSAGE);
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<"powder" | "concentrate">("powder");
-  const [servingQuantity, setServingQuantity] = useState("100");
-  const [servingUnit, setServingUnit] = useState<"g" | "ml">("g");
+  const initialProduct = products.find(
+    (product) => String(product.id) === initialProductId,
+  );
+  const isEditing = Boolean(initialProduct);
+  const [name, setName] = useState(
+    initialProduct ? capitalizeName(initialProduct.name) : "",
+  );
+  const [existingProductId, setExistingProductId] = useState(
+    initialProduct ? String(initialProduct.id) : "",
+  );
+  const [splashId, setSplashId] = useState(
+    initialProduct?.custom_splash?.id
+      ? String(initialProduct.custom_splash.id)
+      : initialProduct?.taste?.default_splash?.id
+        ? String(initialProduct.taste.default_splash.id)
+        : "",
+  );
+  const [circleId, setCircleId] = useState(
+    initialProduct?.custom_circle?.id
+      ? String(initialProduct.custom_circle.id)
+      : initialProduct?.taste?.default_circle?.id
+        ? String(initialProduct.taste.default_circle.id)
+        : "",
+  );
+  const [mainImageId, setMainImageId] = useState(
+    initialProduct?.custom_main?.id
+      ? String(initialProduct.custom_main.id)
+      : initialProduct?.taste?.main?.id
+        ? String(initialProduct.taste.main.id)
+        : "",
+  );
+  const [componentRows, setComponentRows] = useState<ProductComponentRow[]>(
+    toComponentRows(initialProduct),
+  );
+  const [dosage, setDosage] = useState<ProductDosageValue>(
+    toDosageValue(initialProduct),
+  );
+  const [description, setDescription] = useState(
+    initialProduct?.description || "",
+  );
+  const [category, setCategory] = useState<"powder" | "concentrate">(
+    initialProduct?.category === "concentrate" ? "concentrate" : "powder",
+  );
+  const [servingQuantity, setServingQuantity] = useState(
+    initialProduct?.serving_qty !== undefined &&
+      initialProduct.serving_qty !== null
+      ? String(initialProduct.serving_qty)
+      : "100",
+  );
+  const [servingUnit, setServingUnit] = useState<"g" | "ml">(
+    initialProduct?.serving_unit === "ml" ? "ml" : "g",
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const hydratedProductDetailsId = useRef("");
+  const hydratedProductDetailsId = useRef(
+    initialProduct?.components !== undefined && initialProduct.dosage !== undefined
+      ? String(initialProduct.id)
+      : "",
+  );
   const productLineName = capitalizeName(productLine.name);
   const selectedProduct = products.find(
     (product) => String(product.id) === existingProductId,
@@ -192,21 +245,33 @@ export function NewProductPage({
       hydratedProductDetailsId.current = existingProductId;
     }
 
-    if (taste) {
-      setSplashId(
-        (current) =>
-          current ||
-          (taste.default_splash?.id ? String(taste.default_splash.id) : ""),
-      );
-      setCircleId(
-        (current) =>
-          current ||
-          (taste.default_circle?.id ? String(taste.default_circle.id) : ""),
-      );
-      setMainImageId(
-        (current) => current || (taste.main?.id ? String(taste.main.id) : ""),
-      );
-    }
+    setSplashId(
+      (current) =>
+        current ||
+        (product.custom_splash?.id
+          ? String(product.custom_splash.id)
+          : taste?.default_splash?.id
+            ? String(taste.default_splash.id)
+            : ""),
+    );
+    setCircleId(
+      (current) =>
+        current ||
+        (product.custom_circle?.id
+          ? String(product.custom_circle.id)
+          : taste?.default_circle?.id
+            ? String(taste.default_circle.id)
+            : ""),
+    );
+    setMainImageId(
+      (current) =>
+        current ||
+        (product.custom_main?.id
+          ? String(product.custom_main.id)
+          : taste?.main?.id
+            ? String(taste.main.id)
+            : ""),
+    );
   }, [existingProductId, selectedProductResponse]);
 
   const productOptions: ProductNameOption[] = products.map((product) => ({
@@ -301,17 +366,25 @@ export function NewProductPage({
     setComponentRows(toComponentRows(selected));
     setDosage(toDosageValue(selected));
     setSplashId(
-      selected?.taste?.default_splash?.id
-        ? String(selected.taste.default_splash.id)
-        : "",
+      selected?.custom_splash?.id
+        ? String(selected.custom_splash.id)
+        : selected?.taste?.default_splash?.id
+          ? String(selected.taste.default_splash.id)
+          : "",
     );
     setCircleId(
-      selected?.taste?.default_circle?.id
-        ? String(selected.taste.default_circle.id)
-        : "",
+      selected?.custom_circle?.id
+        ? String(selected.custom_circle.id)
+        : selected?.taste?.default_circle?.id
+          ? String(selected.taste.default_circle.id)
+          : "",
     );
     setMainImageId(
-      selected?.taste?.main?.id ? String(selected.taste.main.id) : "",
+      selected?.custom_main?.id
+        ? String(selected.custom_main.id)
+        : selected?.taste?.main?.id
+          ? String(selected.taste.main.id)
+          : "",
     );
   };
 
@@ -330,11 +403,18 @@ export function NewProductPage({
           body: JSON.stringify({
             name: capitalizeName(name),
             existingProductId,
+            isEditing,
             splashId,
             circleId,
             mainImageId,
             components: componentRows.map(
-              ({ componentId, isCustom, name: componentName, quantity, unit }) => ({
+              ({
+                componentId,
+                isCustom,
+                name: componentName,
+                quantity,
+                unit,
+              }) => ({
                 componentId,
                 isCustom,
                 name: componentName,
@@ -374,8 +454,8 @@ export function NewProductPage({
 
   return (
     <PortalShell
-      title="New product"
-      description={`Add a product to ${productLineName}.`}
+      title={isEditing ? "Edit product" : "New product"}
+      description={`${isEditing ? "Edit a product in" : "Add a product to"} ${productLineName}.`}
       clientName={session.client.company}
       access={session.access}
     >
@@ -385,15 +465,13 @@ export function NewProductPage({
         alignItems="stretch"
       >
         <NewProductForm
-          canSubmit={canSubmit}
           category={category}
           componentRows={componentRows}
           components={components}
           description={description}
           dosage={dosage}
           error={error}
-          existingProductId={existingProductId}
-          isSubmitting={isSubmitting}
+          formId={NEW_PRODUCT_FORM_ID}
           mainImageId={mainImageId}
           mainImageOptions={mainImageOptions}
           name={name}
@@ -404,7 +482,7 @@ export function NewProductPage({
           onDosageChange={setDosage}
           onNameChange={(value) => {
             setName(value);
-            resetProductVisuals();
+            if (!isEditing) resetProductVisuals();
           }}
           onProductSelect={selectProduct}
           onServingQuantityChange={setServingQuantity}
@@ -432,13 +510,13 @@ export function NewProductPage({
           cup={productLine.cup || undefined}
           isSplashLoading={Boolean(
             (existingProductId && isSelectedProductLoading) ||
-              (splashId && isSelectedSplashLoading),
+            (splashId && isSelectedSplashLoading),
           )}
           main={selectedMain}
           productLineName={name || previewProduct?.name || productLineName}
           splashError={Boolean(
             (existingProductId && selectedProductError) ||
-              (splashId && selectedSplashError),
+            (splashId && selectedSplashError),
           )}
           splashFrames={splashFrames}
           splashIsEmpty={
@@ -465,6 +543,21 @@ export function NewProductPage({
         splashes={splashes}
         tastes={tastes}
       />
+      <HStack spacing="3" mt="4" justify="flex-end">
+        <Button
+          type="submit"
+          form={NEW_PRODUCT_FORM_ID}
+          variant="primary"
+          size="lg"
+          isLoading={isSubmitting}
+          isDisabled={!canSubmit}
+        >
+          Save product
+        </Button>
+        <Button as={Link} href="/product-lines" size="lg" variant="ghost">
+          Cancel
+        </Button>
+      </HStack>
     </PortalShell>
   );
 }

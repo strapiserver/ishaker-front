@@ -52,17 +52,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     baseProductLineParams.set("filters[author][username][$eq]", "root");
     baseProductLineParams.set("pagination[pageSize]", "1000");
 
-    const [baseProductLines, cup, brand, customSplash] = await Promise.all([
-      requestStrapiRestAsService<PortalProductLine[]>(
-        `/api/product-lines?${baseProductLineParams.toString()}`,
-      ),
-      requestStrapiRestAsService<PortalCup>(`/api/cups/${cupId}`),
-      requestStrapiRestAsService<PortalBrand>(`/api/brands/${brandId}`),
-      customSplashId
-        ? requestStrapiRestAsService<PortalSplash>(`/api/splashes/${customSplashId}`)
-        : Promise.resolve(null),
-    ]);
+    const duplicateParams = new URLSearchParams();
+    duplicateParams.set("filters[name][$eqi]", name);
+    duplicateParams.set("filters[author][id][$eq]", String(session.user.id));
+    duplicateParams.set("pagination[pageSize]", "1");
+
+    const [baseProductLines, cup, brand, customSplash, duplicateProductLines] =
+      await Promise.all([
+        requestStrapiRestAsService<PortalProductLine[]>(
+          `/api/product-lines?${baseProductLineParams.toString()}`,
+        ),
+        requestStrapiRestAsService<PortalCup>(`/api/cups/${cupId}`),
+        requestStrapiRestAsService<PortalBrand>(`/api/brands/${brandId}`),
+        customSplashId
+          ? requestStrapiRestAsService<PortalSplash>(
+              `/api/splashes/${customSplashId}`,
+            )
+          : Promise.resolve(null),
+        requestStrapiRestAsService<PortalProductLine[]>(
+          `/api/product-lines?${duplicateParams.toString()}`,
+        ),
+      ]);
     const baseProductLine = baseProductLines[0];
+
+    if (duplicateProductLines.length) {
+      return res.status(409).json({
+        error: "duplicate_name",
+        message: "A product line with this name already exists.",
+      });
+    }
 
     if (!baseProductLine?.id) {
       return res.status(400).json({

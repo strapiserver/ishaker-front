@@ -17,6 +17,7 @@ import { getSmallestMediaUrl } from "../../../lib/portal/media";
 import type { PortalProductLine } from "../../../types/portal";
 import { IoAddOutline } from "react-icons/io5";
 import { DeleteProductLineDialog } from "./DeleteProductLineDialog";
+import { ProductCard } from "./ProductCard";
 type ProductLineCardProps = {
   productLine: PortalProductLine;
 };
@@ -138,6 +139,17 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
           ) : null}
         </VStack>
       </HStack>
+      {productLine.products?.length ? (
+        <VStack spacing="3" mt="5" align="stretch" w="full">
+          {productLine.products.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              productLineId={productLine.id}
+            />
+          ))}
+        </VStack>
+      ) : null}
       <DeleteProductLineDialog
         isDeleting={isDeleting}
         isOpen={deleteDialog.isOpen}

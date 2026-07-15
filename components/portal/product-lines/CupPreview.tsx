@@ -1,4 +1,4 @@
-import { Box, HStack, Image, Text, VStack } from "@chakra-ui/react";
+import { Box, Grid, HStack, Image, Text, VStack } from "@chakra-ui/react";
 import { useMemo } from "react";
 import { SPLASH_FADE_MS, useSplashAnimation } from "../../home/Splash";
 import { capitalizeName } from "../../../lib/formatName";
@@ -43,26 +43,40 @@ export function CupPreview({
       border="1px solid"
       borderColor="whiteAlpha.100"
       borderRadius="2xl"
-      minH="680px"
+      minH={{ base: "550px", md: "680px" }}
       px={{ base: "5", md: "7" }}
       py={{ base: "1", md: "2" }}
       overflow="hidden"
       position="relative"
     >
-      <HStack w="100%" justify="space-between" spacing="4" mb="4">
-        <VStack spacing="1" position="relative" zIndex="5" align="stretch">
-          <Text
-            color="acid.300"
-            fontSize="sm"
-            fontWeight="800"
-            letterSpacing="0.08em"
-            textTransform="uppercase"
-          >
-            ● Live preview
-          </Text>
+      <Grid
+        templateAreas={{
+          base: '"status logo" "details details"',
+          md: '"status logo" "details logo"',
+        }}
+        templateColumns="minmax(0, 1fr) auto"
+        columnGap="4"
+        rowGap="1"
+        alignItems="start"
+        mb="4"
+      >
+        <Text
+          gridArea="status"
+          position="relative"
+          zIndex="5"
+          color="acid.300"
+          fontSize="sm"
+          fontWeight="800"
+          letterSpacing="0.08em"
+          textTransform="uppercase"
+          mt="4"
+        >
+          ● Live preview
+        </Text>
+        <Box gridArea="details" minW="0" position="relative" zIndex="5">
           <HStack>
             {brand ? (
-              <Text fontSize="lg" zIndex="6" color="bg.300">
+              <Text fontSize="lg" color="bg.300" flexShrink={0}>
                 {`${capitalizeName(brand.name)} •`}
               </Text>
             ) : null}
@@ -71,18 +85,19 @@ export function CupPreview({
             </Text>
           </HStack>
           <Text>Client will see this cup:</Text>
-        </VStack>
+        </Box>
 
         {brand && brandImage ? (
           <Image
+            gridArea="logo"
             src={brandImage}
             alt={capitalizeName(brand.name)}
-            maxW="200px"
-            maxH="88px"
+            maxW={{ base: "120px", md: "200px" }}
+            maxH={{ base: "56px", md: "88px" }}
             objectFit="contain"
           />
         ) : null}
-      </HStack>
+      </Grid>
 
       {isSplashLoading ? (
         <Text

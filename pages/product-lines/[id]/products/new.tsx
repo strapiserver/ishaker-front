@@ -43,6 +43,18 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
   productParams.set("fields[2]", "category");
   productParams.set("fields[3]", "serving_qty");
   productParams.set("fields[4]", "serving_unit");
+  productParams.set("populate[custom_main][fields][0]", "url");
+  productParams.set("populate[custom_main][fields][1]", "formats");
+  productParams.set("populate[custom_splash][fields][0]", "name");
+  productParams.set("populate[custom_circle][fields][0]", "name");
+  productParams.set(
+    "populate[custom_circle][populate][images][fields][0]",
+    "url",
+  );
+  productParams.set(
+    "populate[custom_circle][populate][images][fields][1]",
+    "formats",
+  );
   productParams.set("populate[taste][populate][main][fields][0]", "url");
   productParams.set("populate[taste][populate][main][fields][1]", "formats");
   productParams.set("populate[taste][populate][default_splash][fields][0]", "name");
@@ -106,6 +118,15 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
     ]);
     if (!productLines[0]) return { notFound: true };
 
+    const requestedProductId = Array.isArray(context.query.productId)
+      ? context.query.productId[0]
+      : context.query.productId;
+    const initialProductId = products.some(
+      (product) => String(product.id) === requestedProductId,
+    )
+      ? requestedProductId
+      : "";
+
     return {
       props: {
         session: result.session,
@@ -115,6 +136,7 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
         circles,
         tastes,
         components,
+        initialProductId,
       },
     };
   } catch (error) {

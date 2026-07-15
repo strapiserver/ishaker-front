@@ -17,6 +17,8 @@ const createListParams = (authorId: number) => {
   params.set("populate[2]", "brands.logo");
   params.set("populate[3]", "base_product_line");
   params.set("populate[4]", "products");
+  params.set("populate[5]", "products.custom_main");
+  params.set("populate[6]", "products.taste.main");
   params.set("sort[0]", "name:ASC");
   params.set("pagination[pageSize]", "1000");
   return params;

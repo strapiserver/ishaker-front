@@ -27,9 +27,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   params.set("fields[3]", "serving_qty");
   params.set("fields[4]", "serving_unit");
   params.set("populate[custom_main][fields][0]", "url");
+  params.set("populate[custom_main][fields][1]", "formats");
   params.set("populate[custom_splash][fields][0]", "isEmpty");
   params.set("populate[custom_splash][populate][images][fields][0]", "url");
   params.set("populate[custom_splash][populate][images][fields][1]", "name");
+  params.set("populate[custom_circle][fields][0]", "name");
+  params.set("populate[custom_circle][populate][images][fields][0]", "url");
+  params.set("populate[custom_circle][populate][images][fields][1]", "formats");
   params.set("populate[taste][populate][default_splash][populate][images][fields][0]", "url");
   params.set("populate[taste][populate][default_splash][populate][images][fields][1]", "name");
   params.set("populate[taste][populate][default_splash][fields][0]", "isEmpty");
