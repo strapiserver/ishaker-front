@@ -223,7 +223,16 @@ export const requestStrapiRestAsService = async <T = any>(
   path: string,
   init?: RequestInit,
 ) => {
-  let jwt = await getStrapiJwt(false);
+  const method = (init?.method || "GET").toUpperCase();
+  const allowPublicReadFallback = method === "GET";
+  let jwt: string;
+
+  try {
+    jwt = await getStrapiJwt(false);
+  } catch (error) {
+    if (!allowPublicReadFallback) throw error;
+    return requestStrapiRest<T>(path, init);
+  }
 
   try {
     return await requestStrapiRest<T>(path, init, jwt);
@@ -231,8 +240,13 @@ export const requestStrapiRestAsService = async <T = any>(
     const status = (error as { status?: number }).status;
     if (status !== 401 && status !== 403) throw error;
 
-    jwt = await getStrapiJwt(true);
-    return requestStrapiRest<T>(path, init, jwt);
+    try {
+      jwt = await getStrapiJwt(true);
+      return requestStrapiRest<T>(path, init, jwt);
+    } catch (refreshError) {
+      if (!allowPublicReadFallback) throw refreshError;
+      return requestStrapiRest<T>(path, init);
+    }
   }
 };
 
