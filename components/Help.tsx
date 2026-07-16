@@ -7,7 +7,16 @@ export type HelpProps = {
 
 export function Help({ text }: HelpProps) {
   return (
-    <Tooltip label={text} hasArrow placement="top" openDelay={200}>
+    <Tooltip
+      label={text}
+      hasArrow
+      placement="top"
+      openDelay={200}
+      maxW="360px"
+      px="3"
+      py="2"
+      lineHeight="1.45"
+    >
       <IconButton
         type="button"
         aria-label={`Help: ${text}`}

@@ -92,17 +92,23 @@ export type PortalNutritionFact = {
 
 export type PortalProductDosage = {
   full_drink_volume?: number | string | null;
+  full_drink_price?: number | string | null;
+  small_drink_volume?: number | string | null;
+  small_drink_price?: number | string | null;
   water?: number | string | null;
   product?: number | string | null;
   conversion_factor?: number | string | null;
-  drink_volume_unit?: "ml" | "oz" | null;
 };
+
+export type PortalProductType = "powder" | "concentrate";
+export type PortalProductPurpose = "milkshake" | "sport nutrition";
 
 export type PortalProduct = {
   id: string | number;
   name: string;
   description?: string | null;
-  category?: "powder" | "concentrate" | null;
+  product_type?: PortalProductType | null;
+  product_purpose?: PortalProductPurpose | null;
   serving_qty?: number | string | null;
   serving_unit?: "g" | "ml" | null;
   components?: PortalComponent[];

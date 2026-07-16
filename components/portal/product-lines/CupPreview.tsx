@@ -48,7 +48,22 @@ export function CupPreview({
       py={{ base: "1", md: "2" }}
       overflow="hidden"
       position="relative"
+      isolation="isolate"
     >
+      <Image
+        src="/grid.png"
+        alt=""
+        aria-hidden="true"
+        position="absolute"
+        zIndex="0"
+        left="0"
+        bottom="0"
+        w="full"
+        h="auto"
+        opacity="0.5"
+        pointerEvents="none"
+        userSelect="none"
+      />
       <Grid
         templateAreas={{
           base: '"status logo" "details details"',
@@ -84,7 +99,7 @@ export function CupPreview({
               {capitalizeName(productLineName) || "Your product line"}
             </Text>
           </HStack>
-          <Text>Client will see this cup:</Text>
+          <Text>Customers will see this cup:</Text>
         </Box>
 
         {brand && brandImage ? (
@@ -139,6 +154,7 @@ export function CupPreview({
         }
         left="50%"
         bottom="6"
+        zIndex="1"
         transform="translateX(-50%)"
         w="58%"
         maxW="420px"

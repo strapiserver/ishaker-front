@@ -40,9 +40,10 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
   const productParams = new URLSearchParams();
   productParams.set("fields[0]", "name");
   productParams.set("fields[1]", "description");
-  productParams.set("fields[2]", "category");
+  productParams.set("fields[2]", "product_type");
   productParams.set("fields[3]", "serving_qty");
   productParams.set("fields[4]", "serving_unit");
+  productParams.set("fields[5]", "product_purpose");
   productParams.set("populate[custom_main][fields][0]", "url");
   productParams.set("populate[custom_main][fields][1]", "formats");
   productParams.set("populate[custom_splash][fields][0]", "name");

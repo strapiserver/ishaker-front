@@ -8,7 +8,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { FaSearch } from "react-icons/fa";
 import { IoAddOutline } from "react-icons/io5";
 import type { PortalComponent } from "../../../../types/portal";
@@ -30,6 +30,7 @@ export function ComponentNameSelect({
 }: ComponentNameSelectProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputName = `portal-component-combobox-${useId().replace(/:/g, "")}`;
   const [isOpen, setIsOpen] = useState(false);
   const normalizedValue = value.trim().toLocaleLowerCase();
   const hasExactMatch = components.some(
@@ -51,12 +52,18 @@ export function ComponentNameSelect({
     <Box ref={containerRef} position="relative" w="full">
       <InputGroup size="lg">
         <Input
+          w="full"
           ref={inputRef}
           role="combobox"
           aria-autocomplete="list"
           aria-controls="component-name-options"
           aria-expanded={isOpen}
-          autoComplete="off"
+          name={inputName}
+          autoComplete="one-time-code"
+          data-1p-ignore
+          data-form-type="other"
+          data-lpignore="true"
+          spellCheck={false}
           value={value}
           onChange={(event) => {
             onNameChange(event.target.value);
@@ -72,7 +79,7 @@ export function ComponentNameSelect({
             }, 0);
           }}
           maxLength={100}
-          placeholder="Search a component"
+          placeholder="Search"
           h="40px"
           pr="48px"
           borderColor="whiteAlpha.200"

@@ -10,7 +10,7 @@ import {
   VStack,
   Text,
 } from "@chakra-ui/react";
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { FaChevronDown, FaImages } from "react-icons/fa";
 
 export type SearchableImageOption = {
@@ -49,6 +49,7 @@ export function SearchableImageSelect({
 }: SearchableImageSelectProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputName = `portal-combobox-${useId().replace(/:/g, "")}`;
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const selected = options.find((option) => option.id === value);
@@ -105,6 +106,12 @@ export function SearchableImageSelect({
           aria-controls={listboxId}
           aria-expanded={isOpen}
           aria-label={ariaLabel}
+          name={inputName}
+          autoComplete="one-time-code"
+          data-1p-ignore
+          data-form-type="other"
+          data-lpignore="true"
+          spellCheck={false}
           value={isOpen ? query : selected?.name || ""}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -177,16 +184,16 @@ export function SearchableImageSelect({
         >
           {onShowMore ? (
             <Button
-              variant="outline"
+              variant="no_contrast"
               w="full"
-              mb="2"
+              my="4"
               leftIcon={<FaImages size="1rem" />}
               onClick={() => {
                 onShowMore();
                 closeAndBlur();
               }}
             >
-              Show more
+              Show images
             </Button>
           ) : null}
           <VStack spacing="1" maxH="270px" overflowY="auto" align="stretch">

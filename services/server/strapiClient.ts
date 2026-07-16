@@ -38,25 +38,46 @@ const readLocalStrapiEnv = () => {
 
 const localStrapiEnv = readLocalStrapiEnv();
 
-const getServiceCredentials = () => {
-  const identifier =
+const getServiceCredentialCandidates = () => {
+  const environmentIdentifier =
     process.env.STRAPI_AUTH_IDENTIFIER ||
-    process.env.STRAPI_MACHINE_USER_LOGIN ||
+    process.env.STRAPI_MACHINE_USER_LOGIN;
+  const environmentPassword =
+    process.env.STRAPI_AUTH_PASSWORD ||
+    process.env.STRAPI_MACHINE_USER_PASSWORD;
+  const localIdentifier =
     localStrapiEnv.STRAPI_AUTH_IDENTIFIER ||
     localStrapiEnv.STRAPI_MACHINE_USER_LOGIN;
-  const password =
-    process.env.STRAPI_AUTH_PASSWORD ||
-    process.env.STRAPI_MACHINE_USER_PASSWORD ||
+  const localPassword =
     localStrapiEnv.STRAPI_AUTH_PASSWORD ||
     localStrapiEnv.STRAPI_MACHINE_USER_PASSWORD;
+  const candidates = [
+    { identifier: environmentIdentifier, password: environmentPassword },
+    { identifier: localIdentifier, password: localPassword },
+  ].filter(
+    (
+      candidate,
+    ): candidate is {
+      identifier: string;
+      password: string;
+    } => Boolean(candidate.identifier && candidate.password),
+  );
+  const uniqueCandidates = candidates.filter(
+    (candidate, index) =>
+      candidates.findIndex(
+        (item) =>
+          item.identifier === candidate.identifier &&
+          item.password === candidate.password,
+      ) === index,
+  );
 
-  if (!identifier || !password) {
+  if (!uniqueCandidates.length) {
     throw new Error(
       "Missing STRAPI_AUTH_IDENTIFIER/STRAPI_AUTH_PASSWORD or STRAPI_MACHINE_USER_LOGIN/STRAPI_MACHINE_USER_PASSWORD.",
     );
   }
 
-  return { identifier, password };
+  return uniqueCandidates;
 };
 
 const decodeJwtExpMs = (jwt: string) => {
@@ -109,32 +130,36 @@ const requestGraphql = async <T = any>(
 };
 
 const loginToStrapi = async () => {
-  const { identifier, password } = getServiceCredentials();
-  const response = await fetch(`${getStrapiBaseUrl()}/api/auth/local`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      identifier,
-      password,
-      provider: AUTH_PROVIDER,
-    }),
-  });
-  const payload = await response.json().catch(() => null);
-  const jwt = payload?.jwt;
+  const candidates = getServiceCredentialCandidates();
+  let lastStatus = 0;
 
-  if (!response.ok) {
-    throw new Error("Strapi service login failed.");
+  for (const { identifier, password } of candidates) {
+    const response = await fetch(`${getStrapiBaseUrl()}/api/auth/local`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        identifier,
+        password,
+        provider: AUTH_PROVIDER,
+      }),
+    });
+    const payload = await response.json().catch(() => null);
+    const jwt = payload?.jwt;
+    lastStatus = response.status;
+
+    if (!response.ok || !jwt) continue;
+
+    cachedToken = {
+      jwt,
+      expiresAtMs: decodeJwtExpMs(jwt),
+    };
+
+    return jwt;
   }
-  if (!jwt) {
-    throw new Error("Strapi login did not return a JWT.");
-  }
 
-  cachedToken = {
-    jwt,
-    expiresAtMs: decodeJwtExpMs(jwt),
-  };
-
-  return jwt;
+  throw new Error(
+    `Strapi service login failed${lastStatus ? ` (${lastStatus})` : ""}.`,
+  );
 };
 
 const getStrapiJwt = async (forceRefresh = false) => {
@@ -202,7 +227,10 @@ export const requestStrapiRestAsService = async <T = any>(
 
   try {
     return await requestStrapiRest<T>(path, init, jwt);
-  } catch {
+  } catch (error) {
+    const status = (error as { status?: number }).status;
+    if (status !== 401 && status !== 403) throw error;
+
     jwt = await getStrapiJwt(true);
     return requestStrapiRest<T>(path, init, jwt);
   }

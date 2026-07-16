@@ -19,6 +19,7 @@ type SplashAnimation = {
 export function useSplashAnimation(
   splashes: string[][] = [],
   isActive: boolean,
+  lastFrameMs = SPLASH_LAST_FRAME_MS,
 ): SplashAnimation {
   const [isFading, setIsFading] = useState(false);
   const [splashIndex, setSplashIndex] = useState(0);
@@ -57,12 +58,12 @@ export function useSplashAnimation(
     if (isLastFrame) {
       const fadeTimeout = window.setTimeout(() => {
         setIsFading(true);
-      }, SPLASH_LAST_FRAME_MS - SPLASH_FADE_MS);
+      }, Math.max(0, lastFrameMs - SPLASH_FADE_MS));
       const repeatTimeout = window.setTimeout(() => {
         setSplashIndex((current) => (current + 1) % splashes.length);
         setFrameIndex(0);
         setIsFading(false);
-      }, SPLASH_LAST_FRAME_MS);
+      }, lastFrameMs);
 
       return () => {
         window.clearTimeout(fadeTimeout);
@@ -79,6 +80,7 @@ export function useSplashAnimation(
     activeSplash.length,
     frameIndex,
     isActive,
+    lastFrameMs,
     splashes.length,
   ]);
 

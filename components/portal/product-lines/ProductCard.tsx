@@ -7,10 +7,9 @@ import {
   useDisclosure,
   VStack,
 } from "@chakra-ui/react";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
+import { RxCross2 } from "react-icons/rx";
 import { capitalizeName } from "../../../lib/formatName";
 import { getSmallestMediaUrl } from "../../../lib/portal/media";
 import type { PortalProduct } from "../../../types/portal";
@@ -44,79 +43,104 @@ export function ProductCard({ product, productLineId }: ProductCardProps) {
       await router.replace(router.asPath);
     } catch (error) {
       window.alert(
-        error instanceof Error ? error.message : "Product could not be deleted.",
+        error instanceof Error
+          ? error.message
+          : "Product could not be deleted.",
       );
       setIsDeleting(false);
     }
   };
 
   return (
-    <Box
-      bg="whiteAlpha.50"
-      border="1px solid"
-      borderColor="whiteAlpha.100"
-      borderRadius="xl"
-      minW="0"
-      overflow="hidden"
-      p="3"
-      w="full"
-    >
-      <HStack spacing="4" align="center">
-        <Box
-          aria-label={`${productName} preview`}
-          role="img"
-          position="relative"
-          flex="0 0 auto"
-          boxSize={{ base: "82px", sm: "96px" }}
-        >
-          {mainImage ? (
-            <Image
-              src={mainImage}
-              alt={productName}
-              position="relative"
-              w="full"
-              h="full"
-              objectFit="contain"
-            />
-          ) : (
-            <Box
-              h="full"
-              display="grid"
-              placeItems="center"
-              color="bg.500"
-              fontSize="xs"
-              textAlign="center"
-            >
-              No preview
-            </Box>
-          )}
-        </Box>
-        <VStack minW="0" flex="1" align="stretch" spacing="3">
-          <Text color="bg.200" fontSize="sm" fontWeight="700" noOfLines={2}>
-            {productName}
-          </Text>
-          <HStack spacing="2" justify="flex-end">
-            <IconButton
-              as={Link}
-              href={`/product-lines/${productLineId}/products/new?productId=${product.id}`}
-              aria-label={`Edit ${productName}`}
-              title="Edit"
-              variant="outline"
-              icon={<FiEdit2 />}
-              colorScheme="gray"
-            />
-            <IconButton
-              aria-label={`Delete ${productName}`}
-              title="Delete"
-              icon={<FiTrash2 />}
-              colorScheme="red"
-              variant="outline"
-              isLoading={isDeleting}
-              onClick={deleteDialog.onOpen}
-            />
-          </HStack>
-        </VStack>
-      </HStack>
+    <>
+      <Box
+        bg="bg.800"
+        border="1px solid"
+        borderColor="whiteAlpha.100"
+        borderRadius="xl"
+        cursor="pointer"
+        minW="0"
+        overflow="hidden"
+        p="3"
+        position="relative"
+        role="link"
+        tabIndex={0}
+        w="full"
+        _hover={{ borderColor: "whiteAlpha.300" }}
+        onClick={(event) => {
+          event.stopPropagation();
+          void router.push(
+            `/product-lines/${productLineId}/products/new?productId=${product.id}`,
+          );
+        }}
+        onKeyDown={(event) => {
+          if (
+            event.currentTarget === event.target &&
+            (event.key === "Enter" || event.key === " ")
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            void router.push(
+              `/product-lines/${productLineId}/products/new?productId=${product.id}`,
+            );
+          }
+        }}
+      >
+        <IconButton
+          aria-label={`Delete ${productName}`}
+          title="Delete"
+          icon={<RxCross2 />}
+          color="red.300"
+          variant="ghost"
+          size="sm"
+          position="absolute"
+          top="2"
+          right="2"
+          zIndex="2"
+          isLoading={isDeleting}
+          _hover={{ bg: "red.900", color: "red.200" }}
+          onClick={(event) => {
+            event.stopPropagation();
+            deleteDialog.onOpen();
+          }}
+        />
+        <HStack spacing="4" align="center" pr="8">
+          <Box
+            aria-label={`${productName} preview`}
+            role="img"
+            position="relative"
+            flex="0 0 auto"
+            boxSize={{ base: "82px", sm: "96px" }}
+          >
+            {mainImage ? (
+              <Image
+                src={mainImage}
+                alt={productName}
+                position="relative"
+                w="full"
+                h="full"
+                objectFit="contain"
+              />
+            ) : (
+              <Box
+                h="full"
+                display="grid"
+                placeItems="center"
+                color="bg.500"
+                fontSize="xs"
+                textAlign="center"
+              >
+                No preview
+              </Box>
+            )}
+          </Box>
+          <VStack minW="0" flex="1" align="stretch" spacing="3">
+            <Text color="bg.200" fontSize="sm" fontWeight="700" noOfLines={2}>
+              {productName}
+            </Text>
+          </VStack>
+        </HStack>
+      </Box>
       <DeleteProductDialog
         isDeleting={isDeleting}
         isOpen={deleteDialog.isOpen}
@@ -124,6 +148,6 @@ export function ProductCard({ product, productLineId }: ProductCardProps) {
         onConfirm={deleteProduct}
         productName={productName}
       />
-    </Box>
+    </>
   );
 }

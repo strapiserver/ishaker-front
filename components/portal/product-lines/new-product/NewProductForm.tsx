@@ -10,7 +10,11 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import type { FormEventHandler } from "react";
-import type { PortalComponent } from "../../../../types/portal";
+import type {
+  PortalComponent,
+  PortalProductPurpose,
+  PortalProductType,
+} from "../../../../types/portal";
 import {
   ProductComponentsTable,
   type ProductComponentRow,
@@ -23,7 +27,6 @@ import {
 } from "../SearchableImageSelect";
 
 type NewProductFormProps = {
-  category: "powder" | "concentrate";
   componentRows: ProductComponentRow[];
   components: PortalComponent[];
   description: string;
@@ -33,13 +36,14 @@ type NewProductFormProps = {
   mainImageId: string;
   mainImageOptions: SearchableImageOption[];
   name: string;
-  onCategoryChange: (value: "powder" | "concentrate") => void;
   onComponentRowsChange: (rows: ProductComponentRow[]) => void;
   onCreateCustomProduct: () => void;
   onDescriptionChange: (value: string) => void;
   onDosageChange: (value: ProductDosageValue) => void;
   onNameChange: (value: string) => void;
   onProductSelect: (product: ProductNameOption) => void;
+  onProductPurposeChange: (value: PortalProductPurpose) => void;
+  onProductTypeChange: (value: PortalProductType) => void;
   onServingQuantityChange: (value: string) => void;
   onServingUnitChange: (value: "g" | "ml") => void;
   onShowMoreMainImages: () => void;
@@ -52,6 +56,8 @@ type NewProductFormProps = {
   };
   productLineName: string;
   productOptions: ProductNameOption[];
+  productPurpose: PortalProductPurpose;
+  productType: PortalProductType;
   servingQuantity: string;
   servingUnit: "g" | "ml";
   splashId: string;
@@ -61,7 +67,6 @@ type NewProductFormProps = {
 };
 
 export function NewProductForm({
-  category,
   componentRows,
   components,
   description,
@@ -71,13 +76,14 @@ export function NewProductForm({
   mainImageId,
   mainImageOptions,
   name,
-  onCategoryChange,
   onComponentRowsChange,
   onCreateCustomProduct,
   onDescriptionChange,
   onDosageChange,
   onNameChange,
   onProductSelect,
+  onProductPurposeChange,
+  onProductTypeChange,
   onServingQuantityChange,
   onServingUnitChange,
   onShowMoreMainImages,
@@ -86,6 +92,8 @@ export function NewProductForm({
   onVisualChange,
   productLineName,
   productOptions,
+  productPurpose,
+  productType,
   servingQuantity,
   servingUnit,
   splashId,
@@ -178,17 +186,19 @@ export function NewProductForm({
         <Divider />
 
         <ProductComponentsTable
-          category={category}
           components={components}
           dosage={dosage}
           rows={componentRows}
           onChange={onComponentRowsChange}
-          onCategoryChange={onCategoryChange}
           onDosageChange={onDosageChange}
+          onProductPurposeChange={onProductPurposeChange}
+          onProductTypeChange={onProductTypeChange}
           onServingQuantityChange={onServingQuantityChange}
           onServingUnitChange={onServingUnitChange}
           servingQuantity={servingQuantity}
           servingUnit={servingUnit}
+          productPurpose={productPurpose}
+          productType={productType}
         />
 
         {error ? (

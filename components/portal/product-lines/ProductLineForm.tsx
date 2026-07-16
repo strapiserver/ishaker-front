@@ -57,6 +57,7 @@ export function ProductLineForm({
     <Box
       as="form"
       onSubmit={onSubmit}
+      autoComplete="off"
       bg="bg.900"
       border="1px solid"
       borderColor="whiteAlpha.100"

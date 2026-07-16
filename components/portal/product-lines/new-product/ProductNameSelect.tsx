@@ -9,7 +9,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { FaSearch } from "react-icons/fa";
 import { IoAddOutline } from "react-icons/io5";
 
@@ -36,6 +36,7 @@ export function ProductNameSelect({
 }: ProductNameSelectProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputName = `portal-product-combobox-${useId().replace(/:/g, "")}`;
   const [isOpen, setIsOpen] = useState(false);
   const normalizedValue = value.trim().toLocaleLowerCase();
   const hasExactMatch = options.some(
@@ -62,8 +63,11 @@ export function ProductNameSelect({
           aria-autocomplete="list"
           aria-controls="product-name-options"
           aria-expanded={isOpen}
-          name="flavor-name"
-          autoComplete="new-password"
+          name={inputName}
+          autoComplete="one-time-code"
+          data-1p-ignore
+          data-form-type="other"
+          data-lpignore="true"
           spellCheck={false}
           value={value}
           onChange={(event) => {

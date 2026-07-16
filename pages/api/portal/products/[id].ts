@@ -23,9 +23,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const params = new URLSearchParams();
   params.set("fields[0]", "name");
   params.set("fields[1]", "description");
-  params.set("fields[2]", "category");
+  params.set("fields[2]", "product_type");
   params.set("fields[3]", "serving_qty");
   params.set("fields[4]", "serving_unit");
+  params.set("fields[5]", "product_purpose");
   params.set("populate[custom_main][fields][0]", "url");
   params.set("populate[custom_main][fields][1]", "formats");
   params.set("populate[custom_splash][fields][0]", "isEmpty");

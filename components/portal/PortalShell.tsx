@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { PropsWithChildren } from "react";
 import { FaExclamationCircle, FaWhatsapp } from "react-icons/fa";
+import { TbDoorExit } from "react-icons/tb";
 
 type PortalShellProps = PropsWithChildren<{
   title: string;
@@ -79,6 +80,7 @@ export function PortalShell({
                 variant="extra_contrast"
                 size="sm"
                 flexShrink={0}
+                leftIcon={<TbDoorExit />}
               >
                 Log out
               </Button>

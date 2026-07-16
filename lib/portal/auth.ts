@@ -4,7 +4,7 @@ import type { PortalSession, PortalUser } from "../../types/portal";
 import { requestStrapiRestAsService, requestStrapiRestWithJwt } from "../../services/server/strapiClient";
 
 const COOKIE_NAME = "ishaker_portal_session";
-const SESSION_TTL_SECONDS = 60 * 60 * 8;
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 const parseCookie = (cookieHeader: string | undefined, name: string) => {
   const cookie = cookieHeader

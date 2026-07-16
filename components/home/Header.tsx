@@ -1,7 +1,6 @@
 import { Box, Button, Container, Flex } from "@chakra-ui/react";
 import Image from "next/image";
 import Link from "next/link";
-import { FaArrowRight } from "react-icons/fa";
 
 type HeaderProps = {
   borderColor: string;
@@ -29,13 +28,12 @@ export function Header({ borderColor }: HeaderProps) {
             </Box>
           </Box>
           <Button
-            as="a"
-            href="/step1"
+            as={Link}
+            href="/login"
             variant="primary"
-            rightIcon={<FaArrowRight />}
             size={{ base: "sm", md: "md" }}
           >
-            Get Started
+            Login
           </Button>
         </Flex>
       </Container>

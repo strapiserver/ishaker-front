@@ -1,24 +1,34 @@
 import {
   Box,
   Button,
+  Collapse,
+  Divider,
   FormControl,
+  FormErrorMessage,
   FormHelperText,
   FormLabel,
   Grid,
   HStack,
+  Icon,
   IconButton,
   NumberInput,
   NumberInputField,
   Select,
   SimpleGrid,
-  Stack,
+  Switch,
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { type DragEvent, useState } from "react";
-import { FaGripVertical, FaPlus, FaTrash } from "react-icons/fa";
-import type { PortalComponent } from "../../../../types/portal";
+import { type DragEvent, useEffect, useState } from "react";
+import { FaGlassWhiskey, FaGripVertical, FaPlus } from "react-icons/fa";
+import { FaWhiskeyGlass } from "react-icons/fa6";
+import type {
+  PortalComponent,
+  PortalProductPurpose,
+  PortalProductType,
+} from "../../../../types/portal";
 import { Help } from "../../../Help";
+import { RxCross2 } from "react-icons/rx";
 import { ComponentNameSelect } from "./ComponentNameSelect";
 
 export type ProductComponentRow = {
@@ -33,21 +43,25 @@ export type ProductComponentRow = {
 export type ProductDosageValue = {
   conversionFactor: string;
   drinkVolume: string;
-  drinkVolumeUnit: "ml" | "oz";
+  fullDrinkPrice: string;
   product: string;
+  smallDrinkPrice: string;
+  smallDrinkVolume: string;
   water: string;
 };
 
 type ProductComponentsTableProps = {
-  category: "powder" | "concentrate";
   components: PortalComponent[];
   dosage: ProductDosageValue;
-  onCategoryChange: (value: "powder" | "concentrate") => void;
   onChange: (rows: ProductComponentRow[]) => void;
   onDosageChange: (value: ProductDosageValue) => void;
+  onProductPurposeChange: (value: PortalProductPurpose) => void;
+  onProductTypeChange: (value: PortalProductType) => void;
   onServingQuantityChange: (value: string) => void;
   onServingUnitChange: (value: "g" | "ml") => void;
   rows: ProductComponentRow[];
+  productPurpose: PortalProductPurpose;
+  productType: PortalProductType;
   servingQuantity: string;
   servingUnit: "g" | "ml";
 };
@@ -56,19 +70,46 @@ const MAX_COMPONENTS = 50;
 const componentUnits = ["mg", "g", "mcg", "kJ", "kcal"];
 
 export function ProductComponentsTable({
-  category,
   components,
   dosage,
   onChange,
-  onCategoryChange,
   onDosageChange,
+  onProductPurposeChange,
+  onProductTypeChange,
   onServingQuantityChange,
   onServingUnitChange,
   rows,
+  productPurpose,
+  productType,
   servingQuantity,
   servingUnit,
 }: ProductComponentsTableProps) {
   const [draggedRowId, setDraggedRowId] = useState("");
+  const [isSmallDrinkEnabled, setIsSmallDrinkEnabled] = useState(() =>
+    Boolean(dosage.smallDrinkVolume.trim() || dosage.smallDrinkPrice.trim()),
+  );
+  useEffect(() => {
+    if (dosage.smallDrinkVolume.trim() || dosage.smallDrinkPrice.trim()) {
+      setIsSmallDrinkEnabled(true);
+    }
+  }, [dosage.smallDrinkPrice, dosage.smallDrinkVolume]);
+  const fullDrinkVolume = Number(dosage.drinkVolume);
+  const smallDrinkVolume = Number(dosage.smallDrinkVolume);
+  const waterAmount = Number(dosage.water);
+  const productAmount = Number(dosage.product);
+  const exceedsFullDrinkVolume =
+    fullDrinkVolume > 0 && waterAmount + productAmount > fullDrinkVolume;
+  const smallDrinkVolumeError = dosage.smallDrinkVolume.trim()
+    ? smallDrinkVolume < 100
+      ? "Small drink volume must be at least 100ml."
+      : fullDrinkVolume > 0 && smallDrinkVolume >= fullDrinkVolume
+        ? "Small drink volume must be less than full drink volume."
+        : ""
+    : "";
+  const waterError =
+    dosage.water.trim() && (waterAmount < 50 || waterAmount > 500)
+      ? "Water must be between 50ml and 500ml."
+      : "";
 
   const addRow = () => {
     if (rows.length >= MAX_COMPONENTS) return;
@@ -114,25 +155,48 @@ export function ProductComponentsTable({
   return (
     <Box>
       <VStack spacing="4" mb="5">
-        <FormControl isRequired>
-          <FormLabel>Category</FormLabel>
-          <Select
-            value={category}
-            onChange={(event) =>
-              onCategoryChange(event.target.value as "powder" | "concentrate")
-            }
-            bg="bg.800"
-          >
-            <option value="powder">Powder</option>
-            <option value="concentrate">Concentrate</option>
-          </Select>
-        </FormControl>
+        <HStack w="full" align="flex-start" spacing="2">
+          <FormControl isRequired flex="1" minW="0">
+            <HStack h="24px" mb="2" align="center">
+              <FormLabel mb="0">Product type</FormLabel>
+              <Help text="Base type of the product — Powder (protein/mix, dispensed by weight) or Concentrate/Syrup (liquid flavoring, dispensed by volume). This determines how the pump is calibrated (grams/sec vs ml/sec)." />
+            </HStack>
+            <Select
+              value={productType}
+              onChange={(event) =>
+                onProductTypeChange(event.target.value as PortalProductType)
+              }
+              bg="bg.800"
+            >
+              <option value="powder">Powder</option>
+              <option value="concentrate">Concentrate</option>
+            </Select>
+          </FormControl>
 
-        <HStack w="full">
-          <FormControl isRequired>
-            <HStack>
+          <FormControl isRequired flex="1" minW="0">
+            <HStack h="24px" mb="2" align="center">
+              <FormLabel mb="0">Product purpose</FormLabel>
+            </HStack>
+            <Select
+              value={productPurpose}
+              onChange={(event) =>
+                onProductPurposeChange(
+                  event.target.value as PortalProductPurpose,
+                )
+              }
+              bg="bg.800"
+            >
+              <option value="milkshake">Milkshake</option>
+              <option value="sport nutrition">Sport nutrition</option>
+            </Select>
+          </FormControl>
+        </HStack>
+
+        <HStack w="full" align="flex-start" spacing="2">
+          <FormControl isRequired flex="1" minW="0">
+            <HStack h="24px" mb="2" align="center">
               <Text as="span">Serving quantity</Text>
-              <Help text="It's important to specify the serving quantity to recalculate components per cup. Might be per 100g or per custom serving" />
+              <Help text="The reference amount (e.g. 100g) that the nutrition facts below are calculated for — matches what's printed on the product's packaging label." />
             </HStack>
 
             <NumberInput min={0.01} precision={2} value={servingQuantity}>
@@ -144,11 +208,13 @@ export function ProductComponentsTable({
               />
             </NumberInput>
             <FormHelperText>Written on package</FormHelperText>
-            {/* <FormHelperText>{`Amount of ${category}`}</FormHelperText> */}
           </FormControl>
 
-          <FormControl isRequired maxW="120px">
-            <FormLabel>Unit</FormLabel>
+          <FormControl isRequired flex="1" minW="0">
+            <HStack h="24px" mb="2" align="center">
+              <FormLabel mb="0">Unit</FormLabel>
+              <Help text="The reference amount (e.g. 100g) that the nutrition facts below are calculated for — matches what's printed on the product's packaging label." />
+            </HStack>
             <Select
               value={servingUnit}
               onChange={(event) =>
@@ -166,7 +232,10 @@ export function ProductComponentsTable({
 
       <HStack justify="space-between" mb="3">
         <Box>
-          <FormLabel mb="0">Components</FormLabel>
+          <HStack>
+            <FormLabel mb="0">Components</FormLabel>
+            <Help text="Nutrition facts for one Serving quantity above (e.g. per 100g): calories, protein, fat, carbs, and any other nutrients with their amount and unit." />
+          </HStack>
           <Text color="bg.300" fontSize="sm">
             Up to {MAX_COMPONENTS} components per product.
           </Text>
@@ -177,10 +246,10 @@ export function ProductComponentsTable({
       </HStack>
 
       <VStack
-        spacing="3"
+        spacing="4"
         align="stretch"
         bgColor="bg.1000"
-        p="2"
+        p="4"
         borderRadius="md"
       >
         {rows.map((row, index) => {
@@ -291,9 +360,12 @@ export function ProductComponentsTable({
                 ))}
               </Select>
               <IconButton
+                color="red.300"
                 aria-label={`Remove component ${index + 1}`}
-                icon={<FaTrash />}
+                icon={<RxCross2 />}
                 variant="ghost"
+                maxW="40px "
+                ml="auto"
                 gridColumn={{ base: "3", md: "5" }}
                 gridRow="1"
                 onClick={() =>
@@ -303,73 +375,149 @@ export function ProductComponentsTable({
             </Grid>
           );
         })}
+        <Button
+          mt="4"
+          leftIcon={<FaPlus />}
+          variant="outline"
+          onClick={addRow}
+          border="3px dashed"
+          borderColor="whiteAlpha.300"
+          bg="bg.900"
+          color="bg.400"
+          _hover={{ bg: "bg.800" }}
+          _active={{ bg: "bg.700" }}
+          isDisabled={rows.length >= MAX_COMPONENTS}
+        >
+          Add component
+        </Button>
       </VStack>
 
-      <Button
-        mt="4"
-        leftIcon={<FaPlus />}
-        variant="outline"
-        onClick={addRow}
-        isDisabled={rows.length >= MAX_COMPONENTS}
-      >
-        Add component
-      </Button>
-
+      <Divider my="4" />
       <Box mt="7">
-        <FormLabel mb="1">Dosage</FormLabel>
+        <HStack justify="space-between" align="center" mb="1">
+          <FormLabel mb="0">Dosage</FormLabel>
+          <HStack as="label" spacing="2" cursor="pointer">
+            <Text color="bg.200" fontSize="sm">
+              Small drink option
+            </Text>
+            <Switch
+              aria-label="Enable small drink fields"
+              colorScheme="acid"
+              isChecked={isSmallDrinkEnabled}
+              onChange={(event) => {
+                const isEnabled = event.target.checked;
+                setIsSmallDrinkEnabled(isEnabled);
+                if (!isEnabled) {
+                  onDosageChange({
+                    ...dosage,
+                    smallDrinkPrice: "",
+                    smallDrinkVolume: "",
+                  });
+                }
+              }}
+            />
+          </HStack>
+        </HStack>
         <Text color="bg.300" fontSize="sm" mb="3">
           Machine recipe for one drink.
         </Text>
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing="4">
-          <Stack
-            direction={{ base: "column", md: "row" }}
-            spacing={{ base: "4", md: "2" }}
-            align="stretch"
-          >
-            <FormControl isRequired>
+          <FormControl isRequired isInvalid={exceedsFullDrinkVolume}>
+            <HStack>
+              <Icon as={FaWhiskeyGlass} color="acid.300" />
+              <Text as="span">Full drink volume</Text>
+              <Help text="Total size of the large cup drink, in ml (e.g. 300). Water, Product and Conversion factor below are set for this size; smaller cup sizes are calculated automatically." />
+            </HStack>
+            <NumberInput min={0.01} precision={2} value={dosage.drinkVolume}>
+              <NumberInputField
+                onChange={(event) =>
+                  onDosageChange({
+                    ...dosage,
+                    drinkVolume: event.target.value,
+                  })
+                }
+                bg="bg.800"
+              />
+            </NumberInput>
+          </FormControl>
+
+          <FormControl>
+            <HStack>
+              <Text as="span">Full drink price</Text>
+              <Help text="Price charged for the large cup size in local currency." />
+            </HStack>
+            <NumberInput min={0} precision={2} value={dosage.fullDrinkPrice}>
+              <NumberInputField
+                onChange={(event) =>
+                  onDosageChange({
+                    ...dosage,
+                    fullDrinkPrice: event.target.value,
+                  })
+                }
+                bg="bg.800"
+              />
+            </NumberInput>
+          </FormControl>
+        </SimpleGrid>
+
+        <Collapse in={isSmallDrinkEnabled}>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing="4" mt="4">
+            <FormControl isInvalid={Boolean(smallDrinkVolumeError)}>
               <HStack>
-                <Text as="span">Drink volume</Text>
-                <Help text="The total volume of the prepared drink dispensed into one cup." />
+                <Icon as={FaGlassWhiskey} color="acid.300" />
+                <Text as="span">Small drink volume</Text>
+                <Help text="Size of the small cup option, in ml. Leave blank if this product is only sold in one size. Must be at least 100ml. Water and Product amounts are computed automatically." />
               </HStack>
-              <NumberInput min={0.01} precision={2} value={dosage.drinkVolume}>
+              <NumberInput
+                min={100}
+                precision={2}
+                value={dosage.smallDrinkVolume}
+              >
                 <NumberInputField
                   onChange={(event) =>
                     onDosageChange({
                       ...dosage,
-                      drinkVolume: event.target.value,
+                      smallDrinkVolume: event.target.value,
+                    })
+                  }
+                  bg="bg.800"
+                />
+              </NumberInput>
+              <FormErrorMessage>{smallDrinkVolumeError}</FormErrorMessage>
+            </FormControl>
+
+            <FormControl>
+              <HStack>
+                <Text as="span">Small drink price</Text>
+                <Help text="Price charged for the small cup size in local currency." />
+              </HStack>
+              <NumberInput min={0} precision={2} value={dosage.smallDrinkPrice}>
+                <NumberInputField
+                  onChange={(event) =>
+                    onDosageChange({
+                      ...dosage,
+                      smallDrinkPrice: event.target.value,
                     })
                   }
                   bg="bg.800"
                 />
               </NumberInput>
             </FormControl>
+          </SimpleGrid>
+        </Collapse>
 
-            <FormControl isRequired maxW={{ base: "full", md: "120px" }}>
-              <HStack>
-                <Text as="span">Unit</Text>
-                <Help text="The unit used for the full drink volume: milliliters or ounces." />
-              </HStack>
-              <Select
-                value={dosage.drinkVolumeUnit}
-                onChange={(event) =>
-                  onDosageChange({
-                    ...dosage,
-                    drinkVolumeUnit: event.target.value as "ml" | "oz",
-                  })
-                }
-                bg="bg.800"
-              >
-                <option value="ml">ml</option>
-                <option value="oz">oz</option>
-              </Select>
-            </FormControl>
-          </Stack>
-          <FormControl isRequired>
+        <HStack spacing={{ base: "2", md: "4" }} align="flex-start" mt="4">
+          <FormControl
+            isRequired
+            flex="1"
+            minW="0"
+            isInvalid={Boolean(waterError) || exceedsFullDrinkVolume}
+          >
             <HStack>
               <Text as="span">Water</Text>
-              <Help text="The amount of water dispensed by the machine for one drink." />
+              <Help text="Amount of water (ml) added to the Full drink volume above. Must be between 50–500ml." />
             </HStack>
-            <NumberInput min={0.01} precision={2} value={dosage.water}>
+            <NumberInput min={50} max={500} precision={2} value={dosage.water}>
               <NumberInputField
                 onChange={(event) =>
                   onDosageChange({ ...dosage, water: event.target.value })
@@ -377,12 +525,18 @@ export function ProductComponentsTable({
                 bg="bg.800"
               />
             </NumberInput>
+            <FormErrorMessage>{waterError}</FormErrorMessage>
           </FormControl>
 
-          <FormControl isRequired>
+          <FormControl
+            isRequired
+            flex="1"
+            minW="0"
+            isInvalid={exceedsFullDrinkVolume}
+          >
             <HStack>
               <Text as="span">Product</Text>
-              <Help text="The amount of powder or concentrate dispensed for one drink." />
+              <Help text="Amount of this product dispensed into the Full drink volume above — grams for Powder or milliliters for Concentrate/Syrup." />
             </HStack>
             <NumberInput min={0.01} precision={2} value={dosage.product}>
               <NumberInputField
@@ -392,12 +546,17 @@ export function ProductComponentsTable({
                 bg="bg.800"
               />
             </NumberInput>
+            <FormErrorMessage>
+              {exceedsFullDrinkVolume
+                ? "Water + Product can't exceed the drink volume."
+                : ""}
+            </FormErrorMessage>
           </FormControl>
 
-          <FormControl isRequired>
+          <FormControl isRequired flex="1" minW="0">
             <HStack>
               <Text as="span">Conversion factor</Text>
-              <Help text="The machine conversion factor used to calculate product dispensing." />
+              <Help text="How fast this machine's pump physically dispenses the product — not a recipe ratio. Starting values are 4 for Powder and 1.5 for Concentrate, but the real number must come from calibrating the machine before the product goes live." />
             </HStack>
             <NumberInput
               min={0.01}
@@ -415,7 +574,7 @@ export function ProductComponentsTable({
               />
             </NumberInput>
           </FormControl>
-        </SimpleGrid>
+        </HStack>
       </Box>
     </Box>
   );

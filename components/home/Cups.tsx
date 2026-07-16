@@ -148,6 +148,7 @@ export function Cups() {
   const { activeFrame, activeIndex, isFading } = useSplashAnimation(
     splashes,
     isActive,
+    500,
   );
 
   useEffect(() => {

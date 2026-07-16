@@ -16,6 +16,8 @@ import type {
   PortalComponent,
   PortalProduct,
   PortalProductLine,
+  PortalProductPurpose,
+  PortalProductType,
   PortalSession,
   PortalSplash,
   PortalTaste,
@@ -56,7 +58,9 @@ const sortFramesByName = <T extends { name?: string; url?: string }>(
 
 const DEFAULT_DOSAGE: ProductDosageValue = {
   drinkVolume: "300",
-  drinkVolumeUnit: "ml",
+  fullDrinkPrice: "",
+  smallDrinkVolume: "",
+  smallDrinkPrice: "",
   water: "270",
   product: "30",
   conversionFactor: "4",
@@ -71,7 +75,21 @@ const toDosageValue = (product?: PortalProduct): ProductDosageValue => ({
     product.dosage.full_drink_volume !== null
       ? String(product.dosage.full_drink_volume)
       : DEFAULT_DOSAGE.drinkVolume,
-  drinkVolumeUnit: product?.dosage?.drink_volume_unit === "oz" ? "oz" : "ml",
+  fullDrinkPrice:
+    product?.dosage?.full_drink_price !== undefined &&
+    product.dosage.full_drink_price !== null
+      ? String(product.dosage.full_drink_price)
+      : DEFAULT_DOSAGE.fullDrinkPrice,
+  smallDrinkVolume:
+    product?.dosage?.small_drink_volume !== undefined &&
+    product.dosage.small_drink_volume !== null
+      ? String(product.dosage.small_drink_volume)
+      : DEFAULT_DOSAGE.smallDrinkVolume,
+  smallDrinkPrice:
+    product?.dosage?.small_drink_price !== undefined &&
+    product.dosage.small_drink_price !== null
+      ? String(product.dosage.small_drink_price)
+      : DEFAULT_DOSAGE.smallDrinkPrice,
   water:
     product?.dosage?.water !== undefined && product.dosage.water !== null
       ? String(product.dosage.water)
@@ -193,8 +211,13 @@ export function NewProductPage({
   const [description, setDescription] = useState(
     initialProduct?.description || "",
   );
-  const [category, setCategory] = useState<"powder" | "concentrate">(
-    initialProduct?.category === "concentrate" ? "concentrate" : "powder",
+  const [productType, setProductType] = useState<PortalProductType>(
+    initialProduct?.product_type === "concentrate" ? "concentrate" : "powder",
+  );
+  const [productPurpose, setProductPurpose] = useState<PortalProductPurpose>(
+    initialProduct?.product_purpose === "milkshake"
+      ? "milkshake"
+      : "sport nutrition",
   );
   const [servingQuantity, setServingQuantity] = useState(
     initialProduct?.serving_qty !== undefined &&
@@ -208,7 +231,8 @@ export function NewProductPage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const hydratedProductDetailsId = useRef(
-    initialProduct?.components !== undefined && initialProduct.dosage !== undefined
+    initialProduct?.components !== undefined &&
+      initialProduct.dosage !== undefined
       ? String(initialProduct.id)
       : "",
   );
@@ -335,8 +359,16 @@ export function NewProductPage({
     ) &&
     Number(servingQuantity) > 0 &&
     Number(dosage.drinkVolume) > 0 &&
-    Number(dosage.water) > 0 &&
+    (dosage.fullDrinkPrice === "" || Number(dosage.fullDrinkPrice) >= 0) &&
+    (dosage.smallDrinkVolume === "" ||
+      (Number(dosage.smallDrinkVolume) >= 100 &&
+        Number(dosage.smallDrinkVolume) < Number(dosage.drinkVolume))) &&
+    (dosage.smallDrinkPrice === "" || Number(dosage.smallDrinkPrice) >= 0) &&
+    Number(dosage.water) >= 50 &&
+    Number(dosage.water) <= 500 &&
     Number(dosage.product) > 0 &&
+    Number(dosage.water) + Number(dosage.product) <=
+      Number(dosage.drinkVolume) &&
     Number(dosage.conversionFactor) > 0;
 
   const resetProductVisuals = () => {
@@ -354,8 +386,13 @@ export function NewProductPage({
         ? product.id
         : "";
     setDescription(selected?.description || "");
-    setCategory(
-      selected?.category === "concentrate" ? "concentrate" : "powder",
+    setProductType(
+      selected?.product_type === "concentrate" ? "concentrate" : "powder",
+    );
+    setProductPurpose(
+      selected?.product_purpose === "milkshake"
+        ? "milkshake"
+        : "sport nutrition",
     );
     setServingQuantity(
       selected?.serving_qty !== undefined && selected?.serving_qty !== null
@@ -423,12 +460,24 @@ export function NewProductPage({
               }),
             ),
             description,
-            category,
+            productType,
+            productPurpose,
             servingQty: Number(servingQuantity),
             servingUnit,
             dosage: {
               fullDrinkVolume: Number(dosage.drinkVolume),
-              drinkVolumeUnit: dosage.drinkVolumeUnit,
+              fullDrinkPrice:
+                dosage.fullDrinkPrice === ""
+                  ? null
+                  : Number(dosage.fullDrinkPrice),
+              smallDrinkVolume:
+                dosage.smallDrinkVolume === ""
+                  ? null
+                  : Number(dosage.smallDrinkVolume),
+              smallDrinkPrice:
+                dosage.smallDrinkPrice === ""
+                  ? null
+                  : Number(dosage.smallDrinkPrice),
               water: Number(dosage.water),
               product: Number(dosage.product),
               conversionFactor: Number(dosage.conversionFactor),
@@ -455,7 +504,7 @@ export function NewProductPage({
   return (
     <PortalShell
       title={isEditing ? "Edit product" : "New product"}
-      description={`${isEditing ? "Edit a product in" : "Add a product to"} ${productLineName}.`}
+      description={`Edit what customers will see as one of ${productLineName} product line items (flavors).`}
       clientName={session.client.company}
       access={session.access}
     >
@@ -465,7 +514,6 @@ export function NewProductPage({
         alignItems="stretch"
       >
         <NewProductForm
-          category={category}
           componentRows={componentRows}
           components={components}
           description={description}
@@ -475,7 +523,6 @@ export function NewProductPage({
           mainImageId={mainImageId}
           mainImageOptions={mainImageOptions}
           name={name}
-          onCategoryChange={setCategory}
           onComponentRowsChange={setComponentRows}
           onCreateCustomProduct={resetProductVisuals}
           onDescriptionChange={setDescription}
@@ -485,6 +532,8 @@ export function NewProductPage({
             if (!isEditing) resetProductVisuals();
           }}
           onProductSelect={selectProduct}
+          onProductPurposeChange={setProductPurpose}
+          onProductTypeChange={setProductType}
           onServingQuantityChange={setServingQuantity}
           onServingUnitChange={setServingUnit}
           onShowMoreMainImages={tasteMainDialog.onOpen}
@@ -497,6 +546,8 @@ export function NewProductPage({
           }}
           productLineName={productLineName}
           productOptions={productOptions}
+          productPurpose={productPurpose}
+          productType={productType}
           servingQuantity={servingQuantity}
           servingUnit={servingUnit}
           splashId={splashId}
@@ -543,7 +594,7 @@ export function NewProductPage({
         splashes={splashes}
         tastes={tastes}
       />
-      <HStack spacing="3" mt="4" justify="flex-end">
+      <HStack spacing="3" mt="4" justify="flex-start">
         <Button
           type="submit"
           form={NEW_PRODUCT_FORM_ID}
