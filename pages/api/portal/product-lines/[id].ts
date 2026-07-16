@@ -53,10 +53,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "DELETE") {
+      // Cascade: delete the user's own products in this line first, so they don't
+      // stay behind as orphans. Products authored by someone else (legacy data)
+      // are only detached by the line deletion itself.
+      const cascadeParams = new URLSearchParams();
+      cascadeParams.set("filters[product_line][id][$eq]", String(ownedProductLine.id));
+      cascadeParams.set("filters[author][id][$eq]", String(session.user.id));
+      cascadeParams.set("fields[0]", "id");
+      cascadeParams.set("pagination[pageSize]", "200");
+      const ownedProducts = await requestStrapiRestAsService<{ id: string | number }[]>(
+        `/api/products?${cascadeParams.toString()}`,
+      );
+      for (const product of ownedProducts) {
+        await requestStrapiRestAsService(`/api/products/${product.id}`, {
+          method: "DELETE",
+        }).catch(() => undefined);
+      }
+
       await requestStrapiRestAsService(`/api/product-lines/${ownedProductLine.id}`, {
         method: "DELETE",
       });
-      return res.status(200).json({ deleted: true });
+      return res.status(200).json({ deleted: true, deletedProducts: ownedProducts.length });
     }
 
     const name = capitalizeName(asString(req.body?.name));

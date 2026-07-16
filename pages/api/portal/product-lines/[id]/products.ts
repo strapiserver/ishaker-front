@@ -29,7 +29,9 @@ type SubmittedComponent = {
 
 type SubmittedDosage = {
   full_drink_volume: number;
-  drink_volume_unit: "ml" | "oz";
+  full_drink_price: number | null;
+  small_drink_volume: number | null;
+  small_drink_price: number | null;
   water: number;
   product: number;
   conversion_factor: number;
@@ -45,11 +47,21 @@ const asId = (value: unknown) => {
   return /^\d+$/.test(id) ? id : "";
 };
 
+const optionalAmount = (value: unknown, allowZero = false) => {
+  if (value === null || value === undefined || value === "") return null;
+  const amount = Number(value);
+  return Number.isFinite(amount) && (allowZero ? amount >= 0 : amount > 0)
+    ? amount
+    : undefined;
+};
+
 const parseDosage = (value: unknown): SubmittedDosage | null => {
   if (!value || typeof value !== "object") return null;
   const dosage = value as Record<string, unknown>;
   const fullDrinkVolume = Number(dosage.fullDrinkVolume);
-  const drinkVolumeUnit = asString(dosage.drinkVolumeUnit);
+  const fullDrinkPrice = optionalAmount(dosage.fullDrinkPrice, true);
+  const smallDrinkVolume = optionalAmount(dosage.smallDrinkVolume);
+  const smallDrinkPrice = optionalAmount(dosage.smallDrinkPrice, true);
   const water = Number(dosage.water);
   const product = Number(dosage.product);
   const conversionFactor = Number(dosage.conversionFactor);
@@ -57,13 +69,17 @@ const parseDosage = (value: unknown): SubmittedDosage | null => {
     ![fullDrinkVolume, water, product, conversionFactor].every(
       (amount) => Number.isFinite(amount) && amount > 0,
     ) ||
-    !["ml", "oz"].includes(drinkVolumeUnit)
+    fullDrinkPrice === undefined ||
+    smallDrinkVolume === undefined ||
+    smallDrinkPrice === undefined
   ) {
     return null;
   }
   return {
     full_drink_volume: fullDrinkVolume,
-    drink_volume_unit: drinkVolumeUnit as "ml" | "oz",
+    full_drink_price: fullDrinkPrice,
+    small_drink_volume: smallDrinkVolume,
+    small_drink_price: smallDrinkPrice,
     water,
     product,
     conversion_factor: conversionFactor,
@@ -127,7 +143,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const submittedDosage = parseDosage(req.body?.dosage);
   const name = capitalizeName(asString(req.body?.name));
   const description = asString(req.body?.description);
-  const category = asString(req.body?.category);
+  const productType = asString(req.body?.productType);
+  const productPurpose = asString(req.body?.productPurpose);
   const servingUnit = asString(req.body?.servingUnit);
   const servingQty = Number(req.body?.servingQty);
 
@@ -149,8 +166,54 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!submittedDosage) {
     return res.status(400).json({
       error: "invalid_dosage",
-      message: "All dosage values must be positive and include a valid volume unit.",
+      message: "Required dosage values must be positive and prices cannot be negative.",
     });
+  }
+  if (
+    submittedDosage.water + submittedDosage.product >
+    submittedDosage.full_drink_volume
+  ) {
+    return res.status(400).json({
+      error: "dosage_exceeds_drink_volume",
+      message: "Water + Product can't exceed the drink volume.",
+    });
+  }
+  if (
+    submittedDosage.small_drink_volume !== null &&
+    submittedDosage.small_drink_volume < 100
+  ) {
+    return res.status(400).json({
+      error: "small_drink_volume_too_low",
+      message: "Small drink volume must be at least 100ml.",
+    });
+  }
+  if (submittedDosage.water < 50 || submittedDosage.water > 500) {
+    return res.status(400).json({
+      error: "water_out_of_range",
+      message: "Water must be between 50ml and 500ml.",
+    });
+  }
+  if (
+    submittedDosage.small_drink_volume !== null &&
+    submittedDosage.small_drink_volume >= submittedDosage.full_drink_volume
+  ) {
+    return res.status(400).json({
+      error: "small_drink_volume_too_large",
+      message: "Small drink volume must be less than full drink volume.",
+    });
+  }
+  if (submittedDosage.small_drink_volume !== null) {
+    const scale =
+      submittedDosage.small_drink_volume /
+      submittedDosage.full_drink_volume;
+    const scaledContents =
+      submittedDosage.water * scale + submittedDosage.product * scale;
+    if (scaledContents > submittedDosage.small_drink_volume + 1e-9) {
+      return res.status(400).json({
+        error: "dosage_exceeds_small_drink_volume",
+        message: "Water + Product can't exceed the drink volume.",
+      });
+    }
   }
   if (name.length < 2 || name.length > 100) {
     return res.status(400).json({
@@ -164,8 +227,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: "Description must not exceed 2000 characters.",
     });
   }
-  if (!["powder", "concentrate"].includes(category)) {
-    return res.status(400).json({ error: "invalid_category" });
+  if (!["powder", "concentrate"].includes(productType)) {
+    return res.status(400).json({
+      error: "invalid_product_type",
+      message: "Select a valid product type.",
+    });
+  }
+  if (!["milkshake", "sport nutrition"].includes(productPurpose)) {
+    return res.status(400).json({
+      error: "invalid_product_purpose",
+      message: "Select a valid product purpose.",
+    });
   }
   if (
     !["g", "ml"].includes(servingUnit) ||
@@ -184,8 +256,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   ownershipParams.set("populate[products][fields][0]", "name");
   ownershipParams.set("pagination[pageSize]", "1000");
 
+  // Name uniqueness is PER AUTHOR (reusing a root product clones it into the
+  // client's own space under the same name, so a global check would always 409).
   const duplicateNameParams = new URLSearchParams();
   duplicateNameParams.set("filters[name][$eqi]", name);
+  duplicateNameParams.set("filters[author][id][$eq]", String(session.user.id));
   if (isEditing && existingProductId) {
     duplicateNameParams.set("filters[id][$ne]", existingProductId);
   }
@@ -242,11 +317,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             `/api/components?${componentParams.toString()}`,
           )
         : Promise.resolve([]),
-      !existingProductId || isEditing
-        ? requestStrapiRestAsService<CreatedProduct[]>(
-            `/api/products?${duplicateNameParams.toString()}`,
-          )
-        : Promise.resolve([]),
+      requestStrapiRestAsService<CreatedProduct[]>(
+        `/api/products?${duplicateNameParams.toString()}`,
+      ),
     ]);
 
     if (duplicateProducts.length) {
@@ -325,7 +398,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       unit,
     }));
 
-    if (existingProductId) {
+    if (existingProductId && isEditing) {
+      // Editing one of the user's own products in this line: update in place.
       const existingProduct = await requestStrapiRestAsService<CreatedProduct>(
         `/api/products/${existingProductId}`,
       );
@@ -341,9 +415,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         method: "PUT",
         body: JSON.stringify({
           data: {
-            ...(isEditing ? { name } : {}),
+            name,
             ...(description ? { description } : { description: null }),
-            category,
+            product_type: productType,
+            product_purpose: productPurpose,
             serving_qty: servingQty,
             serving_unit: servingUnit,
             custom_splash: splash.id,
@@ -368,16 +443,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ product: existingProduct, reused: true });
     }
 
+    // Reusing a reference product must NOT connect it (Product.product_line is
+    // many-to-one — connecting would MOVE it out of its owner's line). Instead we
+    // CLONE it: a new product owned by this user, with base_product provenance.
+    if (existingProductId) {
+      const baseProduct = await requestStrapiRestAsService<CreatedProduct>(
+        `/api/products/${existingProductId}`,
+      );
+      if (!baseProduct?.id) {
+        return res.status(400).json({
+          error: "invalid_product",
+          message: "The selected product no longer exists.",
+        });
+      }
+    }
+
     const product = await requestStrapiRestAsService<CreatedProduct>("/api/products", {
       method: "POST",
       body: JSON.stringify({
         data: {
           name,
           ...(description ? { description } : {}),
-          category,
+          product_type: productType,
+          product_purpose: productPurpose,
           serving_qty: servingQty,
           serving_unit: servingUnit,
           author: session.user.id,
+          ...(existingProductId ? { base_product: Number(existingProductId) } : {}),
           custom_splash: splash.id,
           custom_circle: circle.id,
           custom_main: mainImage.id,
