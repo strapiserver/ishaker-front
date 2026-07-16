@@ -121,18 +121,6 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
     const productLine = productLines[0];
     if (!productLine) return { notFound: true };
 
-    const rootProductLineId = productLine.base_product_line?.id;
-    if (!rootProductLineId) {
-      console.error(
-        `[products/new] product line ${productLine.id} has no root base product line`,
-      );
-      return { notFound: true };
-    }
-    productParams.set(
-      "filters[product_line][id][$eq]",
-      String(rootProductLineId),
-    );
-
     const [
       rootProducts,
       editingProducts,
