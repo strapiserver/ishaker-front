@@ -33,6 +33,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   params.set("filters[id][$eq]", productLineId);
   params.set("filters[author][id][$eq]", String(session.user.id));
   params.set("populate[products][fields][0]", "name");
+  params.set(
+    "populate[products][filters][author][id][$eq]",
+    String(session.user.id),
+  );
   params.set("pagination[pageSize]", "1");
 
   try {

@@ -254,6 +254,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   ownershipParams.set("filters[id][$eq]", productLineId);
   ownershipParams.set("filters[author][id][$eq]", String(session.user.id));
   ownershipParams.set("populate[products][fields][0]", "name");
+  ownershipParams.set(
+    "populate[products][filters][author][id][$eq]",
+    String(session.user.id),
+  );
   ownershipParams.set("pagination[pageSize]", "1000");
 
   // Name uniqueness is PER AUTHOR (reusing a root product clones it into the
