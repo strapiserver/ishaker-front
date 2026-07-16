@@ -37,10 +37,19 @@ export const clearPortalSession = (res: NextApiResponse) => {
 };
 
 export const fetchPortalUser = async (jwt: string) => {
-  return requestStrapiRestWithJwt<PortalUser>(
-    "/api/users/me?populate[0]=client&populate[1]=role",
-    jwt,
-  );
+  const requestUser = () =>
+    requestStrapiRestWithJwt<PortalUser>(
+      "/api/users/me?populate[0]=client&populate[1]=role",
+      jwt,
+    );
+
+  try {
+    return await requestUser();
+  } catch (error) {
+    const status = (error as { status?: number }).status;
+    if (status === 401 || status === 403) throw error;
+    return requestUser();
+  }
 };
 
 const normalizeRoleKey = (value?: string) =>
@@ -107,8 +116,26 @@ export const resolvePortalSession = async (
     };
   }
 
-  const client = await fetchClientById(user.client.id);
-  if (!client?.id) return null;
+  let client: Client;
+  try {
+    const resolvedClient = await fetchClientById(user.client.id);
+    if (!resolvedClient?.id) return null;
+    client = resolvedClient;
+  } catch (error) {
+    const status = (error as { status?: number }).status;
+    if (status === 404) return null;
+
+    console.error(
+      "[portal] client details unavailable; keeping authenticated session:",
+      error,
+    );
+    const sessionClient = user.client as { id: string | number; company?: string };
+    client = {
+      id: sessionClient.id,
+      company: sessionClient.company || user.username || user.email || "Client",
+      machines: [],
+    } as Client;
+  }
 
   return {
     user,
