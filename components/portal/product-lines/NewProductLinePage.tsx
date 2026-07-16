@@ -1,4 +1,4 @@
-import { Alert, AlertIcon, SimpleGrid } from "@chakra-ui/react";
+import { Alert, AlertIcon, SimpleGrid, useToast } from "@chakra-ui/react";
 import { useRouter } from "next/router";
 import { FormEvent, useMemo, useState } from "react";
 import useSWR from "swr";
@@ -64,6 +64,7 @@ export function NewProductLinePage({
   loadError,
 }: NewProductLinePageProps) {
   const router = useRouter();
+  const toast = useToast();
   const isEditing = Boolean(productLine?.id);
   const [name, setName] = useState(productLine?.name || "");
   const [baseProductLineId, setBaseProductLineId] = useState(
@@ -183,13 +184,27 @@ export function NewProductLinePage({
             `Product line could not be ${isEditing ? "updated" : "created"}.`,
         );
       }
+      toast({
+        title: "Product line saved",
+        description: "Updates will take place on machine in 5 minutes.",
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+      });
       await router.push("/product-lines");
     } catch (submissionError) {
-      setError(
+      const message =
         submissionError instanceof Error
           ? submissionError.message
-          : `Product line could not be ${isEditing ? "updated" : "created"}.`,
-      );
+          : `Product line could not be ${isEditing ? "updated" : "created"}.`;
+      setError(message);
+      toast({
+        title: "Product line save failed",
+        description: message,
+        status: "error",
+        duration: 7000,
+        isClosable: true,
+      });
     } finally {
       setIsSubmitting(false);
     }

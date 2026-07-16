@@ -4,6 +4,7 @@ import {
   Link,
   SimpleGrid,
   useDisclosure,
+  useToast,
 } from "@chakra-ui/react";
 import { useRouter } from "next/router";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
@@ -169,6 +170,7 @@ export function NewProductPage({
   tastes,
 }: NewProductPageProps) {
   const router = useRouter();
+  const toast = useToast();
   const splashDialog = useDisclosure();
   const tasteMainDialog = useDisclosure();
   const initialProduct = products.find(
@@ -489,13 +491,27 @@ export function NewProductPage({
       if (!response.ok) {
         throw new Error(payload?.message || "Product could not be created.");
       }
+      toast({
+        title: "Product saved",
+        description: "Updates will take place on machine in 5 minutes.",
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+      });
       await router.push("/product-lines");
     } catch (submissionError) {
-      setError(
+      const message =
         submissionError instanceof Error
           ? submissionError.message
-          : "Product could not be created.",
-      );
+          : "Product could not be saved.";
+      setError(message);
+      toast({
+        title: "Product save failed",
+        description: message,
+        status: "error",
+        duration: 7000,
+        isClosable: true,
+      });
     } finally {
       setIsSubmitting(false);
     }
