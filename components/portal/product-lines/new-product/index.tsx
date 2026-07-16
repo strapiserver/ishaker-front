@@ -151,9 +151,9 @@ const toComponentRows = (product?: PortalProduct): ProductComponentRow[] => {
 export type NewProductPageProps = {
   circles: PortalCircle[];
   components: PortalComponent[];
-  initialProductId?: string;
+  editingProduct?: PortalProduct | null;
   productLine: PortalProductLine;
-  products: PortalProduct[];
+  templateProducts: PortalProduct[];
   session: PortalSession;
   splashes: PortalSplash[];
   tastes: PortalTaste[];
@@ -162,9 +162,9 @@ export type NewProductPageProps = {
 export function NewProductPage({
   circles,
   components,
-  initialProductId = "",
+  editingProduct = null,
   productLine,
-  products,
+  templateProducts,
   session,
   splashes,
   tastes,
@@ -173,9 +173,7 @@ export function NewProductPage({
   const toast = useToast();
   const splashDialog = useDisclosure();
   const tasteMainDialog = useDisclosure();
-  const initialProduct = products.find(
-    (product) => String(product.id) === initialProductId,
-  );
+  const initialProduct = editingProduct || undefined;
   const isEditing = Boolean(initialProduct);
   const [name, setName] = useState(
     initialProduct ? capitalizeName(initialProduct.name) : "",
@@ -239,9 +237,12 @@ export function NewProductPage({
       : "",
   );
   const productLineName = capitalizeName(productLine.name);
-  const selectedProduct = products.find(
+  const selectedProduct = templateProducts.find(
     (product) => String(product.id) === existingProductId,
-  );
+  ) ||
+    (editingProduct && String(editingProduct.id) === existingProductId
+      ? editingProduct
+      : undefined);
   const {
     data: selectedProductResponse,
     error: selectedProductError,
@@ -300,15 +301,13 @@ export function NewProductPage({
     );
   }, [existingProductId, selectedProductResponse]);
 
-  const productOptions: ProductNameOption[] = products
-    .filter((product) => product.author?.username === "root")
-    .map((product) => ({
-      id: String(product.id),
-      name: capitalizeName(product.name),
-      imageUrl: product.taste?.main?.url
-        ? toAbsoluteUrl(product.taste.main.url)
-        : "",
-    }));
+  const productOptions: ProductNameOption[] = templateProducts.map((product) => ({
+    id: String(product.id),
+    name: capitalizeName(product.name),
+    imageUrl: product.taste?.main?.url
+      ? toAbsoluteUrl(product.taste.main.url)
+      : "",
+  }));
   const splashOptions: SearchableImageOption[] = splashes.map((splash) => ({
     id: String(splash.id),
     name: capitalizeName(splash.name),
@@ -384,7 +383,9 @@ export function NewProductPage({
   const selectProduct = (product: ProductNameOption) => {
     setName(product.name);
     setExistingProductId(product.id);
-    const selected = products.find((item) => String(item.id) === product.id);
+    const selected = templateProducts.find(
+      (item) => String(item.id) === product.id,
+    );
     hydratedProductDetailsId.current =
       selected?.components !== undefined && selected.dosage !== undefined
         ? product.id

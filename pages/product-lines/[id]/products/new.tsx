@@ -163,31 +163,21 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
       ),
     ]);
 
-    const products = [
-      ...rootProducts,
-      ...editingProducts.filter(
-        (product) =>
-          !rootProducts.some(
-            (rootProduct) => String(rootProduct.id) === String(product.id),
-          ),
-      ),
-    ];
-    const initialProductId = editingProducts.some(
-      (product) => String(product.id) === requestedProductId,
-    )
-      ? requestedProductId
-      : "";
+    const templateProducts = rootProducts.filter(
+      (product) => product.author?.username === "root",
+    );
+    const editingProduct = editingProducts[0] || null;
 
     return {
       props: {
         session: result.session,
         productLine,
-        products,
+        templateProducts,
+        editingProduct,
         splashes,
         circles,
         tastes,
         components,
-        initialProductId,
       },
     };
   } catch (error) {
