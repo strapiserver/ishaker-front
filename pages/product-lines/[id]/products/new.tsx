@@ -27,6 +27,13 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
     : context.params?.id;
   const productLineId = rawId && /^\d+$/.test(rawId) ? rawId : "";
   if (!productLineId) return { notFound: true };
+  const requestedProductIdRaw = Array.isArray(context.query.productId)
+    ? context.query.productId[0]
+    : context.query.productId;
+  const requestedProductId =
+    requestedProductIdRaw && /^\d+$/.test(requestedProductIdRaw)
+      ? requestedProductIdRaw
+      : "";
 
   const params = new URLSearchParams();
   params.set("filters[id][$eq]", productLineId);
@@ -35,9 +42,11 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
   params.set("populate[cup][populate][image][fields][0]", "url");
   params.set("populate[cup][populate][image][fields][1]", "formats");
   params.set("populate[brands][populate][logo][fields][0]", "url");
+  params.set("populate[base_product_line][fields][0]", "name");
   params.set("pagination[pageSize]", "1000");
 
   const productParams = new URLSearchParams();
+  productParams.set("filters[author][username][$eq]", "root");
   productParams.set("fields[0]", "name");
   productParams.set("fields[1]", "description");
   productParams.set("fields[2]", "product_type");
@@ -65,8 +74,17 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
   productParams.set("populate[components][fields][2]", "default_value");
   productParams.set("populate[nutrition]", "*");
   productParams.set("populate[dosage]", "*");
+  productParams.set("populate[author][fields][0]", "username");
   productParams.set("sort[0]", "name:ASC");
   productParams.set("pagination[pageSize]", "1000");
+
+  const editingProductParams = new URLSearchParams(productParams);
+  editingProductParams.delete("filters[author][username][$eq]");
+  editingProductParams.set("filters[id][$eq]", requestedProductId);
+  editingProductParams.set(
+    "filters[author][id][$eq]",
+    String(result.session.user.id),
+  );
 
   const splashParams = new URLSearchParams();
   splashParams.set("fields[0]", "name");
@@ -97,13 +115,40 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
   componentParams.set("pagination[pageSize]", "1000");
 
   try {
-    const [productLines, products, splashes, circles, tastes, components] = await Promise.all([
-      requestStrapiRestAsService<PortalProductLine[]>(
-        `/api/product-lines?${params.toString()}`,
-      ),
+    const productLines = await requestStrapiRestAsService<PortalProductLine[]>(
+      `/api/product-lines?${params.toString()}`,
+    );
+    const productLine = productLines[0];
+    if (!productLine) return { notFound: true };
+
+    const rootProductLineId = productLine.base_product_line?.id;
+    if (!rootProductLineId) {
+      console.error(
+        `[products/new] product line ${productLine.id} has no root base product line`,
+      );
+      return { notFound: true };
+    }
+    productParams.set(
+      "filters[product_line][id][$eq]",
+      String(rootProductLineId),
+    );
+
+    const [
+      rootProducts,
+      editingProducts,
+      splashes,
+      circles,
+      tastes,
+      components,
+    ] = await Promise.all([
       requestStrapiRestAsService<PortalProduct[]>(
         `/api/products?${productParams.toString()}`,
       ),
+      requestedProductId
+        ? requestStrapiRestAsService<PortalProduct[]>(
+            `/api/products?${editingProductParams.toString()}`,
+          )
+        : Promise.resolve([]),
       requestStrapiRestAsService<PortalSplash[]>(
         `/api/splashes?${splashParams.toString()}`,
       ),
@@ -117,12 +162,17 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
         `/api/components?${componentParams.toString()}`,
       ),
     ]);
-    if (!productLines[0]) return { notFound: true };
 
-    const requestedProductId = Array.isArray(context.query.productId)
-      ? context.query.productId[0]
-      : context.query.productId;
-    const initialProductId = products.some(
+    const products = [
+      ...rootProducts,
+      ...editingProducts.filter(
+        (product) =>
+          !rootProducts.some(
+            (rootProduct) => String(rootProduct.id) === String(product.id),
+          ),
+      ),
+    ];
+    const initialProductId = editingProducts.some(
       (product) => String(product.id) === requestedProductId,
     )
       ? requestedProductId
@@ -131,7 +181,7 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
     return {
       props: {
         session: result.session,
-        productLine: productLines[0],
+        productLine,
         products,
         splashes,
         circles,

@@ -106,6 +106,7 @@ export type PortalProductPurpose = "milkshake" | "sport nutrition";
 export type PortalProduct = {
   id: string | number;
   name: string;
+  author?: Pick<PortalUser, "id" | "username" | "email"> | null;
   description?: string | null;
   product_type?: PortalProductType | null;
   product_purpose?: PortalProductPurpose | null;

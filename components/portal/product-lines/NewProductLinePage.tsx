@@ -185,8 +185,8 @@ export function NewProductLinePage({
         );
       }
       toast({
-        title: "Product line saved",
-        description: "Updates will take place on machine in 5 minutes.",
+        title: "Updates will take 5 minutes",
+        description: "Check machine after that time",
         status: "success",
         duration: 5000,
         isClosable: true,

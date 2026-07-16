@@ -300,13 +300,15 @@ export function NewProductPage({
     );
   }, [existingProductId, selectedProductResponse]);
 
-  const productOptions: ProductNameOption[] = products.map((product) => ({
-    id: String(product.id),
-    name: capitalizeName(product.name),
-    imageUrl: product.taste?.main?.url
-      ? toAbsoluteUrl(product.taste.main.url)
-      : "",
-  }));
+  const productOptions: ProductNameOption[] = products
+    .filter((product) => product.author?.username === "root")
+    .map((product) => ({
+      id: String(product.id),
+      name: capitalizeName(product.name),
+      imageUrl: product.taste?.main?.url
+        ? toAbsoluteUrl(product.taste.main.url)
+        : "",
+    }));
   const splashOptions: SearchableImageOption[] = splashes.map((splash) => ({
     id: String(splash.id),
     name: capitalizeName(splash.name),
