@@ -107,7 +107,12 @@ export function PortalShell({
           </Container>
         </Box>
 
-        <Container maxW="7xl" py={{ base: "8", md: "10" }}>
+        <Container
+          maxW="7xl"
+          py={{ base: "8", md: "10" }}
+          display="flex"
+          flexDirection="column"
+        >
           <Box
             as="a"
             href={whatsappBotUrl}
@@ -120,7 +125,8 @@ export function PortalShell({
             border="1px solid"
             borderColor="whiteAlpha.100"
             bg="whiteAlpha.50"
-            mb="8"
+            mt="8"
+            order="3"
             _hover={{
               transform: "translateY(-2px)",
               borderColor: "whiteAlpha.300",
@@ -224,7 +230,7 @@ export function PortalShell({
             </Flex>
           </Box>
 
-          <VStack spacing="2" mb="8" align="stretch">
+          <VStack spacing="2" mb="8" align="stretch" order="1">
             <Text
               color="bg.50"
               fontSize={{ base: "3xl", md: "4xl" }}
@@ -234,7 +240,7 @@ export function PortalShell({
             </Text>
             {description ? <Text color="bg.300">{description}</Text> : null}
           </VStack>
-          {children}
+          <Box order="2">{children}</Box>
         </Container>
       </Box>
     </>
