@@ -39,21 +39,23 @@ const readLocalStrapiEnv = () => {
 const localStrapiEnv = readLocalStrapiEnv();
 
 const getServiceCredentialCandidates = () => {
-  const environmentIdentifier =
-    process.env.STRAPI_AUTH_IDENTIFIER ||
-    process.env.STRAPI_MACHINE_USER_LOGIN;
-  const environmentPassword =
-    process.env.STRAPI_AUTH_PASSWORD ||
-    process.env.STRAPI_MACHINE_USER_PASSWORD;
-  const localIdentifier =
-    localStrapiEnv.STRAPI_AUTH_IDENTIFIER ||
-    localStrapiEnv.STRAPI_MACHINE_USER_LOGIN;
-  const localPassword =
-    localStrapiEnv.STRAPI_AUTH_PASSWORD ||
-    localStrapiEnv.STRAPI_MACHINE_USER_PASSWORD;
   const candidates = [
-    { identifier: environmentIdentifier, password: environmentPassword },
-    { identifier: localIdentifier, password: localPassword },
+    {
+      identifier: process.env.STRAPI_MACHINE_USER_LOGIN,
+      password: process.env.STRAPI_MACHINE_USER_PASSWORD,
+    },
+    {
+      identifier: process.env.STRAPI_AUTH_IDENTIFIER,
+      password: process.env.STRAPI_AUTH_PASSWORD,
+    },
+    {
+      identifier: localStrapiEnv.STRAPI_MACHINE_USER_LOGIN,
+      password: localStrapiEnv.STRAPI_MACHINE_USER_PASSWORD,
+    },
+    {
+      identifier: localStrapiEnv.STRAPI_AUTH_IDENTIFIER,
+      password: localStrapiEnv.STRAPI_AUTH_PASSWORD,
+    },
   ].filter(
     (
       candidate,
@@ -223,16 +225,7 @@ export const requestStrapiRestAsService = async <T = any>(
   path: string,
   init?: RequestInit,
 ) => {
-  const method = (init?.method || "GET").toUpperCase();
-  const allowPublicReadFallback = method === "GET";
-  let jwt: string;
-
-  try {
-    jwt = await getStrapiJwt(false);
-  } catch (error) {
-    if (!allowPublicReadFallback) throw error;
-    return requestStrapiRest<T>(path, init);
-  }
+  let jwt = await getStrapiJwt(false);
 
   try {
     return await requestStrapiRest<T>(path, init, jwt);
@@ -240,13 +233,8 @@ export const requestStrapiRestAsService = async <T = any>(
     const status = (error as { status?: number }).status;
     if (status !== 401 && status !== 403) throw error;
 
-    try {
-      jwt = await getStrapiJwt(true);
-      return requestStrapiRest<T>(path, init, jwt);
-    } catch (refreshError) {
-      if (!allowPublicReadFallback) throw refreshError;
-      return requestStrapiRest<T>(path, init);
-    }
+    jwt = await getStrapiJwt(true);
+    return requestStrapiRest<T>(path, init, jwt);
   }
 };
 
