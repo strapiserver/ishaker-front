@@ -44,6 +44,21 @@ export type PortalMachineSummary = Machine & {
   statusLabel: string;
 };
 
+export type PortalCatalogProduct = {
+  id: number;
+  name: string;
+  product_type: "powder" | "concentrate";
+  taste?: { name?: string | null } | null;
+};
+
+export type PortalMachineCell = {
+  id: number;
+  position: number;
+  isActive: boolean;
+  cell_category: "powder" | "concentrate" | null;
+  product: PortalCatalogProduct | null;
+};
+
 export type PromoCode = {
   id: string | number;
   title?: string;
@@ -107,6 +122,7 @@ export type PortalProduct = {
   id: string | number;
   name: string;
   author?: Pick<PortalUser, "id" | "username" | "email"> | null;
+  product_line?: Pick<PortalProductLine, "id" | "name" | "brands"> | null;
   description?: string | null;
   product_type?: PortalProductType | null;
   product_purpose?: PortalProductPurpose | null;
@@ -161,6 +177,8 @@ export type PortalProductLine = {
   name: string;
   isPopular?: boolean;
   author?: Pick<PortalUser, "id" | "username" | "email"> | null;
+  client?: Pick<Client, "id" | "company"> | null;
+  machines?: Machine[];
   base_product_line?: Pick<PortalProductLine, "id" | "name"> | null;
   cup?: PortalCup | null;
   brands?: PortalBrand[];

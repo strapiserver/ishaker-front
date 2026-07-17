@@ -17,10 +17,28 @@ export type Machine = {
   bootstrap_version?: string;
   last_seen_at?: string;
   admin_comment?: string;
+  product_lines?: Array<{
+    id: string | number;
+    name?: string;
+    isActive?: boolean;
+  }>;
   client?: Client | null;
   machine_type?: {
     id: string | number;
     name?: string;
+    preview?: {
+      id: string | number;
+      name?: string;
+      url?: string;
+      formats?: Record<
+        string,
+        {
+          url?: string;
+          width?: number;
+          height?: number;
+        }
+      > | null;
+    } | null;
   } | null;
 };
 

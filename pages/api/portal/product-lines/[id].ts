@@ -17,10 +17,25 @@ const asId = (value: unknown) => {
   return /^\d+$/.test(id) ? id : "";
 };
 
-const createOwnershipParams = (id: string, authorId: number) => {
+const asIds = (value: unknown) =>
+  Array.isArray(value)
+    ? [...new Set(value.map(asId).filter(Boolean))]
+    : [];
+
+const createOwnershipParams = (
+  id: string,
+  session: Awaited<ReturnType<typeof getPortalSessionFromApiRequest>>,
+) => {
   const params = new URLSearchParams();
   params.set("filters[id][$eq]", id);
-  params.set("filters[author][id][$eq]", String(authorId));
+  if (session?.access === "client") {
+    params.set(
+      "filters[author][client][id][$eq]",
+      String(session.client.id),
+    );
+  } else if (session) {
+    params.set("filters[author][id][$eq]", String(session.user.id));
+  }
   params.set("pagination[pageSize]", "1000");
   return params;
 };
@@ -41,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const ownedProductLines = await requestStrapiRestAsService<PortalProductLine[]>(
-      `/api/product-lines?${createOwnershipParams(productLineId, session.user.id).toString()}`,
+      `/api/product-lines?${createOwnershipParams(productLineId, session).toString()}`,
     );
     const ownedProductLine = ownedProductLines[0];
 
@@ -53,12 +68,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "DELETE") {
-      // Cascade: delete the user's own products in this line first, so they don't
-      // stay behind as orphans. Products authored by someone else (legacy data)
-      // are only detached by the line deletion itself.
+      // Cascade all products in the client-owned line so the now-required
+      // Product.product_line relation never leaves orphaned records.
       const cascadeParams = new URLSearchParams();
       cascadeParams.set("filters[product_line][id][$eq]", String(ownedProductLine.id));
-      cascadeParams.set("filters[author][id][$eq]", String(session.user.id));
       cascadeParams.set("fields[0]", "id");
       cascadeParams.set("pagination[pageSize]", "200");
       const ownedProducts = await requestStrapiRestAsService<{ id: string | number }[]>(
@@ -81,6 +94,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const cupId = asId(req.body?.cupId);
     const brandId = asId(req.body?.brandId);
     const customSplashId = asId(req.body?.customSplashId);
+    const machineIds = asIds(req.body?.machineIds);
+    const allowedMachineIds = new Set(session.machines.map((machine) => String(machine.id)));
+
+    if (machineIds.some((id) => !allowedMachineIds.has(id))) {
+      return res.status(403).json({
+        error: "invalid_machine",
+        message: "Every selected machine must belong to your client account.",
+      });
+    }
+
+    if (session.access === "client" && !machineIds.length) {
+      return res.status(400).json({
+        error: "machine_required",
+        message: "Select at least one machine for this product line.",
+      });
+    }
 
     if (name.length < 2 || name.length > 100) {
       return res.status(400).json({
@@ -103,7 +132,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const duplicateParams = new URLSearchParams();
     duplicateParams.set("filters[name][$eqi]", name);
-    duplicateParams.set("filters[author][id][$eq]", String(session.user.id));
+    if (session.access === "client") {
+      duplicateParams.set(
+        "filters[author][client][id][$eq]",
+        String(session.client.id),
+      );
+    } else {
+      duplicateParams.set("filters[author][id][$eq]", String(session.user.id));
+    }
     duplicateParams.set("filters[id][$ne]", String(ownedProductLine.id));
     duplicateParams.set("pagination[pageSize]", "1");
 
@@ -164,6 +200,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             cup: cup.id,
             brands: [brand.id],
             custom_splash: customSplash?.id || null,
+            ...(session.access === "client" ? { client: session.client.id } : {}),
+            machines: machineIds,
           },
         }),
       },

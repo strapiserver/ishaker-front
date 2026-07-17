@@ -1,6 +1,7 @@
 import {
   Alert,
   AlertIcon,
+  AspectRatio,
   Badge,
   Box,
   Button,
@@ -17,7 +18,7 @@ import type { GetServerSideProps } from "next";
 import { FormEvent, useState } from "react";
 import { PortalShell } from "../components/portal/PortalShell";
 import { requirePortalSession } from "../lib/portal/auth";
-import { getStrapiBaseUrl } from "../services/fetchers";
+import { getSmallestMediaUrl } from "../lib/portal/media";
 import { requestStrapiRestAsService } from "../services/server/strapiClient";
 import type { PortalSession, PortalTaste } from "../types/portal";
 
@@ -34,15 +35,14 @@ const encodeFile = (file: File): Promise<EncodedFile> =>
     reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
     reader.onload = () => {
       const result = String(reader.result || "");
-      resolve({ name: file.name, type: file.type, data: result.split(",")[1] || "" });
+      resolve({
+        name: file.name,
+        type: file.type,
+        data: result.split(",")[1] || "",
+      });
     };
     reader.readAsDataURL(file);
   });
-
-const mediaUrl = (url?: string) => {
-  if (!url) return "";
-  return url.startsWith("http") ? url : `${getStrapiBaseUrl()}${url}`;
-};
 
 export default function CatalogPage({ session, tastes }: CatalogPageProps) {
   const [name, setName] = useState("");
@@ -75,9 +75,12 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
         }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.message || "Submission failed.");
+      if (!response.ok)
+        throw new Error(payload?.message || "Submission failed.");
 
-      setMessage("Custom taste submitted for review. It is not live on machines yet.");
+      setMessage(
+        "Custom taste submitted for review. It is not live on machines yet.",
+      );
       setName("");
       setMain(null);
       setCircle(null);
@@ -99,56 +102,136 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
     >
       <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing="4" mb="10">
         {tastes.map((taste) => (
-          <Box key={taste.id} bg="bg.900" border="1px solid" borderColor="whiteAlpha.100" borderRadius="2xl" overflow="hidden">
+          <Box
+            key={taste.id}
+            bg="bg.900"
+            border="1px solid"
+            borderColor="whiteAlpha.100"
+            borderRadius="2xl"
+            overflow="hidden"
+          >
             {taste.main?.url ? (
-              <Image src={mediaUrl(taste.main.url)} alt={taste.name} h="180px" w="full" objectFit="cover" />
+              <AspectRatio ratio={1} bg="bg.800">
+                <Image
+                  src={getSmallestMediaUrl(taste.main)}
+                  alt={taste.name}
+                  w="full"
+                  h="full"
+                  objectFit="contain"
+                  p="3"
+                />
+              </AspectRatio>
             ) : null}
             <VStack p="5" spacing="2" align="stretch">
-              <Text color="bg.50" fontWeight="800">{taste.name}</Text>
-              {taste.submission_status === "pending" ? <Badge colorScheme="yellow" alignSelf="flex-start">Pending review</Badge> : null}
+              <Text color="bg.50" fontWeight="800">
+                {taste.name}
+              </Text>
+              {taste.submission_status === "pending" ? (
+                <Badge colorScheme="yellow" alignSelf="flex-start">
+                  Pending review
+                </Badge>
+              ) : null}
             </VStack>
           </Box>
         ))}
       </SimpleGrid>
 
-      <Box as="form" onSubmit={submit} bg="bg.900" border="1px solid" borderColor="whiteAlpha.100" borderRadius="2xl" p={{ base: "5", md: "7" }} maxW="760px">
+      <Box
+        as="form"
+        onSubmit={submit}
+        bg="bg.900"
+        border="1px solid"
+        borderColor="whiteAlpha.100"
+        borderRadius="2xl"
+        p={{ base: "5", md: "7" }}
+        maxW="760px"
+      >
         <VStack spacing="5" align="stretch">
           <Box>
-            <Text color="bg.50" fontSize="2xl" fontWeight="800">Add a custom taste</Text>
-            <Text color="bg.300" mt="1">Your submission stays hidden until the iShaker team reviews and approves it.</Text>
+            <Text color="bg.50" fontSize="2xl" fontWeight="800">
+              Add a custom taste
+            </Text>
+            <Text color="bg.300" mt="1">
+              Your submission stays hidden until the iShaker team reviews and
+              approves it.
+            </Text>
           </Box>
 
           <FormControl isRequired>
             <FormLabel>Taste name</FormLabel>
-            <Input value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={80} bg="bg.800" />
+            <Input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              minLength={2}
+              maxLength={80}
+              bg="bg.800"
+            />
           </FormControl>
 
           <FormControl isRequired>
             <FormLabel>Theme color</FormLabel>
-            <Input type="color" value={color} onChange={(event) => setColor(event.target.value)} w="100px" p="1" bg="bg.800" />
+            <Input
+              type="color"
+              value={color}
+              onChange={(event) => setColor(event.target.value)}
+              w="100px"
+              p="1"
+              bg="bg.800"
+            />
           </FormControl>
 
           <FormControl isRequired>
             <FormLabel>Main image</FormLabel>
-            <Input type="file" accept="image/png,image/jpeg,image/webp" p="1" onChange={(event) => setMain(event.target.files?.[0] || null)} />
+            <Input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              p="1"
+              onChange={(event) => setMain(event.target.files?.[0] || null)}
+            />
             <FormHelperText>PNG, JPEG, or WebP; maximum 5 MB.</FormHelperText>
           </FormControl>
 
           <FormControl isRequired>
             <FormLabel>Circle image</FormLabel>
-            <Input type="file" accept="image/png,image/jpeg,image/webp" p="1" onChange={(event) => setCircle(event.target.files?.[0] || null)} />
-            <FormHelperText>Square transparent PNG works best; maximum 5 MB.</FormHelperText>
+            <Input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              p="1"
+              onChange={(event) => setCircle(event.target.files?.[0] || null)}
+            />
+            <FormHelperText>
+              Square transparent PNG works best; maximum 5 MB.
+            </FormHelperText>
           </FormControl>
 
           <FormControl>
             <FormLabel>Ingredient images (optional)</FormLabel>
-            <Input type="file" multiple accept="image/png,image/jpeg,image/webp" p="1" onChange={(event) => setElements(Array.from(event.target.files || []).slice(0, 5))} />
+            <Input
+              type="file"
+              multiple
+              accept="image/png,image/jpeg,image/webp"
+              p="1"
+              onChange={(event) =>
+                setElements(Array.from(event.target.files || []).slice(0, 5))
+              }
+            />
             <FormHelperText>Up to 5 images, maximum 5 MB each.</FormHelperText>
           </FormControl>
 
-          {message ? <Alert status={isError ? "error" : "success"} borderRadius="xl"><AlertIcon />{message}</Alert> : null}
+          {message ? (
+            <Alert status={isError ? "error" : "success"} borderRadius="xl">
+              <AlertIcon />
+              {message}
+            </Alert>
+          ) : null}
 
-          <Button type="submit" variant="primary" alignSelf="flex-start" isLoading={isSubmitting} isDisabled={!name || !main || !circle}>
+          <Button
+            type="submit"
+            variant="primary"
+            alignSelf="flex-start"
+            isLoading={isSubmitting}
+            isDisabled={!name || !main || !circle}
+          >
             Submit custom taste
           </Button>
         </VStack>
@@ -157,13 +240,19 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
   );
 }
 
-export const getServerSideProps: GetServerSideProps<CatalogPageProps> = async (context) => {
+export const getServerSideProps: GetServerSideProps<CatalogPageProps> = async (
+  context,
+) => {
   const result = await requirePortalSession(context);
   if ("redirect" in result) return { redirect: result.redirect };
 
   const tasteParams = new URLSearchParams();
   tasteParams.set("populate[main][fields][0]", "url");
-  tasteParams.set("populate[default_circle][populate][images][fields][0]", "url");
+  tasteParams.set("populate[main][fields][1]", "formats");
+  tasteParams.set(
+    "populate[default_circle][populate][images][fields][0]",
+    "url",
+  );
   tasteParams.set("sort[0]", "name:ASC");
   tasteParams.set("pagination[pageSize]", "1000");
 

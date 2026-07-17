@@ -252,23 +252,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const ownershipParams = new URLSearchParams();
   ownershipParams.set("filters[id][$eq]", productLineId);
-  ownershipParams.set("filters[author][id][$eq]", String(session.user.id));
+  if (session.access === "client") {
+    ownershipParams.set(
+      "filters[author][client][id][$eq]",
+      String(session.client.id),
+    );
+  } else {
+    ownershipParams.set("filters[author][id][$eq]", String(session.user.id));
+  }
   ownershipParams.set("populate[products][fields][0]", "name");
   ownershipParams.set(
     "populate[products][filters][author][id][$eq]",
     String(session.user.id),
   );
+  ownershipParams.set("populate[brands][fields][0]", "name");
+  ownershipParams.set("populate[machines][fields][0]", "title");
   ownershipParams.set("pagination[pageSize]", "1000");
-
-  // Name uniqueness is PER AUTHOR (reusing a root product clones it into the
-  // client's own space under the same name, so a global check would always 409).
-  const duplicateNameParams = new URLSearchParams();
-  duplicateNameParams.set("filters[name][$eqi]", name);
-  duplicateNameParams.set("filters[author][id][$eq]", String(session.user.id));
-  if (isEditing && existingProductId) {
-    duplicateNameParams.set("filters[id][$ne]", existingProductId);
-  }
-  duplicateNameParams.set("pagination[pageSize]", "1");
 
   const componentParams = new URLSearchParams();
   componentParams.set("fields[0]", "name");
@@ -304,12 +303,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    const brandIds = (productLine.brands || []).map((brand) => String(brand.id));
+    const machineIds = (productLine.machines || []).map((machine) => String(machine.id));
+    const duplicateNameParams = new URLSearchParams();
+    duplicateNameParams.set("filters[name][$eqi]", name);
+    machineIds.forEach((machineId, index) => {
+      duplicateNameParams.set(
+        `filters[product_line][machines][id][$in][${index}]`,
+        machineId,
+      );
+    });
+    if (isEditing && existingProductId) {
+      duplicateNameParams.set("filters[id][$ne]", existingProductId);
+    }
+    duplicateNameParams.set("fields[0]", "name");
+    duplicateNameParams.set("pagination[pageSize]", "1");
+
+    const baseProductParams = new URLSearchParams();
+    if (existingProductId && !isEditing) {
+      baseProductParams.set("filters[id][$eq]", existingProductId);
+      baseProductParams.set("filters[author][username][$eq]", "root");
+      brandIds.forEach((brandId, index) => {
+        baseProductParams.set(
+          `filters[product_line][brands][id][$in][${index}]`,
+          brandId,
+        );
+      });
+      baseProductParams.set("fields[0]", "name");
+      baseProductParams.set("pagination[pageSize]", "1");
+    }
+
     const [
       splash,
       circle,
       mainImage,
       catalogComponents,
       duplicateProducts,
+      baseProducts,
     ] = await Promise.all([
       requestStrapiRestAsService<RelatedEntity>(`/api/splashes/${splashId}`),
       requestStrapiRestAsService<RelatedEntity>(`/api/circles/${circleId}`),
@@ -321,15 +351,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             `/api/components?${componentParams.toString()}`,
           )
         : Promise.resolve([]),
-      requestStrapiRestAsService<CreatedProduct[]>(
-        `/api/products?${duplicateNameParams.toString()}`,
-      ),
+      machineIds.length
+        ? requestStrapiRestAsService<CreatedProduct[]>(
+            `/api/products?${duplicateNameParams.toString()}`,
+          )
+        : Promise.resolve([]),
+      existingProductId && !isEditing && brandIds.length
+        ? requestStrapiRestAsService<CreatedProduct[]>(
+            `/api/products?${baseProductParams.toString()}`,
+          )
+        : Promise.resolve([]),
     ]);
+
+    if (existingProductId && !isEditing && !baseProducts[0]?.id) {
+      return res.status(400).json({
+        error: "invalid_base_product",
+        message: "Select a root product with the same brand as this product line.",
+      });
+    }
 
     if (duplicateProducts.length) {
       return res.status(409).json({
         error: "duplicate_name",
-        message: "A product with this name already exists.",
+        message: "A product with this name already exists on this machine.",
       });
     }
 
@@ -450,18 +494,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Reusing a reference product must NOT connect it (Product.product_line is
     // many-to-one — connecting would MOVE it out of its owner's line). Instead we
     // CLONE it: a new product owned by this user, with base_product provenance.
-    if (existingProductId) {
-      const baseProduct = await requestStrapiRestAsService<CreatedProduct>(
-        `/api/products/${existingProductId}`,
-      );
-      if (!baseProduct?.id) {
-        return res.status(400).json({
-          error: "invalid_product",
-          message: "The selected product no longer exists.",
-        });
-      }
-    }
-
     const product = await requestStrapiRestAsService<CreatedProduct>("/api/products", {
       method: "POST",
       body: JSON.stringify({
@@ -473,6 +505,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           serving_qty: servingQty,
           serving_unit: servingUnit,
           author: session.user.id,
+          product_line: productLine.id,
           ...(existingProductId ? { base_product: Number(existingProductId) } : {}),
           custom_splash: splash.id,
           custom_circle: circle.id,
@@ -484,32 +517,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }),
     });
 
-    try {
-      await requestStrapiRestAsService(`/api/product-lines/${productLine.id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          data: {
-            products: { connect: [product.id] },
-          },
-        }),
-      });
-    } catch (linkError) {
-      await requestStrapiRestAsService(`/api/products/${product.id}`, {
-        method: "DELETE",
-      }).catch(() => undefined);
-      throw linkError;
-    }
-
     return res.status(201).json({ product });
   } catch (error) {
     console.error("[portal/product-lines/:id/products] creation failed:", error);
-    const status = (error as { status?: number }).status;
-    return res.status(status === 400 ? 400 : 500).json({
+    const apiError = error as {
+      status?: number;
+      response?: { error?: { message?: string } };
+    };
+    const status = apiError.status && apiError.status < 500 ? apiError.status : 500;
+    return res.status(status).json({
       error: "product_creation_failed",
       message:
-        status === 400
-          ? "A product with this name may already exist."
-          : "Product could not be created.",
+        apiError.response?.error?.message || "Product could not be created.",
     });
   }
 }

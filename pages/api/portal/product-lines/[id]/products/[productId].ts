@@ -31,7 +31,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const params = new URLSearchParams();
   params.set("filters[id][$eq]", productLineId);
-  params.set("filters[author][id][$eq]", String(session.user.id));
+  if (session.access === "client") {
+    params.set(
+      "filters[author][client][id][$eq]",
+      String(session.client.id),
+    );
+  } else {
+    params.set("filters[author][id][$eq]", String(session.user.id));
+  }
   params.set("populate[products][fields][0]", "name");
   params.set(
     "populate[products][filters][author][id][$eq]",

@@ -19,6 +19,16 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
 ) => {
   const result = await requirePortalSession(context);
   if ("redirect" in result) return { redirect: result.redirect };
+  const requestedMachineId = Array.isArray(context.query.machineId)
+    ? context.query.machineId[0]
+    : context.query.machineId;
+  const initialMachineId = result.session.machines.some(
+    (machine) => String(machine.id) === requestedMachineId,
+  )
+    ? requestedMachineId
+    : result.session.machines[0]?.id
+      ? String(result.session.machines[0].id)
+      : "";
 
   const rootParams = new URLSearchParams();
   rootParams.set("filters[author][username][$eq]", "root");
@@ -65,7 +75,14 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
     });
 
     return {
-      props: { session: result.session, rootProductLines, cups, brands, splashes },
+      props: {
+        session: result.session,
+        rootProductLines,
+        cups,
+        brands,
+        splashes,
+        initialMachineId,
+      },
     };
   } catch (error) {
     console.error("[product-lines/new] option loading failed:", error);
@@ -76,6 +93,7 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
         cups: [],
         brands: [],
         splashes: [],
+        initialMachineId,
         loadError: "Product line options could not be loaded.",
       },
     };

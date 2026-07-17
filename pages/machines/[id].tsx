@@ -9,8 +9,13 @@ import {
   Tr,
 } from "@chakra-ui/react";
 import type { GetServerSideProps } from "next";
+import { MachineCellsSection } from "../../components/portal/machines/MachineCellsSection";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { requirePortalSession } from "../../lib/portal/auth";
+import {
+  getMachineCatalogProducts,
+  getMachineCells,
+} from "../../services/server/machineCells";
 import {
   getTelemetryMachineHome,
   getTelemetryMachinePrices,
@@ -19,12 +24,19 @@ import {
   isTelemetryConfigured,
   resolveTelemetryMachine,
 } from "../../services/server/telemetryClient";
-import type { PortalSession } from "../../types/portal";
+import type {
+  PortalCatalogProduct,
+  PortalMachineCell,
+  PortalSession,
+} from "../../types/portal";
 import type { Machine } from "../../types/strapi";
 
 type MachineDetailPageProps = {
   session: PortalSession;
   machine: Machine;
+  cells: PortalMachineCell[];
+  catalogProducts: PortalCatalogProduct[];
+  cellsLoadError?: string | null;
   telemetryConfigured: boolean;
   telemetryConnected?: boolean;
   telemetryOrganizationId?: number | null;
@@ -77,6 +89,9 @@ const rows = (machine: Machine) => [
 export default function MachineDetailPage({
   session,
   machine,
+  cells,
+  catalogProducts,
+  cellsLoadError,
   telemetryConfigured,
   telemetryConnected,
   telemetryOrganizationId,
@@ -166,6 +181,13 @@ export default function MachineDetailPage({
           </VStack>
         </Box>
 
+        <MachineCellsSection
+          machineId={machine.id}
+          initialCells={cells}
+          catalogProducts={catalogProducts}
+          loadError={cellsLoadError}
+        />
+
         {telemetryPrices?.length ? (
           <Box bg="bg.900" border="1px solid" borderColor="whiteAlpha.100" borderRadius="2xl" p="6" gridColumn={{ xl: "1 / -1" }}>
             <Text color="acid.300" fontWeight="800" mb="4">
@@ -209,13 +231,32 @@ export const getServerSideProps: GetServerSideProps<MachineDetailPageProps> = as
   }
 
   const telemetryConfigured = isTelemetryConfigured();
+  let cells: PortalMachineCell[] = [];
+  let catalogProducts: PortalCatalogProduct[] = [];
+  let cellsLoadError: string | null = null;
+  try {
+    [cells, catalogProducts] = await Promise.all([
+      getMachineCells(machine.id),
+      getMachineCatalogProducts(machine.id, result.session.client.id),
+    ]);
+  } catch (error) {
+    console.error("[machines/detail] container loading failed:", error);
+    cellsLoadError = "Machine containers could not be loaded.";
+  }
+
+  const commonProps = {
+    session: result.session,
+    machine,
+    telemetryConfigured,
+    cells,
+    catalogProducts,
+    cellsLoadError,
+  };
 
   if (!telemetryConfigured) {
     return {
       props: {
-        session: result.session,
-        machine,
-        telemetryConfigured,
+        ...commonProps,
         telemetryConnected: false,
       },
     };
@@ -230,9 +271,7 @@ export const getServerSideProps: GetServerSideProps<MachineDetailPageProps> = as
     if (!resolved.machineId) {
       return {
         props: {
-          session: result.session,
-          machine,
-          telemetryConfigured,
+          ...commonProps,
           telemetryConnected: true,
           telemetryOrganizationId: resolved.organizationId,
           telemetryReason: resolved.reason,
@@ -250,9 +289,7 @@ export const getServerSideProps: GetServerSideProps<MachineDetailPageProps> = as
 
     return {
       props: {
-        session: result.session,
-        machine,
-        telemetryConfigured,
+        ...commonProps,
         telemetryConnected: true,
         telemetryOrganizationId: resolved.organizationId,
         telemetryStatus,
@@ -266,9 +303,7 @@ export const getServerSideProps: GetServerSideProps<MachineDetailPageProps> = as
     console.error("[machines/detail] telemetry load failed:", error);
     return {
       props: {
-        session: result.session,
-        machine,
-        telemetryConfigured,
+        ...commonProps,
         telemetryConnected: false,
         telemetryReason: "telemetry_request_failed",
       },

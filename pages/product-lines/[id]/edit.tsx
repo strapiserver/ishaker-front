@@ -30,11 +30,19 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
 
   const ownParams = new URLSearchParams();
   ownParams.set("filters[id][$eq]", productLineId);
-  ownParams.set("filters[author][id][$eq]", String(result.session.user.id));
+  if (result.session.client.id) {
+    ownParams.set(
+      "filters[author][client][id][$eq]",
+      String(result.session.client.id),
+    );
+  } else {
+    ownParams.set("filters[author][id][$eq]", String(result.session.user.id));
+  }
   ownParams.set("populate[0]", "base_product_line");
   ownParams.set("populate[1]", "cup.image");
   ownParams.set("populate[2]", "brands.logo");
   ownParams.set("populate[3]", "custom_splash");
+  ownParams.set("populate[4]", "machines");
   ownParams.set("pagination[pageSize]", "1000");
 
   const rootParams = new URLSearchParams();

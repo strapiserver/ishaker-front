@@ -1,7 +1,14 @@
-import type { GetServerSidePropsContext, NextApiRequest, NextApiResponse } from "next";
+import type {
+  GetServerSidePropsContext,
+  NextApiRequest,
+  NextApiResponse,
+} from "next";
 import type { Client, Machine } from "../../types/strapi";
 import type { PortalSession, PortalUser } from "../../types/portal";
-import { requestStrapiRestAsService, requestStrapiRestWithJwt } from "../../services/server/strapiClient";
+import {
+  requestStrapiRestAsService,
+  requestStrapiRestWithJwt,
+} from "../../services/server/strapiClient";
 
 const COOKIE_NAME = "ishaker_portal_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
@@ -26,7 +33,8 @@ export const clearPortalSessionCookie = () =>
     process.env.NODE_ENV === "production" ? "; Secure" : ""
   }`;
 
-export const readPortalJwt = (cookieHeader?: string) => parseCookie(cookieHeader, COOKIE_NAME);
+export const readPortalJwt = (cookieHeader?: string) =>
+  parseCookie(cookieHeader, COOKIE_NAME);
 
 export const setPortalSession = (res: NextApiResponse, jwt: string) => {
   res.setHeader("Set-Cookie", createPortalSessionCookie(jwt));
@@ -61,7 +69,18 @@ export const isProductClientUser = (user?: PortalUser | null) =>
 
 const fetchClientById = async (clientId: string | number) => {
   const params = new URLSearchParams();
-  params.set("populate[machines][populate][0]", "machine_type");
+  params.set(
+    "populate[machines][populate][machine_type][populate][preview][fields][0]",
+    "url",
+  );
+  params.set(
+    "populate[machines][populate][machine_type][populate][preview][fields][1]",
+    "formats",
+  );
+  params.set(
+    "populate[machines][populate][machine_type][populate][preview][fields][2]",
+    "name",
+  );
   params.set("populate[machines][sort][0]", "title:ASC");
 
   return requestStrapiRestAsService<Client>(
@@ -129,7 +148,10 @@ export const resolvePortalSession = async (
       "[portal] client details unavailable; keeping authenticated session:",
       error,
     );
-    const sessionClient = user.client as { id: string | number; company?: string };
+    const sessionClient = user.client as {
+      id: string | number;
+      company?: string;
+    };
     client = {
       id: sessionClient.id,
       company: sessionClient.company || user.username || user.email || "Client",
@@ -192,18 +214,26 @@ export const getPortalSessionFromApiRequest = async (req: NextApiRequest) => {
 export const machineBelongsToSessionClient = (
   session: PortalSession,
   machineId: string | number,
-) => session.machines.some((machine) => String(machine.id) === String(machineId));
+) =>
+  session.machines.some((machine) => String(machine.id) === String(machineId));
 
 export const assertMachineBelongsToSessionClient = async (
   session: PortalSession,
   machineId: string | number,
 ) => {
   if (machineBelongsToSessionClient(session, machineId)) {
-    return session.machines.find((machine) => String(machine.id) === String(machineId)) || null;
+    return (
+      session.machines.find(
+        (machine) => String(machine.id) === String(machineId),
+      ) || null
+    );
   }
 
   const machine = await fetchMachineByIdAsService(machineId);
-  if (!machine?.client || String(machine.client.id) !== String(session.client.id)) {
+  if (
+    !machine?.client ||
+    String(machine.client.id) !== String(session.client.id)
+  ) {
     return null;
   }
 

@@ -5,7 +5,7 @@ import {
 } from "../../components/portal/product-lines";
 import { requirePortalSession } from "../../lib/portal/auth";
 import { requestStrapiRestAsService } from "../../services/server/strapiClient";
-import type { PortalProduct, PortalProductLine } from "../../types/portal";
+import type { PortalProduct, PortalProductLine, PortalSession } from "../../types/portal";
 
 export default ProductLinesPage;
 
@@ -13,13 +13,18 @@ type ProductWithLine = PortalProduct & {
   product_line?: Pick<PortalProductLine, "id" | "name"> | null;
 };
 
-const createProductLineParams = (authorId: number) => {
+const createProductLineParams = (session: PortalSession) => {
   const params = new URLSearchParams();
-  params.set("filters[author][id][$eq]", String(authorId));
+  if (session.access === "client") {
+    params.set("filters[author][client][id][$eq]", String(session.client.id));
+  } else {
+    params.set("filters[author][id][$eq]", String(session.user.id));
+  }
   params.set("populate[0]", "author");
   params.set("populate[1]", "cup.image");
   params.set("populate[2]", "brands.logo");
   params.set("populate[3]", "base_product_line");
+  params.set("populate[4]", "machines");
   params.set("sort[0]", "name:ASC");
   params.set("pagination[pageSize]", "1000");
   return params;
@@ -54,7 +59,7 @@ export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = asy
 
   try {
     const ownProductLines = await requestStrapiRestAsService<PortalProductLine[]>(
-      `/api/product-lines?${createProductLineParams(result.session.user.id).toString()}`,
+      `/api/product-lines?${createProductLineParams(result.session).toString()}`,
     );
     const ownProducts = ownProductLines.length
       ? await requestStrapiRestAsService<ProductWithLine[]>(

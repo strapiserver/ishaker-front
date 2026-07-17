@@ -23,6 +23,7 @@ export type NewProductLinePageProps = {
   brands: PortalBrand[];
   splashes: PortalSplash[];
   productLine?: PortalProductLine;
+  initialMachineId?: string;
   loadError?: string;
 };
 
@@ -61,6 +62,7 @@ export function NewProductLinePage({
   brands,
   splashes,
   productLine,
+  initialMachineId,
   loadError,
 }: NewProductLinePageProps) {
   const router = useRouter();
@@ -80,6 +82,18 @@ export function NewProductLinePage({
   );
   const [customSplashId, setCustomSplashId] = useState(
     productLine?.custom_splash?.id ? String(productLine.custom_splash.id) : "",
+  );
+  const availableMachineIds = session.machines.map((machine) => String(machine.id));
+  const defaultMachineId =
+    initialMachineId && availableMachineIds.includes(initialMachineId)
+      ? initialMachineId
+      : availableMachineIds[0] || "";
+  const [machineIds, setMachineIds] = useState<string[]>(
+    productLine?.machines?.length
+      ? productLine.machines.map((machine) => String(machine.id))
+      : defaultMachineId
+        ? [defaultMachineId]
+        : [],
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -151,6 +165,7 @@ export function NewProductLinePage({
     baseProductLineId &&
     cupId &&
     brandId &&
+    (session.access === "product" || machineIds.length > 0) &&
     !loadError,
   );
 
@@ -174,6 +189,7 @@ export function NewProductLinePage({
             cupId,
             brandId,
             customSplashId,
+            machineIds,
           }),
         },
       );
@@ -240,6 +256,11 @@ export function NewProductLinePage({
           customSplashId={customSplashId}
           error={error}
           isSubmitting={isSubmitting}
+          machineIds={machineIds}
+          machineOptions={session.machines.map((machine) => ({
+            id: String(machine.id),
+            label: machine.title || machine.serial_number || `Machine #${machine.id}`,
+          }))}
           onBaseProductLineChange={(value) => {
             setBaseProductLineId(value);
             const rootLine = rootProductLines.find(
@@ -264,6 +285,7 @@ export function NewProductLinePage({
             setCustomSplashId("");
           }}
           onCustomSplashChange={setCustomSplashId}
+          onMachineIdsChange={setMachineIds}
           onSubmit={onSubmit}
           splashOptions={splashOptions}
           submitLabel={isEditing ? "Save changes" : "Create product line"}
