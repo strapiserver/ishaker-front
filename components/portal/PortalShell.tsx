@@ -31,7 +31,7 @@ const navItems = [
   { href: "/catalog", label: "Catalog" },
 ];
 
-const whatsappBotUrl = process.env.NEXT_PUBLIC_WHATSAPP_BOT_URL || "#";
+const whatsappBotUrl = "https://wa.me/18573927028";
 
 export function PortalShell({
   title,

@@ -459,33 +459,80 @@ export function NewProductPage({
       }
     });
   }, [allTasteOptions, tasteMainDialog.isOpen]);
-  const canSubmit =
-    Boolean(brandId) &&
-    name.trim().length >= 2 &&
-    Boolean(splashId) &&
-    Boolean(circleId) &&
-    Boolean(mainImageId) &&
+  const canUseCatalogVisuals = Boolean(existingProductId) && !isEditing;
+  const hasRequiredVisuals =
+    canUseCatalogVisuals ||
+    (Boolean(splashId) && Boolean(circleId) && Boolean(mainImageId));
+  const componentKeys = componentRows.map((row) =>
+    row.componentId
+      ? `id:${row.componentId}`
+      : `name:${row.name.trim().toLocaleLowerCase()}`,
+  );
+  const hasValidComponents =
     componentRows.length <= 50 &&
+    new Set(componentKeys).size === componentKeys.length &&
     componentRows.every(
       (row) =>
-        Boolean(row.name.trim()) &&
+        row.name.trim().length >= 2 &&
+        row.name.trim().length <= 100 &&
         (Boolean(row.componentId) || row.isCustom) &&
         Boolean(row.unit) &&
         Number(row.quantity) > 0,
-    ) &&
-    Number(servingQuantity) > 0 &&
-    Number(dosage.drinkVolume) > 0 &&
-    (dosage.fullDrinkPrice === "" || Number(dosage.fullDrinkPrice) >= 0) &&
-    (dosage.smallDrinkVolume === "" ||
-      (Number(dosage.smallDrinkVolume) >= 100 &&
-        Number(dosage.smallDrinkVolume) < Number(dosage.drinkVolume))) &&
-    (dosage.smallDrinkPrice === "" || Number(dosage.smallDrinkPrice) >= 0) &&
-    Number(dosage.water) >= 50 &&
-    Number(dosage.water) <= 500 &&
-    Number(dosage.product) > 0 &&
-    Number(dosage.water) + Number(dosage.product) <=
-      Number(dosage.drinkVolume) &&
-    Number(dosage.conversionFactor) > 0;
+    );
+  const validationMessage = (() => {
+    if (!brandId) return "Select a brand.";
+    if (name.trim().length < 2 || name.trim().length > 100) {
+      return "Select or enter a product name between 2 and 100 characters.";
+    }
+    if (!hasRequiredVisuals) {
+      return "Select a splash, circle, and taste main image.";
+    }
+    if (!hasValidComponents) {
+      return "Components must be unique and include a name, unit, and positive quantity (maximum 50).";
+    }
+    if (!(Number(servingQuantity) > 0)) {
+      return "Serving quantity must be greater than zero.";
+    }
+    if (!(Number(dosage.drinkVolume) > 0)) {
+      return "Drink volume must be greater than zero.";
+    }
+    if (
+      dosage.fullDrinkPrice !== "" &&
+      !(Number(dosage.fullDrinkPrice) >= 0)
+    ) {
+      return "Full drink price cannot be negative.";
+    }
+    if (
+      dosage.smallDrinkVolume !== "" &&
+      (Number(dosage.smallDrinkVolume) < 100 ||
+        Number(dosage.smallDrinkVolume) >= Number(dosage.drinkVolume))
+    ) {
+      return "Small drink volume must be at least 100ml and less than the full drink volume.";
+    }
+    if (
+      dosage.smallDrinkPrice !== "" &&
+      !(Number(dosage.smallDrinkPrice) >= 0)
+    ) {
+      return "Small drink price cannot be negative.";
+    }
+    if (Number(dosage.water) < 50 || Number(dosage.water) > 500) {
+      return "Water must be between 50ml and 500ml.";
+    }
+    if (!(Number(dosage.product) > 0)) {
+      return "Product amount must be greater than zero.";
+    }
+    if (
+      Number(dosage.water) + Number(dosage.product) >
+      Number(dosage.drinkVolume)
+    ) {
+      return "Water + Product can't exceed the drink volume.";
+    }
+    if (!(Number(dosage.conversionFactor) > 0)) {
+      return "Conversion factor must be greater than zero.";
+    }
+    return "";
+  })();
+  const canSubmit = !validationMessage;
 
   const resetProductVisuals = () => {
     setExistingProductId("");
@@ -545,7 +592,17 @@ export function NewProductPage({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      setError(validationMessage);
+      toast({
+        title: "Complete the product",
+        description: validationMessage,
+        status: "warning",
+        duration: 7000,
+        isClosable: true,
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     setError("");
@@ -752,7 +809,6 @@ export function NewProductPage({
           variant="primary"
           size="lg"
           isLoading={isSubmitting}
-          isDisabled={!canSubmit}
         >
           Save product
         </Button>

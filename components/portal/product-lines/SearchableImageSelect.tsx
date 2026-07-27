@@ -9,10 +9,11 @@ import {
   InputLeftElement,
   InputRightElement,
   IconButton,
+  Portal,
   VStack,
   Text,
 } from "@chakra-ui/react";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { FaChevronDown, FaImages, FaTimes } from "react-icons/fa";
 
 export type SearchableImageOption = {
@@ -56,6 +57,12 @@ export function SearchableImageSelect({
   const inputName = `portal-combobox-${useId().replace(/:/g, "")}`;
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [menuPosition, setMenuPosition] = useState({
+    left: 0,
+    top: 0,
+    width: 0,
+    maxHeight: 360,
+  });
   const selected = options.find((option) => option.id === value);
   const listboxId = `${ariaLabel.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}-options`;
   const filteredOptions = useMemo(() => {
@@ -71,6 +78,52 @@ export function SearchableImageSelect({
     setQuery("");
     triggerRef.current?.blur();
   };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const updateMenuPosition = () => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+
+      const rect = trigger.getBoundingClientRect();
+      const viewportMargin = 16;
+      const menuGap = 8;
+      const preferredHeight = 360;
+      const spaceBelow =
+        window.innerHeight - rect.bottom - menuGap - viewportMargin;
+      const spaceAbove = rect.top - menuGap - viewportMargin;
+      const openAbove = spaceBelow < 220 && spaceAbove > spaceBelow;
+      const maxHeight = Math.max(
+        120,
+        Math.min(
+          preferredHeight,
+          openAbove ? spaceAbove : spaceBelow,
+        ),
+      );
+
+      setMenuPosition({
+        left: Math.max(
+          viewportMargin,
+          Math.min(rect.left, window.innerWidth - rect.width - viewportMargin),
+        ),
+        top: openAbove
+          ? rect.top - menuGap - maxHeight
+          : rect.bottom + menuGap,
+        width: rect.width,
+        maxHeight,
+      });
+    };
+
+    updateMenuPosition();
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [isOpen]);
 
   const optionList = (maxHeight: string) => (
     <VStack spacing="1" maxH={maxHeight} overflowY="auto" align="stretch">
@@ -328,40 +381,48 @@ export function SearchableImageSelect({
 
       {isOpen ? (
         <>
-          <Box
-            id={listboxId}
-            role="listbox"
-            display={{ base: "none", md: "block" }}
-            position="absolute"
-            zIndex="dropdown"
-            top="calc(100% + 8px)"
-            w="full"
-            maxH="360px"
-            overflow="hidden"
-            bg="bg.800"
-            border="1px solid"
-            borderColor="whiteAlpha.200"
-            borderRadius="md"
-            boxShadow="xl"
-            p="3"
-            onMouseDown={(event) => event.preventDefault()}
-          >
-            {onShowMore ? (
-              <Button
-                variant="no_contrast"
-                w="full"
-                my="4"
-                leftIcon={<FaImages size="1rem" />}
-                onClick={() => {
-                  onShowMore();
-                  closeAndBlur();
-                }}
-              >
-                Show images
-              </Button>
-            ) : null}
-            {optionList("270px")}
-          </Box>
+          <Portal>
+            <Box
+              id={listboxId}
+              role="listbox"
+              display={{ base: "none", md: "block" }}
+              position="fixed"
+              zIndex="popover"
+              left={`${menuPosition.left}px`}
+              top={`${menuPosition.top}px`}
+              w={`${menuPosition.width}px`}
+              maxH={`${menuPosition.maxHeight}px`}
+              overflow="hidden"
+              bg="bg.800"
+              border="1px solid"
+              borderColor="whiteAlpha.200"
+              borderRadius="md"
+              boxShadow="xl"
+              p="3"
+              onMouseDown={(event) => event.preventDefault()}
+            >
+              {onShowMore ? (
+                <Button
+                  variant="no_contrast"
+                  w="full"
+                  my="4"
+                  leftIcon={<FaImages size="1rem" />}
+                  onClick={() => {
+                    onShowMore();
+                    closeAndBlur();
+                  }}
+                >
+                  Show images
+                </Button>
+              ) : null}
+              {optionList(
+                `${Math.max(
+                  80,
+                  menuPosition.maxHeight - (onShowMore ? 100 : 24),
+                )}px`,
+              )}
+            </Box>
+          </Portal>
 
           <Box
             role="dialog"

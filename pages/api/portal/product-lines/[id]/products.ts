@@ -13,6 +13,17 @@ type RelatedEntity = {
   id: string | number;
 };
 
+type CatalogProduct = CreatedProduct & {
+  custom_circle?: RelatedEntity | null;
+  custom_main?: RelatedEntity | null;
+  custom_splash?: RelatedEntity | null;
+  taste?: {
+    default_circle?: RelatedEntity | null;
+    default_splash?: RelatedEntity | null;
+    main?: RelatedEntity | null;
+  } | null;
+};
+
 type CatalogComponent = {
   id: string | number;
   name: string;
@@ -43,7 +54,10 @@ const asString = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
 
 const asId = (value: unknown) => {
-  const id = asString(value);
+  const id =
+    typeof value === "number" && Number.isInteger(value)
+      ? String(value)
+      : asString(value);
   return /^\d+$/.test(id) ? id : "";
 };
 
@@ -158,7 +172,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: "Select a brand for this product.",
     });
   }
-  if (!splashId || !circleId || !mainImageId) {
+  if (
+    !existingProductId &&
+    (!splashId || !circleId || !mainImageId)
+  ) {
     return res.status(400).json({
       error: "invalid_visuals",
       message: "Splash, circle, and taste main image are required.",
@@ -342,7 +359,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         String(genericProductLineId),
       );
       baseProductParams.set("fields[0]", "name");
+      baseProductParams.set("populate[custom_splash][fields][0]", "name");
+      baseProductParams.set("populate[custom_circle][fields][0]", "name");
+      baseProductParams.set("populate[custom_main][fields][0]", "url");
+      baseProductParams.set(
+        "populate[taste][populate][default_splash][fields][0]",
+        "name",
+      );
+      baseProductParams.set(
+        "populate[taste][populate][default_circle][fields][0]",
+        "name",
+      );
+      baseProductParams.set(
+        "populate[taste][populate][main][fields][0]",
+        "url",
+      );
       baseProductParams.set("pagination[pageSize]", "1");
+    }
+
+    const baseProducts =
+      existingProductId && !isEditing
+        ? await requestStrapiRestAsService<CatalogProduct[]>(
+            `/api/products?${baseProductParams.toString()}`,
+          )
+        : [];
+    const baseProduct = baseProducts[0];
+
+    if (existingProductId && !isEditing && !baseProduct?.id) {
+      return res.status(400).json({
+        error: "invalid_base_product",
+        message: "Select a root product from this generic line and brand.",
+      });
+    }
+
+    const resolvedSplashId =
+      splashId ||
+      asId(baseProduct?.custom_splash?.id) ||
+      asId(baseProduct?.taste?.default_splash?.id);
+    const resolvedCircleId =
+      circleId ||
+      asId(baseProduct?.custom_circle?.id) ||
+      asId(baseProduct?.taste?.default_circle?.id);
+    const resolvedMainImageId =
+      mainImageId ||
+      asId(baseProduct?.custom_main?.id) ||
+      asId(baseProduct?.taste?.main?.id);
+
+    if (!resolvedSplashId || !resolvedCircleId || !resolvedMainImageId) {
+      return res.status(400).json({
+        error: "invalid_visuals",
+        message:
+          "This product is missing a splash, circle, or taste main image. Select the missing visual and try again.",
+      });
     }
 
     const [
@@ -351,13 +419,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       mainImage,
       catalogComponents,
       duplicateProducts,
-      baseProducts,
       brand,
     ] = await Promise.all([
-      requestStrapiRestAsService<RelatedEntity>(`/api/splashes/${splashId}`),
-      requestStrapiRestAsService<RelatedEntity>(`/api/circles/${circleId}`),
       requestStrapiRestAsService<RelatedEntity>(
-        `/api/upload/files/${mainImageId}`,
+        `/api/splashes/${resolvedSplashId}`,
+      ),
+      requestStrapiRestAsService<RelatedEntity>(
+        `/api/circles/${resolvedCircleId}`,
+      ),
+      requestStrapiRestAsService<RelatedEntity>(
+        `/api/upload/files/${resolvedMainImageId}`,
       ),
       submittedComponents.some((component) => component.componentId)
         ? requestStrapiRestAsService<CatalogComponent[]>(
@@ -369,11 +440,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             `/api/products?${duplicateNameParams.toString()}`,
           )
         : Promise.resolve([]),
-      existingProductId && !isEditing
-        ? requestStrapiRestAsService<CreatedProduct[]>(
-            `/api/products?${baseProductParams.toString()}`,
-          )
-        : Promise.resolve([]),
       requestStrapiRestAsService<RelatedEntity>(`/api/brands/${brandId}`),
     ]);
 
@@ -381,13 +447,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({
         error: "invalid_brand",
         message: "The selected brand no longer exists.",
-      });
-    }
-
-    if (existingProductId && !isEditing && !baseProducts[0]?.id) {
-      return res.status(400).json({
-        error: "invalid_base_product",
-        message: "Select a root product from this generic line and brand.",
       });
     }
 
