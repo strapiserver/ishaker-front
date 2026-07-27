@@ -16,6 +16,10 @@ export type Machine = {
   ssd_version?: string;
   bootstrap_version?: string;
   last_seen_at?: string;
+  country?: string;
+  state_region?: string;
+  city?: string;
+  location?: string;
   admin_comment?: string;
   product_lines?: Array<{
     id: string | number;
@@ -40,6 +44,27 @@ export type Machine = {
       > | null;
     } | null;
   } | null;
+  currency?: Currency | null;
+  nayax_terminal_id?: string | null;
+  language?: {
+    id: string | number;
+    code: string;
+    name: string;
+    native_name?: string | null;
+  } | null;
+};
+
+export type Currency = {
+  id: string | number;
+  code: string;
+  name?: string | null;
+  symbol?: string | null;
+  symbol_position?: "before" | "after";
+  decimal_digits?: number;
+  rounding?: number | string | null;
+  thousands_separator?: string | null;
+  decimal_separator?: string | null;
+  isActive?: boolean;
 };
 
 export type ClientContact =
@@ -59,6 +84,9 @@ export type ClientContact =
 export type Client = {
   id: string | number;
   company: string;
+  portal_email?: string | null;
+  portal_access_enabled?: boolean;
+  portal_auth_provider?: "local" | "google" | "apple" | "facebook";
   telemetry_organization_id?: number | null;
   country?: string;
   state?: string;
@@ -66,6 +94,26 @@ export type Client = {
   status?: "admin" | "client" | "blocked";
   contact?: ClientContact[];
   machines?: Machine[];
+  currency?: Currency | null;
+  nayax_actor_id?: string | null;
+  nayax_status?: "unconfigured" | "ok" | "error";
+  nayax_error?: string | null;
+  nayax_last_sync_at?: string | null;
+};
+
+export type Sale = {
+  id: string | number;
+  nayax_transaction_id?: string | null;
+  nayax_terminal_id?: string | null;
+  machine?: Machine | null;
+  amount?: number | string | null;
+  currency?: Currency | null;
+  currency_code?: string | null;
+  payment_method?: string | null;
+  card_brand?: string | null;
+  product_name?: string | null;
+  status?: "authorized" | "settled" | "refunded" | "declined" | "unknown";
+  occurred_at?: string | null;
 };
 
 export type MachineLookupResponse = {

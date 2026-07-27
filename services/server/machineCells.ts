@@ -6,7 +6,7 @@ import type {
 import type { Machine } from "../../types/strapi";
 import { requestStrapiRestAsService } from "./strapiClient";
 
-const PAGE_SIZE = "1000";
+const PAGE_SIZE = "2000";
 
 export const getMachineCells = async (
   machineId: string | number,
@@ -14,8 +14,9 @@ export const getMachineCells = async (
   const params = new URLSearchParams();
   params.set("filters[machine][id][$eq]", String(machineId));
   params.set("populate[product][populate][taste]", "*");
+  params.set("populate[product][populate][dosage]", "*");
   params.set("sort[0]", "position:asc");
-  params.set("pagination[pageSize]", "200");
+  params.set("pagination[pageSize]", "2000");
 
   return requestStrapiRestAsService<PortalMachineCell[]>(
     `/api/machine-cells?${params.toString()}`,
@@ -69,6 +70,7 @@ export const getMachineCatalogProducts = async (
   params.set("fields[0]", "name");
   params.set("fields[1]", "product_type");
   params.set("populate[taste][fields][0]", "name");
+  params.set("populate[dosage]", "*");
   params.set("sort[0]", "name:asc");
   params.set("pagination[pageSize]", PAGE_SIZE);
 
@@ -83,12 +85,48 @@ export const getMachineCatalogProducts = async (
 
 export const updateMachineCell = async (
   cellId: string | number,
+  position: number,
   productId: number | null,
   isActive: boolean,
+  price: number | null,
+  cellCategory: "powder" | "concentrate",
 ) =>
   requestStrapiRestAsService(`/api/machine-cells/${cellId}`, {
     method: "PUT",
     body: JSON.stringify({
-      data: { product: productId, isActive },
+      data: {
+        position,
+        product: productId,
+        isActive,
+        price,
+        cell_category: cellCategory,
+      },
     }),
+  });
+
+export const createMachineCell = async (data: {
+  machineId: string | number;
+  position: number;
+  productId: number | null;
+  isActive: boolean;
+  price: number | null;
+  cellCategory: "powder" | "concentrate";
+}) =>
+  requestStrapiRestAsService("/api/machine-cells", {
+    method: "POST",
+    body: JSON.stringify({
+      data: {
+        machine: data.machineId,
+        position: data.position,
+        product: data.productId,
+        isActive: data.isActive,
+        price: data.price,
+        cell_category: data.cellCategory,
+      },
+    }),
+  });
+
+export const deleteMachineCell = async (cellId: string | number) =>
+  requestStrapiRestAsService(`/api/machine-cells/${cellId}`, {
+    method: "DELETE",
   });

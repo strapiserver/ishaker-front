@@ -3,7 +3,6 @@ import { getPortalSessionFromApiRequest } from "../../../../lib/portal/auth";
 import { requestStrapiRestAsService } from "../../../../services/server/strapiClient";
 import { capitalizeName } from "../../../../lib/formatName";
 import type {
-  PortalBrand,
   PortalCup,
   PortalProductLine,
   PortalSplash,
@@ -34,7 +33,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const name = capitalizeName(asString(req.body?.name));
   const baseProductLineId = asId(req.body?.baseProductLineId);
   const cupId = asId(req.body?.cupId);
-  const brandId = asId(req.body?.brandId);
   const customSplashId = asId(req.body?.customSplashId);
   const machineIds = asIds(req.body?.machineIds);
   const allowedMachineIds = new Set(session.machines.map((machine) => String(machine.id)));
@@ -60,10 +58,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  if (!baseProductLineId || !cupId || !brandId) {
+  if (!baseProductLineId || !cupId) {
     return res.status(400).json({
       error: "missing_selection",
-      message: "Base product line, cup, and brand are required.",
+      message: "Base product line and cup are required.",
     });
   }
 
@@ -71,7 +69,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const baseProductLineParams = new URLSearchParams();
     baseProductLineParams.set("filters[id][$eq]", baseProductLineId);
     baseProductLineParams.set("filters[author][username][$eq]", "root");
-    baseProductLineParams.set("pagination[pageSize]", "1000");
+    baseProductLineParams.set("populate[cup][fields][0]", "name");
+    baseProductLineParams.set("pagination[pageSize]", "2000");
 
     const duplicateParams = new URLSearchParams();
     duplicateParams.set("filters[name][$eqi]", name);
@@ -85,13 +84,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     duplicateParams.set("pagination[pageSize]", "1");
 
-    const [baseProductLines, cup, brand, customSplash, duplicateProductLines] =
+    const [baseProductLines, cup, customSplash, duplicateProductLines] =
       await Promise.all([
         requestStrapiRestAsService<PortalProductLine[]>(
           `/api/product-lines?${baseProductLineParams.toString()}`,
         ),
         requestStrapiRestAsService<PortalCup>(`/api/cups/${cupId}`),
-        requestStrapiRestAsService<PortalBrand>(`/api/brands/${brandId}`),
         customSplashId
           ? requestStrapiRestAsService<PortalSplash>(
               `/api/splashes/${customSplashId}`,
@@ -117,10 +115,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    if (!cup?.id || !brand?.id) {
+    if (!cup?.id) {
       return res.status(400).json({
         error: "invalid_selection",
-        message: "The selected cup or brand no longer exists.",
+        message: "The selected cup no longer exists.",
+      });
+    }
+
+    if (
+      String(baseProductLine.cup?.id) !== String(cup.id) ||
+      name !== capitalizeName(cup.name)
+    ) {
+      return res.status(400).json({
+        error: "product_line_cup_mismatch",
+        message: "Product line name and cup must match the selected root product line.",
       });
     }
 
@@ -140,7 +148,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             name,
             base_product_line: baseProductLine.id,
             cup: cup.id,
-            brands: [brand.id],
             author: session.user.id,
             ...(session.access === "client" ? { client: session.client.id } : {}),
             machines: machineIds,

@@ -6,8 +6,6 @@ import {
 import { requirePortalSession } from "../../lib/portal/auth";
 import { requestStrapiRestAsService } from "../../services/server/strapiClient";
 import type {
-  PortalBrand,
-  PortalCup,
   PortalProductLine,
   PortalSplash,
 } from "../../types/portal";
@@ -33,23 +31,10 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
   const rootParams = new URLSearchParams();
   rootParams.set("filters[author][username][$eq]", "root");
   rootParams.set("populate[0]", "cup.image");
-  rootParams.set("populate[1]", "brands.logo");
-  rootParams.set("populate[2]", "custom_splash");
+  rootParams.set("populate[1]", "custom_splash");
   rootParams.set("sort[0]", "isPopular:DESC");
   rootParams.set("sort[1]", "name:ASC");
-  rootParams.set("pagination[pageSize]", "1000");
-
-  const cupParams = new URLSearchParams();
-  cupParams.set("populate[image][fields][0]", "url");
-  cupParams.set("populate[image][fields][1]", "formats");
-  cupParams.set("sort[0]", "name:ASC");
-  cupParams.set("pagination[pageSize]", "1000");
-
-  const brandParams = new URLSearchParams();
-  brandParams.set("populate[logo][fields][0]", "url");
-  brandParams.set("populate[logo][fields][1]", "formats");
-  brandParams.set("sort[0]", "name:ASC");
-  brandParams.set("pagination[pageSize]", "1000");
+  rootParams.set("pagination[pageSize]", "2000");
 
   const splashParams = new URLSearchParams();
   splashParams.set("filters[isEmpty][$eq]", "true");
@@ -57,16 +42,12 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
   splashParams.set("fields[1]", "color");
   splashParams.set("fields[2]", "isEmpty");
   splashParams.set("sort[0]", "name:ASC");
-  splashParams.set("pagination[pageSize]", "1000");
+  splashParams.set("pagination[pageSize]", "2000");
 
   try {
-    const [rootProductLines, cups, brands] = await Promise.all([
-      requestStrapiRestAsService<PortalProductLine[]>(
-        `/api/product-lines?${rootParams.toString()}`,
-      ),
-      requestStrapiRestAsService<PortalCup[]>(`/api/cups?${cupParams.toString()}`),
-      requestStrapiRestAsService<PortalBrand[]>(`/api/brands?${brandParams.toString()}`),
-    ]);
+    const rootProductLines = await requestStrapiRestAsService<PortalProductLine[]>(
+      `/api/product-lines?${rootParams.toString()}`,
+    );
     const splashes = await requestStrapiRestAsService<PortalSplash[]>(
       `/api/splashes?${splashParams.toString()}`,
     ).catch((error) => {
@@ -78,8 +59,6 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
       props: {
         session: result.session,
         rootProductLines,
-        cups,
-        brands,
         splashes,
         initialMachineId,
       },
@@ -90,8 +69,6 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
       props: {
         session: result.session,
         rootProductLines: [],
-        cups: [],
-        brands: [],
         splashes: [],
         initialMachineId,
         loadError: "Product line options could not be loaded.",

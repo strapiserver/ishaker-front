@@ -9,8 +9,6 @@ import { PortalShell } from "../PortalShell";
 import { getMediaUrl, getSmallestMediaUrl } from "../../../lib/portal/media";
 import { capitalizeName } from "../../../lib/formatName";
 import type {
-  PortalBrand,
-  PortalCup,
   PortalProductLine,
   PortalSession,
   PortalSplash,
@@ -19,23 +17,11 @@ import type {
 export type NewProductLinePageProps = {
   session: PortalSession;
   rootProductLines: PortalProductLine[];
-  cups: PortalCup[];
-  brands: PortalBrand[];
   splashes: PortalSplash[];
   productLine?: PortalProductLine;
   initialMachineId?: string;
   loadError?: string;
 };
-
-const toOptions = <T extends { id: string | number; name: string }>(
-  items: T[],
-  getImage: (item: T) => string,
-): SearchableImageOption[] =>
-  items.map((item) => ({
-    id: String(item.id),
-    name: capitalizeName(item.name),
-    imageUrl: getImage(item),
-  }));
 
 const fetcher = async <T,>(url: string): Promise<T> => {
   const response = await fetch(url);
@@ -58,8 +44,6 @@ const sortFramesByNumericName = <T extends { name?: string; url?: string }>(
 export function NewProductLinePage({
   session,
   rootProductLines,
-  cups,
-  brands,
   splashes,
   productLine,
   initialMachineId,
@@ -68,7 +52,9 @@ export function NewProductLinePage({
   const router = useRouter();
   const toast = useToast();
   const isEditing = Boolean(productLine?.id);
-  const [name, setName] = useState(productLine?.name || "");
+  const [name, setName] = useState(
+    productLine?.cup?.name || productLine?.name || "",
+  );
   const [baseProductLineId, setBaseProductLineId] = useState(
     productLine?.base_product_line?.id
       ? String(productLine.base_product_line.id)
@@ -76,9 +62,6 @@ export function NewProductLinePage({
   );
   const [cupId, setCupId] = useState(
     productLine?.cup?.id ? String(productLine.cup.id) : "",
-  );
-  const [brandId, setBrandId] = useState(
-    productLine?.brands?.[0]?.id ? String(productLine.brands[0].id) : "",
   );
   const [customSplashId, setCustomSplashId] = useState(
     productLine?.custom_splash?.id ? String(productLine.custom_splash.id) : "",
@@ -105,27 +88,23 @@ export function NewProductLinePage({
           (left, right) =>
             Number(Boolean(right.isPopular)) -
               Number(Boolean(left.isPopular)) ||
-            left.name.localeCompare(right.name, undefined, {
-              sensitivity: "base",
-            }),
+            (left.cup?.name || left.name).localeCompare(
+              right.cup?.name || right.name,
+              undefined,
+              {
+                sensitivity: "base",
+              },
+            ),
         )
         .map((line) => ({
           id: String(line.id),
-          name: capitalizeName(line.name),
+          name: capitalizeName(line.cup?.name || line.name),
           imageUrl: getSmallestMediaUrl(line.cup?.image),
           ...(line.isPopular
             ? { subtitle: "Popular", subtitleColor: "green.300" }
             : {}),
         })),
     [rootProductLines],
-  );
-  const cupOptions = useMemo(
-    () => toOptions(cups, (cup) => getSmallestMediaUrl(cup.image)),
-    [cups],
-  );
-  const brandOptions = useMemo(
-    () => toOptions(brands, (brand) => getSmallestMediaUrl(brand.logo)),
-    [brands],
   );
   const splashOptions = useMemo(
     () =>
@@ -136,8 +115,6 @@ export function NewProductLinePage({
       })),
     [splashes],
   );
-  const selectedCup = cups.find((cup) => String(cup.id) === cupId);
-  const selectedBrand = brands.find((brand) => String(brand.id) === brandId);
   const selectedBaseLine = rootProductLines.find(
     (line) => String(line.id) === baseProductLineId,
   );
@@ -164,7 +141,6 @@ export function NewProductLinePage({
     name.trim().length >= 2 &&
     baseProductLineId &&
     cupId &&
-    brandId &&
     (session.access === "product" || machineIds.length > 0) &&
     !loadError,
   );
@@ -187,7 +163,6 @@ export function NewProductLinePage({
             name: capitalizeName(name),
             baseProductLineId,
             cupId,
-            brandId,
             customSplashId,
             machineIds,
           }),
@@ -229,7 +204,7 @@ export function NewProductLinePage({
   return (
     <PortalShell
       title={isEditing ? "Edit product line" : "New product line"}
-      description={`${isEditing ? "Update" : "Choose"} the base line, cup, and brand. The cup animation updates as you make your selection.`}
+      description={`${isEditing ? "Update" : "Choose"} the product line. Its name and cup always match.`}
       clientName={session.client.company}
       access={session.access}
     >
@@ -248,11 +223,7 @@ export function NewProductLinePage({
         <ProductLineForm
           baseOptions={baseOptions}
           baseProductLineId={baseProductLineId}
-          brandId={brandId}
-          brandOptions={brandOptions}
           canSubmit={canSubmit}
-          cupId={cupId}
-          cupOptions={cupOptions}
           customSplashId={customSplashId}
           error={error}
           isSubmitting={isSubmitting}
@@ -267,22 +238,14 @@ export function NewProductLinePage({
               (line) => String(line.id) === value,
             );
             if (rootLine) {
-              setName(capitalizeName(rootLine.name));
+              setName(capitalizeName(rootLine.cup?.name || rootLine.name));
               setCupId(rootLine.cup?.id ? String(rootLine.cup.id) : "");
-              setBrandId(
-                rootLine.brands?.[0]?.id ? String(rootLine.brands[0].id) : "",
-              );
               setCustomSplashId(
                 rootLine.custom_splash?.id
                   ? String(rootLine.custom_splash.id)
                   : "",
               );
             }
-          }}
-          onBrandChange={setBrandId}
-          onCupChange={(value) => {
-            setCupId(value);
-            setCustomSplashId("");
           }}
           onCustomSplashChange={setCustomSplashId}
           onMachineIdsChange={setMachineIds}
@@ -292,8 +255,7 @@ export function NewProductLinePage({
         />
 
         <CupPreview
-          brand={selectedBrand}
-          cup={selectedCup}
+          cup={selectedBaseLine?.cup || productLine?.cup || undefined}
           isSplashLoading={Boolean(customSplashId && isCustomSplashLoading)}
           productLineName={name || selectedBaseLine?.name}
           splashError={Boolean(customSplashId && customSplashError)}

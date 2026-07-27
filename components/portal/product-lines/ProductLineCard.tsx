@@ -1,13 +1,17 @@
 import {
+  Badge,
   Box,
   Button,
   Divider,
   HStack,
   IconButton,
   Image,
+  Switch,
   Text,
   useDisclosure,
   VStack,
+  Wrap,
+  WrapItem,
 } from "@chakra-ui/react";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -28,11 +32,49 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
   const router = useRouter();
   const deleteDialog = useDisclosure();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isActive, setIsActive] = useState(productLine.isActive !== false);
+  const [isUpdatingActive, setIsUpdatingActive] = useState(false);
   const cupImage = getSmallestMediaUrl(productLine.cup?.image);
-  const firstBrand = productLine.brands?.[0];
-  const brandImage = getSmallestMediaUrl(firstBrand?.logo);
   const productLineName = capitalizeName(productLine.name);
   const productCount = productLine.products?.length || 0;
+  const machines = productLine.machines || [];
+  const brandCount = new Set(
+    (productLine.products || [])
+      .map((product) => product.brand?.id)
+      .filter(Boolean)
+      .map(String),
+  ).size;
+
+  const updateActiveState = async (nextIsActive: boolean) => {
+    const previousIsActive = isActive;
+    setIsActive(nextIsActive);
+    setIsUpdatingActive(true);
+    try {
+      const response = await fetch(
+        `/api/portal/product-lines/${productLine.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: nextIsActive }),
+        },
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          payload?.message || "Product line status could not be updated.",
+        );
+      }
+    } catch (error) {
+      setIsActive(previousIsActive);
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Product line status could not be updated.",
+      );
+    } finally {
+      setIsUpdatingActive(false);
+    }
+  };
 
   const deleteProductLine = async () => {
     setIsDeleting(true);
@@ -65,6 +107,7 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
     <>
       <Box3D
         overflow="hidden"
+        opacity={isActive ? 1 : 0.8}
         p="5"
         position="relative"
         cursor="pointer"
@@ -82,26 +125,36 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
             void router.push(`/product-lines/${productLine.id}/edit`);
           }
         }}
+        transition="opacity 0.2s ease"
       >
-        <IconButton
-          aria-label={`Delete ${productLineName}`}
-          title="Delete"
-          icon={<RxCross2 />}
-          color="red.300"
-          variant="ghost"
-          size="sm"
+        <HStack
+          spacing="2"
           position="absolute"
           top="2"
           right="2"
           zIndex="2"
-          isLoading={isDeleting}
-          _hover={{ bg: "red.900", color: "red.200" }}
-          onClick={(event) => {
-            event.stopPropagation();
-            deleteDialog.onOpen();
-          }}
-        />
-        <HStack spacing="4" align="center" pr="8">
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Switch
+            aria-label={`${isActive ? "Turn off" : "Turn on"} ${productLineName}`}
+            colorScheme="green"
+            isChecked={isActive}
+            isDisabled={isUpdatingActive}
+            onChange={(event) => void updateActiveState(event.target.checked)}
+          />
+          <IconButton
+            aria-label={`Delete ${productLineName}`}
+            title="Delete"
+            icon={<RxCross2 />}
+            color="red.300"
+            variant="ghost"
+            size="sm"
+            isLoading={isDeleting}
+            _hover={{ bg: "red.900", color: "red.200" }}
+            onClick={() => deleteDialog.onOpen()}
+          />
+        </HStack>
+        <HStack spacing="4" align="center" pr="20">
           <Box
             boxSize="120px"
             flex="0 0 auto"
@@ -131,25 +184,62 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
                   {`${productLineName} (${productCount})`}
                 </Text>
                 <Text color="bg.400" fontSize="sm" noOfLines={2}>
-                  {` ${firstBrand ? capitalizeName(firstBrand.name) : "No brand"}`}
+                  {brandCount
+                    ? `${brandCount} ${brandCount === 1 ? "brand" : "brands"}`
+                    : "No brands yet"}
                 </Text>
               </Box>
             </HStack>
-            {firstBrand ? (
-              <HStack spacing="2" alignItems="center" justifyContent="end">
-                {brandImage ? (
-                  <Image
-                    src={brandImage}
-                    alt=""
-                    boxSize="80px"
-                    objectFit="contain"
-                    flexShrink={0}
-                  />
-                ) : null}
-              </HStack>
-            ) : null}
           </VStack>
         </HStack>
+        <Box mt="4">
+          <Text
+            color="bg.300"
+            fontSize="xs"
+            fontWeight="700"
+            mb="2"
+            textTransform="uppercase"
+            letterSpacing="wide"
+          >
+            {machines.length === 1 ? "Machine" : "Machines"}
+          </Text>
+          {machines.length ? (
+            <Wrap spacing="2">
+              {machines.map((machine) => {
+                const machineName =
+                  machine.title || `Machine #${machine.id}`;
+                const machineLabel = machine.serial_number
+                  ? `${machineName} · Serial ${machine.serial_number}`
+                  : machineName;
+
+                return (
+                  <WrapItem key={machine.id}>
+                    <Badge
+                      px="2.5"
+                      py="1.5"
+                      borderRadius="md"
+                      colorScheme="green"
+                      textTransform="none"
+                      whiteSpace="normal"
+                    >
+                      {machineLabel}
+                    </Badge>
+                  </WrapItem>
+                );
+              })}
+            </Wrap>
+          ) : (
+            <Badge
+              px="2.5"
+              py="1.5"
+              borderRadius="md"
+              colorScheme="orange"
+              textTransform="none"
+            >
+              Not assigned to a machine
+            </Badge>
+          )}
+        </Box>
         <Divider my="4" />
         {productLine.products?.length ? (
           <VStack spacing="3" mt="5" align="stretch" w="full">

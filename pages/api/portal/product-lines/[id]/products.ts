@@ -134,6 +134,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!session) return res.status(401).json({ error: "unauthorized" });
 
   const productLineId = asId(Array.isArray(req.query.id) ? req.query.id[0] : req.query.id);
+  const brandId = asId(req.body?.brandId);
   const existingProductId = asId(req.body?.existingProductId);
   const isEditing = req.body?.isEditing === true;
   const splashId = asId(req.body?.splashId);
@@ -150,6 +151,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!productLineId) {
     return res.status(400).json({ error: "invalid_product_line" });
+  }
+  if (!brandId) {
+    return res.status(400).json({
+      error: "invalid_brand",
+      message: "Select a brand for this product.",
+    });
   }
   if (!splashId || !circleId || !mainImageId) {
     return res.status(400).json({
@@ -265,9 +272,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     "populate[products][filters][author][id][$eq]",
     String(session.user.id),
   );
-  ownershipParams.set("populate[brands][fields][0]", "name");
+  ownershipParams.set("populate[base_product_line][fields][0]", "name");
   ownershipParams.set("populate[machines][fields][0]", "title");
-  ownershipParams.set("pagination[pageSize]", "1000");
+  ownershipParams.set("pagination[pageSize]", "2000");
 
   const componentParams = new URLSearchParams();
   componentParams.set("fields[0]", "name");
@@ -277,7 +284,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .forEach((component, index) => {
     componentParams.set(`filters[id][$in][${index}]`, component.componentId);
   });
-  componentParams.set("pagination[pageSize]", "50");
+  componentParams.set("pagination[pageSize]", "2000");
 
   try {
     const productLines = await requestStrapiRestAsService<PortalProductLine[]>(
@@ -303,7 +310,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const brandIds = (productLine.brands || []).map((brand) => String(brand.id));
+    const genericProductLineId = productLine.base_product_line?.id;
+    if (!genericProductLineId) {
+      return res.status(400).json({
+        error: "invalid_generic_product_line",
+        message: "This product line is not linked to a root generic line.",
+      });
+    }
     const machineIds = (productLine.machines || []).map((machine) => String(machine.id));
     const duplicateNameParams = new URLSearchParams();
     duplicateNameParams.set("filters[name][$eqi]", name);
@@ -323,12 +336,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (existingProductId && !isEditing) {
       baseProductParams.set("filters[id][$eq]", existingProductId);
       baseProductParams.set("filters[author][username][$eq]", "root");
-      brandIds.forEach((brandId, index) => {
-        baseProductParams.set(
-          `filters[product_line][brands][id][$in][${index}]`,
-          brandId,
-        );
-      });
+      baseProductParams.set("filters[brand][id][$eq]", brandId);
+      baseProductParams.set(
+        "filters[product_line][id][$eq]",
+        String(genericProductLineId),
+      );
       baseProductParams.set("fields[0]", "name");
       baseProductParams.set("pagination[pageSize]", "1");
     }
@@ -340,6 +352,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       catalogComponents,
       duplicateProducts,
       baseProducts,
+      brand,
     ] = await Promise.all([
       requestStrapiRestAsService<RelatedEntity>(`/api/splashes/${splashId}`),
       requestStrapiRestAsService<RelatedEntity>(`/api/circles/${circleId}`),
@@ -356,17 +369,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             `/api/products?${duplicateNameParams.toString()}`,
           )
         : Promise.resolve([]),
-      existingProductId && !isEditing && brandIds.length
+      existingProductId && !isEditing
         ? requestStrapiRestAsService<CreatedProduct[]>(
             `/api/products?${baseProductParams.toString()}`,
           )
         : Promise.resolve([]),
+      requestStrapiRestAsService<RelatedEntity>(`/api/brands/${brandId}`),
     ]);
+
+    if (!brand?.id) {
+      return res.status(400).json({
+        error: "invalid_brand",
+        message: "The selected brand no longer exists.",
+      });
+    }
 
     if (existingProductId && !isEditing && !baseProducts[0]?.id) {
       return res.status(400).json({
         error: "invalid_base_product",
-        message: "Select a root product with the same brand as this product line.",
+        message: "Select a root product from this generic line and brand.",
       });
     }
 
@@ -464,6 +485,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         body: JSON.stringify({
           data: {
             name,
+            brand: brand.id,
             ...(description ? { description } : { description: null }),
             product_type: productType,
             product_purpose: productPurpose,
@@ -499,6 +521,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: JSON.stringify({
         data: {
           name,
+          brand: brand.id,
           ...(description ? { description } : {}),
           product_type: productType,
           product_purpose: productPurpose,

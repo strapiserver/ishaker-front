@@ -16,6 +16,7 @@ import { PortalShell } from "../components/portal/PortalShell";
 import { requirePortalSession } from "../lib/portal/auth";
 import { requestStrapiRestAsService } from "../services/server/strapiClient";
 import type { PortalSession, PromoCode } from "../types/portal";
+import { formatMoney } from "../lib/portal/currency";
 
 const getErrorMessage = (payload: any) => {
   if (typeof payload?.message === "string" && payload.message) return payload.message;
@@ -102,7 +103,14 @@ export default function PromosPage({ session, promos, loadError }: PromosPagePro
                 <Box key={promo.id} border="1px solid" borderColor="whiteAlpha.100" borderRadius="xl" p="4">
                   <Text color="bg.50" fontWeight="700">{promo.code}</Text>
                   <Text color="bg.300">
-                    {promo.discount_type === "PERCENT" ? `${promo.amount}% off` : `$${promo.amount} off`}
+                    {promo.discount_type === "PERCENT"
+                      ? `${promo.amount}% off`
+                      : `${formatMoney(
+                          promo.amount,
+                          promo.machine?.currency ||
+                            session.client.currency ||
+                            session.machines[0]?.currency,
+                        )} off`}
                   </Text>
                   <Text color="bg.300">
                     {new Date(promo.start_at).toLocaleDateString()} to {new Date(promo.end_at).toLocaleDateString()}
@@ -185,6 +193,8 @@ export const getServerSideProps: GetServerSideProps<PromosPageProps> = async (co
     const params = new URLSearchParams();
     params.set("filters[client][id][$eq]", String(result.session.client.id));
     params.set("sort[0]", "start_at:desc");
+    params.set("pagination[pageSize]", "2000");
+    params.set("populate[machine][populate][currency]", "*");
     const promos = await requestStrapiRestAsService<PromoCode[]>(
       `/api/promo-codes?${params.toString()}`,
     );

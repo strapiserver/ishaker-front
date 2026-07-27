@@ -12,10 +12,7 @@ import {
 } from "@chakra-ui/react";
 import { useMemo, useState } from "react";
 import useSWR from "swr";
-import {
-  SPLASH_FADE_MS,
-  useSplashAnimation,
-} from "../../../home/Splash";
+import { SPLASH_FADE_MS, useSplashAnimation } from "../../../home/Splash";
 import { capitalizeName } from "../../../../lib/formatName";
 import { getSmallestMediaUrl } from "../../../../lib/portal/media";
 import type { PortalSplash } from "../../../../types/portal";
@@ -44,21 +41,18 @@ type TestSplashItemProps = {
   splash: PortalSplash;
 };
 
-function TestSplashItem({
-  isSelected,
-  onSelect,
-  splash,
-}: TestSplashItemProps) {
+function TestSplashItem({ isSelected, onSelect, splash }: TestSplashItemProps) {
   const { data, error, isLoading } = useSWR<{ splash: PortalSplash }>(
-    `/api/portal/splashes/${splash.id}`,
+    splash.images === undefined ? `/api/portal/splashes/${splash.id}` : null,
     fetcher,
   );
+  const resolvedSplash = data?.splash || splash;
   const frames = useMemo(
     () =>
-      sortFramesByName(data?.splash.images)
+      sortFramesByName(resolvedSplash.images)
         .map((image) => getSmallestMediaUrl(image))
         .filter(Boolean),
-    [data],
+    [resolvedSplash],
   );
   const splashSets = useMemo(() => (frames.length ? [frames] : []), [frames]);
   const { activeFrame, isFading } = useSplashAnimation(splashSets, true);
@@ -85,8 +79,19 @@ function TestSplashItem({
         outline: "none",
       }}
     >
+      <Text
+        position="absolute"
+        color="bg.50"
+        fontWeight="500"
+        fontSize="sm"
+        textAlign="center"
+        noOfLines={2}
+        maxW="150px"
+      >
+        {capitalizeName(splash.name)}
+      </Text>
       <Box position="relative" w="full" aspectRatio="1">
-        {isLoading ? (
+        {isLoading && splash.images === undefined ? (
           <Spinner
             position="absolute"
             left="50%"
@@ -122,9 +127,6 @@ function TestSplashItem({
           </Text>
         )}
       </Box>
-      <Text color="bg.50" fontWeight="700" textAlign="center" noOfLines={2}>
-        {capitalizeName(splash.name)}
-      </Text>
     </VStack>
   );
 }
@@ -141,7 +143,7 @@ export function TestSplash({
   splashes,
 }: TestSplashProps) {
   const [page, setPage] = useState(0);
-  const pageSize = useBreakpointValue({ base: 6, md: 10 }) || 6;
+  const pageSize = useBreakpointValue({ base: 4, md: 10 }) || 4;
   const pageCount = Math.max(Math.ceil(splashes.length / pageSize), 1);
   const safePage = Math.min(page, pageCount - 1);
   const visibleSplashes = splashes.slice(

@@ -13,6 +13,7 @@ import { capitalizeName } from "../../../../lib/formatName";
 import { getMediaUrl, getSmallestMediaUrl } from "../../../../lib/portal/media";
 import { getStrapiBaseUrl } from "../../../../services/fetchers";
 import type {
+  PortalBrand,
   PortalCircle,
   PortalComponent,
   PortalProduct,
@@ -23,6 +24,7 @@ import type {
   PortalSplash,
   PortalTaste,
 } from "../../../../types/portal";
+import type { Currency } from "../../../../types/strapi";
 import { PortalShell } from "../../PortalShell";
 import {
   type ProductComponentRow,
@@ -149,6 +151,8 @@ const toComponentRows = (product?: PortalProduct): ProductComponentRow[] => {
 };
 
 export type NewProductPageProps = {
+  brands: PortalBrand[];
+  currencies: Currency[];
   circles: PortalCircle[];
   components: PortalComponent[];
   editingProduct?: PortalProduct | null;
@@ -160,6 +164,8 @@ export type NewProductPageProps = {
 };
 
 export function NewProductPage({
+  brands,
+  currencies,
   circles,
   components,
   editingProduct = null,
@@ -173,8 +179,31 @@ export function NewProductPage({
   const toast = useToast();
   const splashDialog = useDisclosure();
   const tasteMainDialog = useDisclosure();
+  const {
+    data: allSplashOptions,
+    error: allSplashOptionsError,
+    isLoading: areAllSplashOptionsLoading,
+  } = useSWR<{ splashes: PortalSplash[] }>(
+    splashDialog.isOpen
+      ? "/api/portal/visual-options?type=splashes"
+      : null,
+    fetcher,
+  );
+  const {
+    data: allTasteOptions,
+    error: allTasteOptionsError,
+    isLoading: areAllTasteOptionsLoading,
+  } = useSWR<{ tastes: PortalTaste[] }>(
+    tasteMainDialog.isOpen
+      ? "/api/portal/visual-options?type=tastes"
+      : null,
+    fetcher,
+  );
   const initialProduct = editingProduct || undefined;
   const isEditing = Boolean(initialProduct);
+  const [brandId, setBrandId] = useState(
+    initialProduct?.brand?.id ? String(initialProduct.brand.id) : "",
+  );
   const [name, setName] = useState(
     initialProduct ? capitalizeName(initialProduct.name) : "",
   );
@@ -237,6 +266,57 @@ export function NewProductPage({
       : "",
   );
   const productLineName = capitalizeName(productLine.name);
+  const assignedCurrencies = Array.from(
+    new Set(
+      (productLine.machines || [])
+        .map((machine) =>
+          machine.currency?.id ? String(machine.currency.id) : "",
+        )
+        .filter(Boolean),
+    ),
+  );
+  const [priceCurrencyId, setPriceCurrencyId] = useState(
+    assignedCurrencies.length === 1
+      ? assignedCurrencies[0]
+      : assignedCurrencies.length > 1
+        ? ""
+        : session.client.currency?.id
+          ? String(session.client.currency.id)
+          : "",
+  );
+  const canEditMachineCurrency =
+    session.access === "client" && Boolean(productLine.machines?.length);
+  const [isCurrencySaving, setIsCurrencySaving] = useState(false);
+  const updateMachineCurrency = async (currencyId: string) => {
+    const previousCurrencyId = priceCurrencyId;
+    setPriceCurrencyId(currencyId);
+    setIsCurrencySaving(true);
+    const response = await fetch(
+      `/api/portal/product-lines/${productLine.id}/machine-currency`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ currencyId }),
+      },
+    );
+    const payload = await response.json().catch(() => null);
+    setIsCurrencySaving(false);
+    if (!response.ok) {
+      setPriceCurrencyId(previousCurrencyId);
+      toast({
+        title: "Currency update failed",
+        description:
+          payload?.message || "Machine currency could not be updated.",
+        status: "error",
+      });
+      return;
+    }
+    toast({
+      title: "Machine currency updated",
+      description: `${payload.updatedMachineIds?.length || 0} assigned machine(s) now use ${payload.currency?.code || "the selected currency"}.`,
+      status: "success",
+    });
+  };
   const selectedProduct = templateProducts.find(
     (product) => String(product.id) === existingProductId,
   ) ||
@@ -301,12 +381,19 @@ export function NewProductPage({
     );
   }, [existingProductId, selectedProductResponse]);
 
-  const productOptions: ProductNameOption[] = templateProducts.map((product) => ({
-    id: String(product.id),
-    name: capitalizeName(product.name),
-    imageUrl: product.taste?.main?.url
-      ? toAbsoluteUrl(product.taste.main.url)
-      : "",
+  const productOptions: ProductNameOption[] = templateProducts
+    .filter((product) => String(product.brand?.id) === brandId)
+    .map((product) => ({
+      id: String(product.id),
+      name: capitalizeName(product.name),
+      imageUrl: product.taste?.main?.url
+        ? toAbsoluteUrl(product.taste.main.url)
+        : "",
+    }));
+  const brandOptions: SearchableImageOption[] = brands.map((brand) => ({
+    id: String(brand.id),
+    name: capitalizeName(brand.name),
+    imageUrl: getSmallestMediaUrl(brand.logo),
   }));
   const splashOptions: SearchableImageOption[] = splashes.map((splash) => ({
     id: String(splash.id),
@@ -347,7 +434,33 @@ export function NewProductPage({
   const selectedMain = tastes.find(
     (taste) => String(taste.main?.id) === mainImageId,
   )?.main;
+  const selectedBrand = brands.find((brand) => String(brand.id) === brandId);
+
+  useEffect(() => {
+    if (!splashDialog.isOpen || !allSplashOptions?.splashes) return;
+    allSplashOptions.splashes.forEach((splash) =>
+      (splash.images || []).forEach((media) => {
+        const url = getSmallestMediaUrl(media);
+        if (url) {
+          const image = new window.Image();
+          image.src = url;
+        }
+      }),
+    );
+  }, [allSplashOptions, splashDialog.isOpen]);
+
+  useEffect(() => {
+    if (!tasteMainDialog.isOpen || !allTasteOptions?.tastes) return;
+    allTasteOptions.tastes.forEach((taste) => {
+      const url = getSmallestMediaUrl(taste.main);
+      if (url) {
+        const image = new window.Image();
+        image.src = url;
+      }
+    });
+  }, [allTasteOptions, tasteMainDialog.isOpen]);
   const canSubmit =
+    Boolean(brandId) &&
     name.trim().length >= 2 &&
     Boolean(splashId) &&
     Boolean(circleId) &&
@@ -444,6 +557,7 @@ export function NewProductPage({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             name: capitalizeName(name),
+            brandId,
             existingProductId,
             isEditing,
             splashId,
@@ -533,6 +647,8 @@ export function NewProductPage({
         alignItems="stretch"
       >
         <NewProductForm
+          brandId={brandId}
+          brandOptions={brandOptions}
           componentRows={componentRows}
           components={components}
           description={description}
@@ -542,6 +658,13 @@ export function NewProductPage({
           mainImageId={mainImageId}
           mainImageOptions={mainImageOptions}
           name={name}
+          onBrandChange={(value) => {
+            setBrandId(value);
+            if (!isEditing) {
+              setName("");
+              resetProductVisuals();
+            }
+          }}
           onComponentRowsChange={setComponentRows}
           onCreateCustomProduct={resetProductVisuals}
           onDescriptionChange={setDescription}
@@ -564,6 +687,11 @@ export function NewProductPage({
             mainImage: setMainImageId,
           }}
           productLineName={productLineName}
+          currencies={currencies}
+          canEditMachineCurrency={canEditMachineCurrency}
+          priceCurrencyId={priceCurrencyId}
+          isCurrencySaving={isCurrencySaving}
+          onPriceCurrencyChange={updateMachineCurrency}
           productOptions={productOptions}
           productPurpose={productPurpose}
           productType={productType}
@@ -575,7 +703,7 @@ export function NewProductPage({
           circleOptions={circleOptions}
         />
         <NewProductVisualPreview
-          brand={productLine.brands?.[0]}
+          brand={selectedBrand}
           circle={selectedCircle}
           cup={productLine.cup || undefined}
           isSplashLoading={Boolean(
@@ -597,7 +725,10 @@ export function NewProductPage({
 
       <NewProductSelectionDialogs
         isMainImageOpen={tasteMainDialog.isOpen}
+        isMainImageLoading={areAllTasteOptionsLoading}
         isSplashOpen={splashDialog.isOpen}
+        isSplashLoading={areAllSplashOptionsLoading}
+        mainImageError={Boolean(allTasteOptionsError)}
         mainImageId={mainImageId}
         onCloseMainImage={tasteMainDialog.onClose}
         onCloseSplash={splashDialog.onClose}
@@ -610,8 +741,9 @@ export function NewProductPage({
           splashDialog.onClose();
         }}
         splashId={splashId}
-        splashes={splashes}
-        tastes={tastes}
+        splashError={Boolean(allSplashOptionsError)}
+        splashes={allSplashOptions?.splashes || []}
+        tastes={allTasteOptions?.tastes || []}
       />
       <HStack spacing="3" mt="4" justify="flex-start">
         <Button

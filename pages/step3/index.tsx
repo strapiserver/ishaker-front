@@ -69,6 +69,11 @@ export default function Step3Page() {
       return;
     }
 
+    if (draft.existingAccount) {
+      router.replace("/step4");
+      return;
+    }
+
     setContactName(draft.contactName || "");
     setEmail(draft.email || "");
     setMessengerCountryCode(draft.messengerCountryCode || "+1");
@@ -131,7 +136,7 @@ export default function Step3Page() {
             <CustomTitle
               as="h1"
               title="Add the portal contact"
-              subtitle="This person becomes the point of contact for the machine registration."
+              subtitle="This creates the portal login and primary support contact for the new account."
               fontSize={{ base: "3xl", md: "4xl" }}
               textAlign="left"
               mt="0"

@@ -22,12 +22,27 @@ import {
   clearMachineLookup,
   fetchMachineBySerial,
 } from "../../redux/strapiSlice";
-import { mergeRegistrationDraft } from "../../lib/portal/registration";
+import {
+  loadRegistrationDraft,
+  mergeRegistrationDraft,
+} from "../../lib/portal/registration";
 import CustomTitle from "../home/CutsomTitle";
 
 const SERIAL_DEBOUNCE_MS = 3000;
 
-export function SerialNumberSection() {
+type ExistingAccount = {
+  clientId: string | number;
+  nickname: string;
+  country?: string;
+  state?: string;
+  city?: string;
+};
+
+export function SerialNumberSection({
+  existingAccount,
+}: {
+  existingAccount?: ExistingAccount | null;
+}) {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { selectedMachine, selectedClient, serialLookupStatus } = useAppSelector(
@@ -46,7 +61,37 @@ export function SerialNumberSection() {
 
   const trimmedSerial = serial.trim();
   const isSearching = isDebouncing || serialLookupStatus === "loading";
-  const canContinue = serialLookupStatus === "found" && Boolean(selectedMachine);
+  const assignedClientId = selectedMachine?.client?.id;
+  const isOwnedByExistingAccount =
+    Boolean(existingAccount) &&
+    Boolean(assignedClientId) &&
+    String(assignedClientId) === String(existingAccount?.clientId);
+  const canClaimMachine = existingAccount
+    ? !assignedClientId || isOwnedByExistingAccount
+    : !assignedClientId;
+  const canContinue =
+    serialLookupStatus === "found" &&
+    Boolean(selectedMachine) &&
+    canClaimMachine;
+
+  useEffect(() => {
+    if (existingAccount) {
+      mergeRegistrationDraft({
+        nickname: existingAccount.nickname,
+        company: existingAccount.nickname,
+        clientId: existingAccount.clientId,
+        country: existingAccount.country || "USA",
+        state: existingAccount.state || "",
+        city: existingAccount.city || "",
+        existingAccount: true,
+      });
+      return;
+    }
+
+    if (!loadRegistrationDraft()?.nickname) {
+      void router.replace("/get-started");
+    }
+  }, [existingAccount, router]);
 
   useEffect(() => {
     if (!trimmedSerial) {
@@ -78,8 +123,14 @@ export function SerialNumberSection() {
       serialNumber: selectedMachine?.serial_number || trimmedSerial,
       machineTitle: selectedMachine?.title,
       machineTypeName: selectedMachine?.machine_type?.name,
-      clientId: selectedClient?.id,
-      company: selectedClient?.company || "",
+      ...(existingAccount
+        ? {
+            clientId: existingAccount.clientId,
+            company: existingAccount.nickname,
+            nickname: existingAccount.nickname,
+            existingAccount: true,
+          }
+        : {}),
     });
     router.push("/step2");
   };
@@ -179,7 +230,14 @@ export function SerialNumberSection() {
                 </Text>
                 {selectedClient?.company ? (
                   <Text color={muted} fontSize="sm">
-                    Current client: {selectedClient.company}
+                    This machine is already registered to: {selectedClient.company}
+                  </Text>
+                ) : null}
+                {!canClaimMachine ? (
+                  <Text color={errorColor} fontSize="sm" fontWeight="700">
+                    {existingAccount
+                      ? "This machine belongs to a different account."
+                      : "Sign in to the existing account to manage this machine."}
                   </Text>
                 ) : null}
               </VStack>

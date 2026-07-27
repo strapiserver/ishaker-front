@@ -10,6 +10,7 @@ import {
   useColorModeValue,
 } from "@chakra-ui/react";
 import { FaArrowRight } from "react-icons/fa";
+import { DEFAULT_CURRENCY, formatMoney } from "../../../../lib/portal/currency";
 
 type ShakerTouchProps = BoxProps & {
   videoBottom?: BoxProps["bottom"];
@@ -103,12 +104,12 @@ export function ShakerTouch({
               fontWeight="900"
               lineHeight="1"
             >
-              $8,500
+              {formatMoney(8500, DEFAULT_CURRENCY)}
             </Text>
           </VStack>
           <Button
             as="a"
-            href="/step1"
+            href="/get-started"
             variant="primary"
             size="sm"
             rightIcon={<FaArrowRight />}

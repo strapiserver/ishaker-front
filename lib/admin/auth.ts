@@ -1,5 +1,9 @@
 import crypto from "crypto";
-import type { GetServerSidePropsContext, NextApiResponse } from "next";
+import type {
+  GetServerSidePropsContext,
+  NextApiRequest,
+  NextApiResponse,
+} from "next";
 
 const COOKIE_NAME = "ishaker_admin_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
@@ -76,4 +80,13 @@ export const setAdminSession = (res: NextApiResponse) => {
 
 export const clearAdminSession = (res: NextApiResponse) => {
   res.setHeader("Set-Cookie", clearAdminSessionCookie());
+};
+
+export const requireAdminApiSession = (
+  req: NextApiRequest,
+  res: NextApiResponse,
+) => {
+  if (isValidAdminSession(req.headers.cookie)) return true;
+  res.status(401).json({ error: "admin_unauthorized" });
+  return false;
 };

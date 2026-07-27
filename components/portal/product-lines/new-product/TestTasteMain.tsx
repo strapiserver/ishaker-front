@@ -59,7 +59,10 @@ export function TestTasteMain({
                 minW="0"
                 cursor="pointer"
                 transition="border-color 160ms ease, transform 160ms ease"
-                _hover={{ borderColor: "acid.300", transform: "translateY(-2px)" }}
+                _hover={{
+                  borderColor: "acid.300",
+                  transform: "translateY(-2px)",
+                }}
                 _focusVisible={{
                   borderColor: "acid.300",
                   boxShadow: "0 0 0 2px var(--chakra-colors-acid-300)",
@@ -75,7 +78,12 @@ export function TestTasteMain({
                     objectFit="contain"
                   />
                 </Box>
-                <Text color="bg.50" fontWeight="700" textAlign="center" noOfLines={2}>
+                <Text
+                  color="bg.50"
+                  fontWeight="700"
+                  textAlign="center"
+                  noOfLines={2}
+                >
                   {capitalizeName(taste.name)}
                 </Text>
               </VStack>

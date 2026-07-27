@@ -70,13 +70,13 @@ export function HeroSection({ muted, headingColor }: HeroSectionProps) {
           >
             <Button
               as="a"
-              href="/step1"
+              href="/get-started"
               variant="primary"
               rightIcon={<FaArrowRight />}
             >
               Get Started
             </Button>
-            <Button as="a" href="https://ishaker.xyz" variant="contrast">
+            <Button as="a" href="/login" variant="contrast">
               Already registered
             </Button>
           </Flex>

@@ -1,7 +1,8 @@
-import { Box, Button, Flex, Heading, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, Heading, HStack, Text } from "@chakra-ui/react";
 import { FiPower } from "react-icons/fi";
+import Link from "next/link";
 
-export function AdminHeader() {
+export function AdminHeader({ title = "Client machines" }: { title?: string }) {
   const logout = async () => {
     await fetch("/api/admin/logout", { method: "POST" });
     window.location.href = "/admin/login";
@@ -36,21 +37,35 @@ export function AdminHeader() {
             lineHeight="1.1"
             my={0}
           >
-            Client machines
+            {title}
           </Heading>
         </Box>
 
-        <Button
-          leftIcon={<FiPower />}
-          onClick={logout}
-          variant="outline"
-          borderColor="whiteAlpha.200"
-          color="bg.100"
-          borderRadius="8px"
-          _hover={{ bg: "whiteAlpha.100" }}
-        >
-          Logout
-        </Button>
+        <HStack flexWrap="wrap" justify="flex-end">
+          {[
+            ["/admin/dashboard", "Clients"],
+            ["/admin/currencies", "Currencies"],
+            ["/admin/presets", "Presets"],
+            ["/admin/languages", "Languages"],
+            ["/admin/translations", "Translations"],
+            ["/admin/voice-clips", "Voice clips"],
+          ].map(([href, label]) => (
+            <Button key={href} as={Link} href={href} size="sm" variant="ghost">
+              {label}
+            </Button>
+          ))}
+          <Button
+            leftIcon={<FiPower />}
+            onClick={logout}
+            variant="outline"
+            borderColor="whiteAlpha.200"
+            color="bg.100"
+            borderRadius="8px"
+            _hover={{ bg: "whiteAlpha.100" }}
+          >
+            Logout
+          </Button>
+        </HStack>
       </Flex>
     </Box>
   );

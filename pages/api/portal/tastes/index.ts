@@ -1,35 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getPortalSessionFromApiRequest } from "../../../../lib/portal/auth";
 import { requestStrapiRestAsService } from "../../../../services/server/strapiClient";
+import {
+  decodePortalImage,
+  uploadPortalImages,
+} from "../../../../services/server/imageUpload";
 
-type EncodedFile = {
-  name?: unknown;
-  type?: unknown;
-  data?: unknown;
-};
-
-const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const MAX_ELEMENTS = 5;
 
 const asString = (value: unknown) => (typeof value === "string" ? value.trim() : "");
-
-const decodeImage = (value: EncodedFile, field: string) => {
-  const name = asString(value?.name);
-  const type = asString(value?.type).toLowerCase();
-  const data = asString(value?.data);
-
-  if (!name || !IMAGE_TYPES.has(type) || !data) {
-    throw new Error(`${field} must be a PNG, JPEG, or WebP image.`);
-  }
-
-  const buffer = Buffer.from(data, "base64");
-  if (!buffer.length || buffer.length > MAX_FILE_BYTES) {
-    throw new Error(`${field} must be no larger than 5 MB.`);
-  }
-
-  return { name, type, buffer };
-};
 
 export const config = {
   api: {
@@ -66,21 +45,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const main = decodeImage(req.body?.main || {}, "Main image");
-    const circleImage = decodeImage(req.body?.circle || {}, "Circle image");
-    const elements = rawElements.map((file: EncodedFile, index: number) =>
-      decodeImage(file, `Ingredient image ${index + 1}`),
+    const main = decodePortalImage(req.body?.main || {}, "Main image");
+    const circleImage = decodePortalImage(req.body?.circle || {}, "Circle image");
+    const elements = rawElements.map((file: any, index: number) =>
+      decodePortalImage(file, `Ingredient image ${index + 1}`),
     );
-
-    const form = new FormData();
-    [main, circleImage, ...elements].forEach((file) => {
-      form.append("files", new Blob([file.buffer], { type: file.type }), file.name);
-    });
-
-    const uploaded = await requestStrapiRestAsService<Array<{ id: string | number }>>(
-      "/api/upload",
-      { method: "POST", body: form },
-    );
+    const uploaded = await uploadPortalImages([main, circleImage, ...elements]);
 
     if (!Array.isArray(uploaded) || uploaded.length < 2) {
       throw new Error("Strapi did not return the uploaded images.");

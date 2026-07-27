@@ -35,8 +35,10 @@ const loadViaServiceGraphql = async (serial: string) => {
 const loadViaRest = async (serial: string) => {
   const params = new URLSearchParams();
   params.set("filters[serial_number][$eq]", serial);
-  params.set("populate", "client");
-  params.set("pagination[pageSize]", "1000");
+  params.set("populate[0]", "client");
+  params.set("populate[1]", "machine_type");
+  params.set("populate[2]", "currency");
+  params.set("pagination[pageSize]", "2000");
   params.set("sort", "title:ASC");
 
   const result = await fetchStrapiRest(`/api/machines?${params.toString()}`);
@@ -47,8 +49,10 @@ const loadViaRest = async (serial: string) => {
 const loadViaServiceRest = async (serial: string) => {
   const params = new URLSearchParams();
   params.set("filters[serial_number][$eq]", serial);
-  params.set("populate", "client");
-  params.set("pagination[pageSize]", "1000");
+  params.set("populate[0]", "client");
+  params.set("populate[1]", "machine_type");
+  params.set("populate[2]", "currency");
+  params.set("pagination[pageSize]", "2000");
   params.set("sort", "title:ASC");
 
   const result = await requestStrapiRestAsService<Machine[]>(

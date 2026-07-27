@@ -8,12 +8,14 @@ import {
 } from "@chakra-ui/react";
 import { NextSeo } from "next-seo";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useEffect } from "react";
 import { Header } from "../../components/home/Header";
 import CustomTitle from "../../components/home/CutsomTitle";
 import { clearRegistrationDraft } from "../../lib/portal/registration";
 
 export default function Step5Page() {
+  const router = useRouter();
   const pageBg = useColorModeValue("bg.50", "bg.900");
   const borderColor = useColorModeValue("blackAlpha.100", "whiteAlpha.100");
   const panelBg = useColorModeValue("bg.10", "bg.800");
@@ -36,8 +38,16 @@ export default function Step5Page() {
               </Text>
               <CustomTitle
                 as="h1"
-                title="Portal account created"
-                subtitle="Your machine registration was saved and your portal login is now active."
+                title={
+                  router.query.accountCreated === "0"
+                    ? "Machine registered"
+                    : "Portal account created"
+                }
+                subtitle={
+                  router.query.accountCreated === "0"
+                    ? "The machine was added to your existing portal account."
+                    : "Your machine registration was saved and your portal login is now active."
+                }
                 fontSize={{ base: "3xl", md: "4xl" }}
                 textAlign="left"
                 mt="0"
@@ -45,7 +55,8 @@ export default function Step5Page() {
                 subtitleProps={{ mx: "0", color: muted }}
               />
               <Text color={muted}>
-                You can continue straight to the client cabinet. Google sign-in can also be enabled later for the same email.
+                You can continue straight to the client cabinet and manage all
+                machines owned by this nickname.
               </Text>
               <Button as={Link} href="/machines" variant="primary" alignSelf="flex-start">
                 Open client cabinet

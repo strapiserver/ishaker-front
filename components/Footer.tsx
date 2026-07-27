@@ -13,7 +13,7 @@ import Link from "next/link";
 const productLinks = [
   { href: "/shaker-s", label: "iShaker S" },
   { href: "/shaker-touch", label: "iShaker Touch" },
-  { href: "/step1", label: "Get started" },
+  { href: "/get-started", label: "Get started" },
 ];
 
 const resourceLinks = [

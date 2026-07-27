@@ -3,8 +3,10 @@ import {
   Button,
   Container,
   FormControl,
+  FormHelperText,
   FormLabel,
   Input,
+  Select,
   VStack,
   Text,
   useColorModeValue,
@@ -15,18 +17,28 @@ import { useEffect, useState } from "react";
 import { Header } from "../../components/home/Header";
 import CustomTitle from "../../components/home/CutsomTitle";
 import { loadRegistrationDraft, mergeRegistrationDraft } from "../../lib/portal/registration";
+import { NICKNAME_HELP } from "../../lib/portal/nickname";
+import type { GetServerSideProps } from "next";
+import { requestStrapiRestAsService } from "../../services/server/strapiClient";
+import type { Currency } from "../../types/strapi";
 
-export default function Step2Page() {
+type Step2PageProps = { currencies: Currency[] };
+
+export default function Step2Page({ currencies }: Step2PageProps) {
   const router = useRouter();
   const pageBg = useColorModeValue("bg.50", "bg.900");
   const borderColor = useColorModeValue("blackAlpha.100", "whiteAlpha.100");
   const panelBg = useColorModeValue("bg.10", "bg.800");
   const muted = useColorModeValue("bg.600", "bg.300");
-  const [company, setCompany] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [country, setCountry] = useState("USA");
+  const [state, setState] = useState("");
+  const [city, setCity] = useState("");
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
   const [machineLabel, setMachineLabel] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
+  const [currencyId, setCurrencyId] = useState("");
 
   useEffect(() => {
     const draft = loadRegistrationDraft();
@@ -35,16 +47,36 @@ export default function Step2Page() {
       return;
     }
 
-    setCompany(draft.company || "");
+    setNickname(draft.nickname || draft.company || "");
+    setCountry(draft.country || "USA");
+    setState(draft.state || "");
+    setCity(draft.city || "");
     setLocation(draft.location || "");
     setNotes(draft.notes || "");
     setMachineLabel(draft.machineTitle || "Selected machine");
     setSerialNumber(draft.serialNumber);
-  }, [router]);
+    const defaultCurrency =
+      currencies.find((currency) => currency.code?.toUpperCase() === "USD") ||
+      currencies[0];
+    setCurrencyId(
+      draft.currencyId ? String(draft.currencyId) : defaultCurrency ? String(defaultCurrency.id) : "",
+    );
+  }, [currencies, router]);
 
   const handleNext = () => {
-    mergeRegistrationDraft({ company, location, notes });
-    router.push("/step3");
+    const draft = mergeRegistrationDraft({
+      nickname,
+      company: nickname,
+      country,
+      state,
+      city,
+      location,
+      notes,
+      currencyId,
+      currencyCode: currencies.find((currency) => String(currency.id) === currencyId)?.code,
+      currencySymbol: currencies.find((currency) => String(currency.id) === currencyId)?.symbol || undefined,
+    });
+    router.push(draft.existingAccount ? "/step4" : "/step3");
   };
 
   return (
@@ -59,8 +91,8 @@ export default function Step2Page() {
             </Text>
             <CustomTitle
               as="h1"
-              title="Confirm the machine and company"
-              subtitle="We use this to route the request to the right client account."
+              title="Confirm the machine and location"
+              subtitle="The nickname identifies the owner. Location data is used to name and manage the machine."
               fontSize={{ base: "3xl", md: "4xl" }}
               textAlign="left"
               mt="0"
@@ -77,9 +109,49 @@ export default function Step2Page() {
 
             <Box bg={panelBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" p="6">
               <VStack spacing="4" align="stretch">
-                <FormControl>
-                  <FormLabel>Your name or company name</FormLabel>
-                  <Input value={company} onChange={(event) => setCompany(event.target.value)} />
+                <FormControl isRequired>
+                  <FormLabel>Nickname</FormLabel>
+                  <Input value={nickname} isReadOnly />
+                  <FormHelperText>{NICKNAME_HELP}</FormHelperText>
+                </FormControl>
+                <FormControl isRequired>
+                  <FormLabel>Country</FormLabel>
+                  <Input
+                    value={country}
+                    onChange={(event) => setCountry(event.target.value)}
+                    placeholder="USA"
+                  />
+                </FormControl>
+                <FormControl isRequired>
+                  <FormLabel>State / region</FormLabel>
+                  <Input
+                    value={state}
+                    onChange={(event) => setState(event.target.value)}
+                    placeholder="NY"
+                  />
+                </FormControl>
+                <FormControl isRequired>
+                  <FormLabel>City</FormLabel>
+                  <Input
+                    value={city}
+                    onChange={(event) => setCity(event.target.value)}
+                    placeholder="New York"
+                  />
+                </FormControl>
+                <FormControl isRequired>
+                  <FormLabel>Currency</FormLabel>
+                  <Select
+                    value={currencyId}
+                    onChange={(event) => setCurrencyId(event.target.value)}
+                    placeholder="Select currency"
+                  >
+                    {currencies.map((currency) => (
+                      <option key={currency.id} value={currency.id}>
+                        {currency.code}
+                        {currency.name ? ` — ${currency.name}` : ""}
+                      </option>
+                    ))}
+                  </Select>
                 </FormControl>
                 <FormControl>
                   <FormLabel>Machine location</FormLabel>
@@ -100,7 +172,12 @@ export default function Step2Page() {
               </VStack>
             </Box>
 
-            <Button alignSelf="flex-start" variant="primary" onClick={handleNext} isDisabled={!company}>
+            <Button
+              alignSelf="flex-start"
+              variant="primary"
+              onClick={handleNext}
+              isDisabled={!nickname || !country || !state || !city || !currencyId}
+            >
               Continue
             </Button>
           </VStack>
@@ -109,3 +186,14 @@ export default function Step2Page() {
     </>
   );
 }
+
+export const getServerSideProps: GetServerSideProps<Step2PageProps> = async () => {
+  const params = new URLSearchParams();
+  params.set("filters[isActive][$ne]", "false");
+  params.set("sort[0]", "code:ASC");
+  params.set("pagination[pageSize]", "2000");
+  const currencies = await requestStrapiRestAsService<Currency[]>(
+    `/api/currencies?${params.toString()}`,
+  ).catch(() => []);
+  return { props: { currencies } };
+};

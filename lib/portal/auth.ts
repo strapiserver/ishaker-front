@@ -81,6 +81,9 @@ const fetchClientById = async (clientId: string | number) => {
     "populate[machines][populate][machine_type][populate][preview][fields][2]",
     "name",
   );
+  params.set("populate[machines][populate][currency]", "*");
+  params.set("populate[machines][populate][language]", "*");
+  params.set("populate[currency]", "*");
   params.set("populate[machines][sort][0]", "title:ASC");
 
   return requestStrapiRestAsService<Client>(
@@ -88,10 +91,18 @@ const fetchClientById = async (clientId: string | number) => {
   );
 };
 
+const withoutPrivateClientFields = (client: Client) => {
+  const safeClient = { ...client } as Client & Record<string, unknown>;
+  delete safeClient.nayax_token;
+  return safeClient as Client;
+};
+
 export const fetchMachineByIdAsService = async (machineId: string | number) => {
   const params = new URLSearchParams();
   params.set("populate[0]", "client");
   params.set("populate[1]", "machine_type");
+  params.set("populate[2]", "currency");
+  params.set("populate[3]", "language");
 
   return requestStrapiRestAsService<Machine>(
     `/api/machines/${machineId}?${params.toString()}`,
@@ -103,7 +114,9 @@ export const fetchMachineBySerialAsService = async (serialNumber: string) => {
   params.set("filters[serial_number][$eq]", serialNumber);
   params.set("populate[0]", "client");
   params.set("populate[1]", "machine_type");
-  params.set("pagination[pageSize]", "1000");
+  params.set("populate[2]", "currency");
+  params.set("populate[3]", "language");
+  params.set("pagination[pageSize]", "2000");
 
   const machines = await requestStrapiRestAsService<Machine[]>(
     `/api/machines?${params.toString()}`,
@@ -139,7 +152,7 @@ export const resolvePortalSession = async (
   try {
     const resolvedClient = await fetchClientById(user.client.id);
     if (!resolvedClient?.id) return null;
-    client = resolvedClient;
+    client = withoutPrivateClientFields(resolvedClient);
   } catch (error) {
     const status = (error as { status?: number }).status;
     if (status === 404) return null;
@@ -152,11 +165,11 @@ export const resolvePortalSession = async (
       id: string | number;
       company?: string;
     };
-    client = {
+    client = withoutPrivateClientFields({
       id: sessionClient.id,
       company: sessionClient.company || user.username || user.email || "Client",
       machines: [],
-    } as Client;
+    } as Client);
   }
 
   return {

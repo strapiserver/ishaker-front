@@ -18,7 +18,7 @@ export function ProductLinesPage({
   return (
     <PortalShell
       title="Product lines"
-      description="The cups you see on the main screen"
+      description="The cups shown on your machines. Each card lists the machine it is delivered to."
       clientName={session.client.company}
       access={session.access}
     >

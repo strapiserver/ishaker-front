@@ -254,7 +254,7 @@ export const getServerSideProps: GetServerSideProps<CatalogPageProps> = async (
     "url",
   );
   tasteParams.set("sort[0]", "name:ASC");
-  tasteParams.set("pagination[pageSize]", "1000");
+  tasteParams.set("pagination[pageSize]", "2000");
 
   let tastes: PortalTaste[] = [];
   try {

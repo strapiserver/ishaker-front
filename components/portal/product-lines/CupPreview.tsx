@@ -204,7 +204,7 @@ export function CupPreview({
               textAlign="center"
             >
               <Text fontSize="6xl">+</Text>
-              <Text>Select a cup to start the animation</Text>
+              <Text>Select a product line to start the animation</Text>
             </VStack>
           )}
         </Box>

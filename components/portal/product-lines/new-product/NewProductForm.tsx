@@ -15,6 +15,7 @@ import type {
   PortalProductPurpose,
   PortalProductType,
 } from "../../../../types/portal";
+import type { Currency } from "../../../../types/strapi";
 import {
   ProductComponentsTable,
   type ProductComponentRow,
@@ -27,6 +28,10 @@ import {
 } from "../SearchableImageSelect";
 
 type NewProductFormProps = {
+  brandId: string;
+  brandOptions: SearchableImageOption[];
+  canEditMachineCurrency: boolean;
+  currencies: Currency[];
   componentRows: ProductComponentRow[];
   components: PortalComponent[];
   description: string;
@@ -36,6 +41,7 @@ type NewProductFormProps = {
   mainImageId: string;
   mainImageOptions: SearchableImageOption[];
   name: string;
+  onBrandChange: (value: string) => void;
   onComponentRowsChange: (rows: ProductComponentRow[]) => void;
   onCreateCustomProduct: () => void;
   onDescriptionChange: (value: string) => void;
@@ -55,6 +61,9 @@ type NewProductFormProps = {
     splash: (value: string) => void;
   };
   productLineName: string;
+  priceCurrencyId: string;
+  isCurrencySaving: boolean;
+  onPriceCurrencyChange: (value: string) => void;
   productOptions: ProductNameOption[];
   productPurpose: PortalProductPurpose;
   productType: PortalProductType;
@@ -67,6 +76,10 @@ type NewProductFormProps = {
 };
 
 export function NewProductForm({
+  brandId,
+  brandOptions,
+  canEditMachineCurrency,
+  currencies,
   componentRows,
   components,
   description,
@@ -76,6 +89,7 @@ export function NewProductForm({
   mainImageId,
   mainImageOptions,
   name,
+  onBrandChange,
   onComponentRowsChange,
   onCreateCustomProduct,
   onDescriptionChange,
@@ -91,6 +105,9 @@ export function NewProductForm({
   onSubmit,
   onVisualChange,
   productLineName,
+  priceCurrencyId,
+  isCurrencySaving,
+  onPriceCurrencyChange,
   productOptions,
   productPurpose,
   productType,
@@ -124,6 +141,18 @@ export function NewProductForm({
         </Box>
 
         <FormControl isRequired>
+          <FormLabel>Brand</FormLabel>
+          <SearchableImageSelect
+            ariaLabel="Select a brand"
+            emptyLabel="No brands found"
+            options={brandOptions}
+            placeholder="Select a brand"
+            value={brandId}
+            onChange={onBrandChange}
+          />
+        </FormControl>
+
+        <FormControl isRequired>
           <FormLabel>Name</FormLabel>
           <ProductNameSelect
             value={name}
@@ -132,6 +161,11 @@ export function NewProductForm({
             onProductSelect={onProductSelect}
             onCreateCustom={onCreateCustomProduct}
           />
+          {!brandId ? (
+            <Text color="bg.400" fontSize="sm" mt="2">
+              Select a brand first to see matching root products.
+            </Text>
+          ) : null}
         </FormControl>
 
         <FormControl isRequired>
@@ -199,6 +233,11 @@ export function NewProductForm({
           servingUnit={servingUnit}
           productPurpose={productPurpose}
           productType={productType}
+          currencies={currencies}
+          canEditMachineCurrency={canEditMachineCurrency}
+          priceCurrencyId={priceCurrencyId}
+          isCurrencySaving={isCurrencySaving}
+          onPriceCurrencyChange={onPriceCurrencyChange}
         />
 
         {error ? (

@@ -42,7 +42,18 @@ export default function Step4Page() {
 
   useEffect(() => {
     const nextDraft = loadRegistrationDraft();
-    if (!nextDraft?.serialNumber || !nextDraft.company || !nextDraft.contactName || !nextDraft.email) {
+    const hasAccountDetails =
+      nextDraft?.existingAccount ||
+      Boolean(nextDraft?.contactName && nextDraft?.email && nextDraft?.password);
+    if (
+      !nextDraft?.serialNumber ||
+      !nextDraft.nickname ||
+      !nextDraft.country ||
+      !nextDraft.state ||
+      !nextDraft.city ||
+      !nextDraft.currencyId ||
+      !hasAccountDetails
+    ) {
       router.replace("/step1");
       return;
     }
@@ -65,11 +76,17 @@ export default function Step4Page() {
 
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
+      if (payload?.redirectTo) {
+        await router.push(payload.redirectTo);
+        return;
+      }
       setError(getErrorMessage(payload));
       return;
     }
 
-    router.push("/step5");
+    router.push(
+      `/step5?accountCreated=${draft.existingAccount ? "0" : "1"}`,
+    );
   };
 
   return (
@@ -85,7 +102,9 @@ export default function Step4Page() {
             <CustomTitle
               as="h1"
               title="Review and submit"
-              subtitle="This creates a registration request in Strapi for ops to review."
+              subtitle={draft?.existingAccount
+                ? "This machine will be attached to your existing portal account."
+                : "This creates your portal account and attaches the machine to it."}
               fontSize={{ base: "3xl", md: "4xl" }}
               textAlign="left"
               mt="0"
@@ -101,22 +120,32 @@ export default function Step4Page() {
                 <Text>{draft?.machineTitle || "Selected machine"}</Text>
                 <Text>Serial: {draft?.serialNumber}</Text>
                 {draft?.machineTypeName ? <Text>Type: {draft.machineTypeName}</Text> : null}
-                {draft?.location ? <Text>Location: {draft.location}</Text> : null}
+                <Text>
+                  {[draft?.city, draft?.state, draft?.country]
+                    .filter(Boolean)
+                    .join(", ")}
+                </Text>
+                <Text>Currency: {draft?.currencyCode || "Selected currency"}</Text>
+                {draft?.location ? <Text>Site: {draft.location}</Text> : null}
               </VStack>
             </Box>
 
             <Box bg={panelBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" p="6">
-              <Text color="acid.300" fontWeight="700" mb="3">Portal contact</Text>
+              <Text color="acid.300" fontWeight="700" mb="3">
+                {draft?.existingAccount ? "Owner account" : "Portal contact"}
+              </Text>
               <VStack spacing="2" color={muted} align="stretch">
-                <Text>{draft?.company}</Text>
-                <Text>{draft?.contactName}</Text>
-                <Text>{draft?.email}</Text>
+                <Text>Nickname: {draft?.nickname}</Text>
+                {draft?.contactName ? <Text>{draft.contactName}</Text> : null}
+                {draft?.email ? <Text>{draft.email}</Text> : null}
                 {draft?.messengerValue ? (
                   <Text>
                     {`WhatsApp: ${draft.messengerCountryCode || ""} ${draft.messengerValue}`.trim()}
                   </Text>
                 ) : null}
-                <Text>Auth: {draft?.authProvider || "local"}</Text>
+                {!draft?.existingAccount ? (
+                  <Text>Auth: {draft?.authProvider || "local"}</Text>
+                ) : null}
                 {draft?.notes ? <Text>Notes: {draft.notes}</Text> : null}
               </VStack>
             </Box>

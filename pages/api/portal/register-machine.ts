@@ -1,6 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { fetchMachineBySerialAsService } from "../../../lib/portal/auth";
-import { setPortalSession } from "../../../lib/portal/auth";
+import {
+  fetchMachineBySerialAsService,
+  getPortalSessionFromApiRequest,
+  setPortalSession,
+} from "../../../lib/portal/auth";
+import {
+  isValidNickname,
+  normalizeNickname,
+} from "../../../lib/portal/nickname";
 import { getStrapiBaseUrl } from "../../../services/fetchers";
 import { requestStrapiRestAsService } from "../../../services/server/strapiClient";
 import {
@@ -13,7 +20,8 @@ import {
   provisionTelemetryMachineSetup,
   resolveTelemetryOrganizationId,
 } from "../../../services/server/telemetryClient";
-import type { Client, Machine } from "../../../types/strapi";
+import type { Client, Currency, Machine } from "../../../types/strapi";
+import { updateMachineRegistrationData } from "../../../services/server/machineRegistration";
 
 const asString = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 const WHATSAPP_COUNTRY_CODE_REGEX = /^\+[1-9]\d{0,3}$/;
@@ -132,7 +140,7 @@ const buildClientContact = (params: {
 const fetchClientByPortalEmail = async (email: string) => {
   const params = new URLSearchParams();
   params.set("filters[portal_email][$eqi]", email.toLowerCase());
-  params.set("pagination[pageSize]", "1000");
+  params.set("pagination[pageSize]", "2000");
 
   const clients = await requestStrapiRestAsService<Client[]>(
     `/api/clients?${params.toString()}`,
@@ -144,7 +152,7 @@ const fetchClientByPortalEmail = async (email: string) => {
 const fetchClientByCompany = async (company: string) => {
   const params = new URLSearchParams();
   params.set("filters[company][$eqi]", company);
-  params.set("pagination[pageSize]", "1000");
+  params.set("pagination[pageSize]", "2000");
 
   const clients = await requestStrapiRestAsService<Client[]>(
     `/api/clients?${params.toString()}`,
@@ -154,25 +162,41 @@ const fetchClientByCompany = async (company: string) => {
 };
 
 const createClient = async (params: {
-  company: string;
+  nickname: string;
   email: string;
   messengerType: string;
   messengerCountryCode: string;
   messengerValue: string;
+  country: string;
+  state: string;
+  city: string;
+  currencyId: string | number;
 }) =>
   requestStrapiRestAsService<Client>("/api/clients", {
     method: "POST",
     body: JSON.stringify({
       data: {
-        company: params.company,
+        company: params.nickname,
         portal_email: params.email,
         portal_access_enabled: true,
         portal_auth_provider: "local",
         status: "client",
-        country: "USA",
+        country: params.country,
+        state: params.state,
+        city: params.city,
+        currency: params.currencyId,
         contact: buildClientContact(params),
       },
     }),
+  });
+
+const updateClientLocation = async (
+  clientId: string | number,
+  location: { country: string; state: string; city: string },
+) =>
+  requestStrapiRestAsService<Client>(`/api/clients/${clientId}`, {
+    method: "PUT",
+    body: JSON.stringify({ data: location }),
   });
 
 const updateClientPortalAccess = async (
@@ -192,51 +216,6 @@ const updateClientPortalAccess = async (
     }),
   });
 
-const resolveClientForRegistration = async (params: {
-  machine: Machine;
-  company: string;
-  email: string;
-  messengerType: string;
-  messengerCountryCode: string;
-  messengerValue: string;
-}) => {
-  if (params.machine.client?.id) {
-    const updated = await updateClientPortalAccess(params.machine.client.id, params.email);
-    return updated || params.machine.client;
-  }
-
-  const existingByEmail = await fetchClientByPortalEmail(params.email);
-  const existingByCompany = existingByEmail ? null : await fetchClientByCompany(params.company);
-  const client =
-    existingByEmail ||
-    existingByCompany ||
-    (await createClient({
-      company: params.company,
-      email: params.email,
-      messengerType: params.messengerType,
-      messengerCountryCode: params.messengerCountryCode,
-      messengerValue: params.messengerValue,
-    }));
-
-  if (!client?.id) {
-    throw new Error("Client account could not be created.");
-  }
-
-  if (existingByEmail || existingByCompany) {
-    await updateClientPortalAccess(client.id, params.email);
-  }
-
-  await requestStrapiRestAsService(`/api/machines/${params.machine.id}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      data: {
-        client: client.id,
-      },
-    }),
-  });
-
-  return client;
-};
 
 const syncTelemetry = async (params: {
   client: Client;
@@ -247,6 +226,7 @@ const syncTelemetry = async (params: {
   messengerType: string;
   messengerCountryCode: string;
   messengerValue: string;
+  currency: Currency;
 }) => {
   if (!isTelemetryConfigured()) {
     const missing = getMissingTelemetryEnvKeys();
@@ -267,7 +247,7 @@ const syncTelemetry = async (params: {
     const created = await createTelemetryOrganization({
       name: params.company,
       description: `Created from iShaker portal for ${params.email}.`,
-      currency: "$",
+      currency: params.currency.code,
       isTest: false,
       enabledModules: [],
       isUsedLocalProductBase: false,
@@ -357,34 +337,87 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "method_not_allowed" });
   }
 
+  const session = await getPortalSessionFromApiRequest(req).catch(() => null);
+  const isExistingAccount = session?.access === "client";
   const serialNumber = asString(req.body?.serialNumber);
-  const company = asString(req.body?.company);
-  const contactName = asString(req.body?.contactName);
-  const email = asString(req.body?.email);
+  const requestedNickname = normalizeNickname(
+    req.body?.nickname || req.body?.company,
+  );
+  const nickname = isExistingAccount
+    ? session.client.company
+    : requestedNickname;
+  const country = asString(req.body?.country);
+  const state = asString(req.body?.state);
+  const city = asString(req.body?.city);
+  const contactName = isExistingAccount
+    ? session.user.username || nickname
+    : asString(req.body?.contactName);
+  const email = isExistingAccount
+    ? session.user.email.toLowerCase()
+    : asString(req.body?.email).toLowerCase();
   const messengerType = asString(req.body?.messengerType);
   const messengerCountryCode = asString(req.body?.messengerCountryCode);
   const messengerValue = asString(req.body?.messengerValue);
   const password = asString(req.body?.password);
   const passwordConfirmation = asString(req.body?.passwordConfirmation);
+  const currencyId = asString(req.body?.currencyId);
+
+  if (!serialNumber || !nickname || !country || !state || !city || !currencyId) {
+    return res.status(400).json({
+      error: "missing_required_fields",
+      message: "Nickname, country, state/region, city, currency, and serial number are required.",
+    });
+  }
+
+  if (!isValidNickname(nickname)) {
+    return res.status(400).json({
+      error: "invalid_nickname",
+      message:
+        "Nickname must use 3–32 letters, numbers, hyphens, or underscores with no spaces.",
+    });
+  }
 
   if (
-    !serialNumber ||
-    !company ||
-    !contactName ||
-    !email ||
-    !messengerType ||
-    !messengerValue ||
-    !password ||
-    !passwordConfirmation
+    isExistingAccount &&
+    requestedNickname &&
+    requestedNickname.toLowerCase() !== nickname.toLowerCase()
   ) {
-    return res.status(400).json({ error: "missing_required_fields" });
+    return res.status(403).json({
+      error: "nickname_mismatch",
+      message: "The nickname does not match the signed-in account.",
+    });
   }
 
-  if (password !== passwordConfirmation) {
-    return res.status(400).json({ error: "password_mismatch" });
+  if (
+    !isExistingAccount &&
+    (!contactName ||
+      !email ||
+      !messengerType ||
+      !messengerValue ||
+      !password ||
+      !passwordConfirmation)
+  ) {
+    return res.status(400).json({
+      error: "missing_account_fields",
+      message: "Contact, email, WhatsApp, and password are required.",
+    });
   }
 
-  if (messengerType !== "whatsapp") {
+  if (!isExistingAccount && password !== passwordConfirmation) {
+    return res.status(400).json({
+      error: "password_mismatch",
+      message: "Passwords do not match.",
+    });
+  }
+
+  if (!isExistingAccount && password.length < 8) {
+    return res.status(400).json({
+      error: "invalid_password",
+      message: "Use at least 8 characters for the password.",
+    });
+  }
+
+  if (!isExistingAccount && messengerType !== "whatsapp") {
     return res.status(400).json({
       error: "invalid_messenger",
       message: "WhatsApp is required for registration.",
@@ -392,8 +425,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (
-    !WHATSAPP_COUNTRY_CODE_REGEX.test(messengerCountryCode) ||
-    !WHATSAPP_LOCAL_NUMBER_REGEX.test(messengerValue)
+    !isExistingAccount &&
+    (!WHATSAPP_COUNTRY_CODE_REGEX.test(messengerCountryCode) ||
+      !WHATSAPP_LOCAL_NUMBER_REGEX.test(messengerValue))
   ) {
     return res.status(400).json({
       error: "invalid_whatsapp",
@@ -413,21 +447,151 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  let client: Client;
-  try {
-    client = await resolveClientForRegistration({
-      machine: matchedMachine,
-      company,
-      email: email.toLowerCase(),
-      messengerType,
-      messengerCountryCode,
-      messengerValue,
+  const currency = await requestStrapiRestAsService<Currency>(
+    `/api/currencies/${currencyId}`,
+  ).catch(() => null);
+  if (!currency?.id || currency.isActive === false) {
+    return res.status(400).json({
+      error: "invalid_currency",
+      message: "Select an active currency.",
     });
+  }
+
+  if (
+    matchedMachine.client?.id &&
+    (!isExistingAccount ||
+      String(matchedMachine.client.id) !== String(session.client.id))
+  ) {
+    return res.status(409).json({
+      error: "machine_already_registered",
+      message: "This machine is already registered. Sign in to its owner account.",
+      redirectTo: "/login",
+    });
+  }
+
+  let client: Client;
+  let portalUserId = isExistingAccount ? session.user.id : null;
+  let newAccountJwt = "";
+
+  if (isExistingAccount) {
+    client = session.client;
+  } else {
+    const [existingByNickname, existingByEmail] = await Promise.all([
+      fetchClientByCompany(nickname),
+      fetchClientByPortalEmail(email),
+    ]);
+
+    if (existingByNickname) {
+      return res.status(409).json({
+        error: "nickname_exists",
+        message: "That nickname already has an account. Sign in to continue.",
+        redirectTo: `/login?identifier=${encodeURIComponent(
+          nickname.toLowerCase(),
+        )}`,
+      });
+    }
+
+    if (existingByEmail) {
+      return res.status(409).json({
+        error: "email_exists",
+        message: "That email already has an account. Sign in to continue.",
+        redirectTo: `/login?identifier=${encodeURIComponent(email)}`,
+      });
+    }
+
+    try {
+      client = await createClient({
+        nickname,
+        email,
+        messengerType,
+        messengerCountryCode,
+        messengerValue,
+        country,
+        state,
+        city,
+        currencyId: currency.id,
+      });
+    } catch (error) {
+      console.error("[portal/register-machine] client creation failed:", error);
+      const payload = getErrorPayload(error);
+      return res.status(payload.status).json({
+        error: "client_creation_failed",
+        message: payload.message,
+        details: payload.details,
+      });
+    }
+
+    const registerResponse = await fetch(
+      `${getStrapiBaseUrl()}/api/auth/local/register`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          username: nickname.toLowerCase(),
+          email,
+          password,
+          client: client.id,
+        }),
+      },
+    );
+    const registerPayload = await registerResponse.json().catch(() => null);
+
+    if (!registerResponse.ok || !registerPayload?.jwt) {
+      await requestStrapiRestAsService(`/api/clients/${client.id}`, {
+        method: "DELETE",
+      }).catch((error) => {
+        console.error(
+          "[portal/register-machine] new client rollback failed:",
+          error,
+        );
+      });
+      return res.status(registerResponse.status || 500).json({
+        error: "registration_submission_failed",
+        message:
+          registerPayload?.error?.message ||
+          registerPayload?.message ||
+          "Portal account could not be created.",
+        details:
+          registerPayload?.error?.details || registerPayload?.details || null,
+      });
+    }
+
+    portalUserId = registerPayload.user?.id || null;
+    newAccountJwt = registerPayload.jwt;
+    setPortalSession(res, newAccountJwt);
+  }
+
+  try {
+    client =
+      (await updateClientLocation(client.id, { country, state, city })) ||
+      client;
   } catch (error) {
-    console.error("[portal/register-machine] client resolution failed:", error);
+    console.error("[portal/register-machine] client location update failed:", error);
     const payload = getErrorPayload(error);
     return res.status(payload.status).json({
-      error: "client_resolution_failed",
+      error: "client_update_failed",
+      message: payload.message,
+      details: payload.details,
+    });
+  }
+
+  let assignedMachine: Machine;
+  try {
+    assignedMachine = await updateMachineRegistrationData({
+      client,
+      machine: matchedMachine,
+      nickname,
+      country,
+      stateRegion: state,
+      city,
+      location: asString(req.body?.location),
+      currencyId: currency.id,
+    });
+  } catch (error) {
+    console.error("[portal/register-machine] machine assignment failed:", error);
+    const payload = getErrorPayload(error);
+    return res.status(payload.status).json({
+      error: "machine_assignment_failed",
       message: payload.message,
       details: payload.details,
     });
@@ -439,59 +603,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     machineId?: number | null;
     registrationCode?: string;
     note?: string;
-  };
+  } | null = null;
+  let telemetryErrorNote = "";
   try {
     telemetryResult = await syncTelemetry({
       client,
-      machine: matchedMachine,
-      company,
+      machine: assignedMachine,
+      company: nickname,
       contactName,
-      email: email.toLowerCase(),
+      email,
       messengerType,
       messengerCountryCode,
       messengerValue,
+      currency,
     });
   } catch (error) {
     console.error("[portal/register-machine] telemetry sync failed:", error);
     const payload = getTelemetryErrorPayload(error);
-    return res.status(payload.status).json({
-      error: "telemetry_sync_failed",
-      message: payload.message,
-      details: payload.details,
-    });
-  }
-
-  const registerResponse = await fetch(`${getStrapiBaseUrl()}/api/auth/local/register`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      username: email.toLowerCase(),
-      email: email.toLowerCase(),
-      password,
-      client: client.id,
-    }),
-  });
-
-  const registerPayload = await registerResponse.json().catch(() => null);
-
-  if (!registerResponse.ok || !registerPayload?.jwt) {
-    return res.status(registerResponse.status || 500).json({
-      error: "registration_submission_failed",
-      message:
-        registerPayload?.error?.message ||
-        registerPayload?.message ||
-        "Portal account could not be created.",
-      details: registerPayload?.error?.details || registerPayload?.details || null,
-    });
+    telemetryErrorNote = `Telemetry sync pending: ${payload.message}`;
   }
 
   const data = {
     serial_number: serialNumber,
-    machine_title: matchedMachine?.title || asString(req.body?.machineTitle),
-    company,
+    machine_title: assignedMachine.title,
+    company: nickname,
     contact_name: contactName,
     email,
     portal_auth_provider: "local",
+    phone:
+      messengerType === "whatsapp"
+        ? `${messengerCountryCode} ${messengerValue}`.trim()
+        : "",
     location: asString(req.body?.location),
     notes: [
       asString(req.body?.notes),
@@ -499,6 +641,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ? `WhatsApp: ${messengerCountryCode} ${messengerValue}`.trim()
         : "",
       telemetryResult?.note || "",
+      telemetryErrorNote,
     ]
       .filter(Boolean)
       .join("\n"),
@@ -506,7 +649,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     status: "pending",
     ...(matchedMachine?.id ? { machine: matchedMachine.id } : {}),
     ...(client?.id ? { client: client.id } : {}),
-    ...(registerPayload?.user?.id ? { portal_user: registerPayload.user.id } : {}),
+    ...(portalUserId ? { portal_user: portalUserId } : {}),
   };
 
   try {
@@ -518,8 +661,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     );
 
-    setPortalSession(res, registerPayload.jwt);
-    return res.status(200).json({ ok: true, response });
+    return res.status(200).json({
+      ok: true,
+      response,
+      machine: assignedMachine,
+      telemetry: telemetryResult || { status: "pending" },
+      accountCreated: !isExistingAccount,
+    });
   } catch (error) {
     console.error("[portal/register-machine] failed:", error);
     const payload = getErrorPayload(error);

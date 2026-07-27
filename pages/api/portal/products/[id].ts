@@ -47,6 +47,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   params.set("populate[components][fields][2]", "default_value");
   params.set("populate[nutrition]", "*");
   params.set("populate[dosage]", "*");
+  params.set("populate[brand][fields][0]", "name");
+  params.set("populate[brand][populate][logo][fields][0]", "url");
+  params.set("populate[brand][populate][logo][fields][1]", "formats");
 
   try {
     const product = await requestStrapiRestAsService<PortalProduct>(

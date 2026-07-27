@@ -7,6 +7,10 @@ import {
   ModalOverlay,
   Input,
   HStack,
+  Alert,
+  AlertIcon,
+  Spinner,
+  Center,
 } from "@chakra-ui/react";
 import { useState } from "react";
 import type { PortalSplash, PortalTaste } from "../../../../types/portal";
@@ -15,26 +19,34 @@ import { TestTasteMain } from "./TestTasteMain";
 
 type NewProductSelectionDialogsProps = {
   isMainImageOpen: boolean;
+  isMainImageLoading?: boolean;
   isSplashOpen: boolean;
+  isSplashLoading?: boolean;
+  mainImageError?: boolean;
   mainImageId: string;
   onCloseMainImage: () => void;
   onCloseSplash: () => void;
   onSelectMainImage: (id: string) => void;
   onSelectSplash: (id: string) => void;
   splashId: string;
+  splashError?: boolean;
   splashes: PortalSplash[];
   tastes: PortalTaste[];
 };
 
 export function NewProductSelectionDialogs({
   isMainImageOpen,
+  isMainImageLoading = false,
   isSplashOpen,
+  isSplashLoading = false,
+  mainImageError = false,
   mainImageId,
   onCloseMainImage,
   onCloseSplash,
   onSelectMainImage,
   onSelectSplash,
   splashId,
+  splashError = false,
   splashes,
   tastes,
 }: NewProductSelectionDialogsProps) {
@@ -83,7 +95,11 @@ export function NewProductSelectionDialogs({
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody pb="6">
-            {isSplashOpen ? (
+            {isSplashLoading ? (
+              <Center py="12"><Spinner color="acid.300" /></Center>
+            ) : splashError ? (
+              <Alert status="error"><AlertIcon />All splash images could not be loaded.</Alert>
+            ) : isSplashOpen ? (
               <TestSplash
                 splashes={filteredSplashes}
                 selectedSplashId={splashId}
@@ -117,7 +133,11 @@ export function NewProductSelectionDialogs({
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody pb="6">
-            {isMainImageOpen ? (
+            {isMainImageLoading ? (
+              <Center py="12"><Spinner color="acid.300" /></Center>
+            ) : mainImageError ? (
+              <Alert status="error"><AlertIcon />All taste main images could not be loaded.</Alert>
+            ) : isMainImageOpen ? (
               <TestTasteMain
                 tastes={filteredTastes}
                 selectedMainImageId={mainImageId}

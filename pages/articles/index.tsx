@@ -8,7 +8,7 @@ type ArticlesRouteProps = {
   articles: Article[];
 };
 
-const PAGE_SIZE = 1000;
+const PAGE_SIZE = 2000;
 
 export default function ArticlesRoute({ articles }: ArticlesRouteProps) {
   return (

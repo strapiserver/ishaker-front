@@ -5,6 +5,7 @@ import {
   Button,
   SimpleGrid,
   HStack,
+  Stack,
   VStack,
   Text,
   Icon,
@@ -17,7 +18,7 @@ import { requirePortalSession } from "../../lib/portal/auth";
 import { getSmallestMediaUrl } from "../../lib/portal/media";
 import type { PortalMachineSummary, PortalSession } from "../../types/portal";
 import type { Machine } from "../../types/strapi";
-import { FaPlus } from "react-icons/fa";
+import { FaArrowRight, FaPlus, FaWrench } from "react-icons/fa";
 
 type MachinesPageProps = {
   session: PortalSession;
@@ -57,23 +58,32 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
       description="All machines registered to your account. You can create new product lines for each machine."
       clientName={session.client.company}
     >
-      <Button
-        as={Link}
-        href={
-          machines[0]
-            ? `/product-lines/new?machineId=${machines[0].id}`
-            : "/product-lines/new"
-        }
-        variant="primary"
-        w="full"
-        mb="8"
-        fontSize={{ base: "lg", md: "xl" }}
-        leftIcon={<Icon as={FaPlus} boxSize={{ base: "5", md: "7" }} />}
-      >
-        New product line
-      </Button>
+      <HStack spacing="3" mb="6" flexWrap="wrap">
+        <Button
+          as={Link}
+          href={
+            machines[0]
+              ? `/product-lines/new?machineId=${machines[0].id}`
+              : "/product-lines/new"
+          }
+          variant="primary"
+          fontSize={{ base: "md", md: "lg" }}
+          leftIcon={<Icon as={FaPlus} boxSize={{ base: "4", md: "5" }} />}
+        >
+          New product line
+        </Button>
+        <Button
+          as={Link}
+          href="/step1"
+          variant="contrast"
+          fontSize={{ base: "md", md: "lg" }}
+          leftIcon={<Icon as={FaWrench} boxSize={{ base: "4", md: "5" }} />}
+        >
+          Register another machine
+        </Button>
+      </HStack>
 
-      <SimpleGrid columns={{ base: 1, xl: 2 }} spacing="5">
+      <SimpleGrid columns={{ base: 1, lg: 2 }} spacing="4">
         {machines.map((machine) => {
           const previewUrl = getSmallestMediaUrl(machine.machine_type?.preview);
 
@@ -83,56 +93,105 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
               bg="bg.900"
               border="1px solid"
               borderColor="whiteAlpha.100"
-              borderRadius="2xl"
-              p="6"
+              borderRadius="xl"
+              p={{ base: "4", md: "5" }}
+              transition="border-color 160ms ease, transform 160ms ease"
+              _hover={{
+                borderColor: "whiteAlpha.300",
+                transform: "translateY(-1px)",
+              }}
             >
-              <VStack spacing="3" align="stretch">
-                {previewUrl ? (
+              <VStack spacing="4" align="stretch" h="full">
+                <HStack spacing="4" align="flex-start">
                   <AspectRatio
                     ratio={1}
-                    w="96px"
+                    boxSize={{ base: "68px", sm: "76px" }}
+                    flex="0 0 auto"
                     bg="bg.800"
-                    borderRadius="xl"
+                    border="1px solid"
+                    borderColor="whiteAlpha.50"
+                    borderRadius="lg"
                     overflow="hidden"
                   >
-                    <Image
-                      src={previewUrl}
-                      alt={
-                        machine.machine_type?.name || machine.title || "Machine"
-                      }
-                      w="full"
-                      h="full"
-                      objectFit="contain"
-                      p="2"
-                    />
+                    {previewUrl ? (
+                      <Image
+                        src={previewUrl}
+                        alt={
+                          machine.machine_type?.name || machine.title || "Machine"
+                        }
+                        w="full"
+                        h="full"
+                        objectFit="contain"
+                        p="2"
+                      />
+                    ) : (
+                      <Box />
+                    )}
                   </AspectRatio>
-                ) : null}
-                <HStack justify="space-between" align="center">
-                  <Text color="bg.50" fontWeight="800" fontSize="xl">
-                    {machine.title || `Machine #${machine.id}`}
-                  </Text>
-                  <Badge
-                    colorScheme={
-                      machine.status === "working" ? "green" : "gray"
-                    }
-                  >
-                    {machine.statusLabel}
-                  </Badge>
+
+                  <VStack spacing="2" align="stretch" flex="1" minW="0">
+                    <HStack justify="space-between" align="flex-start" spacing="3">
+                      <Text
+                        color="bg.50"
+                        fontWeight="800"
+                        fontSize={{ base: "lg", md: "xl" }}
+                        lineHeight="short"
+                        noOfLines={1}
+                      >
+                        {machine.title || `Machine #${machine.id}`}
+                      </Text>
+                      <Badge
+                        flexShrink={0}
+                        colorScheme={
+                          machine.status === "working" ? "green" : "gray"
+                        }
+                      >
+                        {machine.statusLabel}
+                      </Badge>
+                    </HStack>
+
+                    <Stack
+                      direction={{ base: "column", sm: "row" }}
+                      spacing={{ base: "1", sm: "3" }}
+                      color="bg.300"
+                      fontSize="sm"
+                    >
+                      <Text noOfLines={1}>Serial: {machine.serial_number}</Text>
+                      {machine.machine_type?.name ? (
+                        <Text
+                          noOfLines={1}
+                          _before={{
+                            content: { base: '""', sm: '"•"' },
+                            mr: { base: "0", sm: "3" },
+                            color: "whiteAlpha.300",
+                          }}
+                        >
+                          Type: {machine.machine_type.name}
+                        </Text>
+                      ) : null}
+                    </Stack>
+                    {machine.last_seen_at ? (
+                      <Text color="bg.400" fontSize="xs" noOfLines={1}>
+                        Last seen: {new Date(machine.last_seen_at).toLocaleString()}
+                      </Text>
+                    ) : null}
+                  </VStack>
                 </HStack>
-                <Text color="bg.300">Serial: {machine.serial_number}</Text>
-                {machine.machine_type?.name ? (
-                  <Text color="bg.300">Type: {machine.machine_type.name}</Text>
-                ) : null}
-                {machine.last_seen_at ? (
-                  <Text color="bg.300">
-                    Last seen: {new Date(machine.last_seen_at).toLocaleString()}
-                  </Text>
-                ) : null}
+
+                <HStack
+                  spacing="2"
+                  pt="3"
+                  mt="auto"
+                  borderTop="1px solid"
+                  borderColor="whiteAlpha.100"
+                  flexWrap="wrap"
+                >
                 <Button
                   as={Link}
                   href={`/machines/${machine.id}`}
                   variant="contrast"
-                  alignSelf="flex-start"
+                  size="sm"
+                  rightIcon={<Icon as={FaArrowRight} boxSize="3" />}
                 >
                   Open details
                 </Button>
@@ -140,10 +199,12 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                   as={Link}
                   href={`/product-lines/new?machineId=${machine.id}`}
                   variant="ghost"
-                  alignSelf="flex-start"
+                  size="sm"
+                  leftIcon={<Icon as={FaPlus} boxSize="3" />}
                 >
-                  New product line for this machine
+                  Add product line
                 </Button>
+                </HStack>
               </VStack>
             </Box>
           );

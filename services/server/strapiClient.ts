@@ -12,6 +12,7 @@ type CachedToken = {
 };
 
 let cachedToken: CachedToken | null = null;
+let loginPromise: Promise<string> | null = null;
 
 const readLocalStrapiEnv = () => {
   if (process.env.NODE_ENV === "production") return {};
@@ -173,7 +174,12 @@ const getStrapiJwt = async (forceRefresh = false) => {
   );
 
   if (tokenValid) return cachedToken!.jwt;
-  return loginToStrapi();
+  if (!loginPromise) {
+    loginPromise = loginToStrapi().finally(() => {
+      loginPromise = null;
+    });
+  }
+  return loginPromise;
 };
 
 export const requestStrapiAsService = async <T = any>(
@@ -184,7 +190,8 @@ export const requestStrapiAsService = async <T = any>(
 
   try {
     return await requestGraphql<T>(query, variables, jwt);
-  } catch {
+  } catch (error) {
+    if ((error as { status?: number }).status !== 401) throw error;
     jwt = await getStrapiJwt(true);
     return requestGraphql<T>(query, variables, jwt);
   }
@@ -231,7 +238,7 @@ export const requestStrapiRestAsService = async <T = any>(
     return await requestStrapiRest<T>(path, init, jwt);
   } catch (error) {
     const status = (error as { status?: number }).status;
-    if (status !== 401 && status !== 403) throw error;
+    if (status !== 401) throw error;
 
     jwt = await getStrapiJwt(true);
     return requestStrapiRest<T>(path, init, jwt);

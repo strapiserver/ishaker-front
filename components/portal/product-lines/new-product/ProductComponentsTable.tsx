@@ -11,8 +11,13 @@ import {
   HStack,
   Icon,
   IconButton,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
   NumberInput,
   NumberInputField,
+  Portal,
   Select,
   SimpleGrid,
   Switch,
@@ -20,13 +25,20 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { type DragEvent, useEffect, useState } from "react";
-import { FaGlassWhiskey, FaGripVertical, FaPlus } from "react-icons/fa";
+import {
+  FaCoins,
+  FaChevronDown,
+  FaGlassWhiskey,
+  FaGripVertical,
+  FaPlus,
+} from "react-icons/fa";
 import { FaWhiskeyGlass } from "react-icons/fa6";
 import type {
   PortalComponent,
   PortalProductPurpose,
   PortalProductType,
 } from "../../../../types/portal";
+import type { Currency } from "../../../../types/strapi";
 import { Help } from "../../../Help";
 import { RxCross2 } from "react-icons/rx";
 import { ComponentNameSelect } from "./ComponentNameSelect";
@@ -51,7 +63,9 @@ export type ProductDosageValue = {
 };
 
 type ProductComponentsTableProps = {
+  canEditMachineCurrency: boolean;
   components: PortalComponent[];
+  currencies: Currency[];
   dosage: ProductDosageValue;
   onChange: (rows: ProductComponentRow[]) => void;
   onDosageChange: (value: ProductDosageValue) => void;
@@ -62,6 +76,9 @@ type ProductComponentsTableProps = {
   rows: ProductComponentRow[];
   productPurpose: PortalProductPurpose;
   productType: PortalProductType;
+  priceCurrencyId: string;
+  isCurrencySaving: boolean;
+  onPriceCurrencyChange: (value: string) => void;
   servingQuantity: string;
   servingUnit: "g" | "ml";
 };
@@ -70,7 +87,9 @@ const MAX_COMPONENTS = 50;
 const componentUnits = ["mg", "g", "mcg", "kJ", "kcal"];
 
 export function ProductComponentsTable({
+  canEditMachineCurrency,
   components,
+  currencies,
   dosage,
   onChange,
   onDosageChange,
@@ -81,6 +100,9 @@ export function ProductComponentsTable({
   rows,
   productPurpose,
   productType,
+  priceCurrencyId,
+  isCurrencySaving,
+  onPriceCurrencyChange,
   servingQuantity,
   servingUnit,
 }: ProductComponentsTableProps) {
@@ -110,6 +132,67 @@ export function ProductComponentsTable({
     dosage.water.trim() && (waterAmount < 50 || waterAmount > 500)
       ? "Water must be between 50ml and 500ml."
       : "";
+  const selectedCurrency = currencies.find(
+    (currency) => String(currency.id) === priceCurrencyId,
+  );
+  const currencyMenu = (ariaLabel: string) => (
+    <Menu placement="bottom-end">
+      <MenuButton
+        as={Button}
+        type="button"
+        aria-label={ariaLabel}
+        isDisabled={isCurrencySaving || !canEditMachineCurrency}
+        variant="ghost"
+        size="xs"
+        position="absolute"
+        right="2"
+        top="50%"
+        transform="translateY(-50%)"
+        zIndex="1"
+        maxW="94px"
+        h="30px"
+        px="2"
+        color="acid.300"
+        fontWeight="800"
+        rightIcon={<FaChevronDown size="0.7rem" />}
+        _hover={{ bg: "whiteAlpha.100" }}
+        _active={{ bg: "whiteAlpha.200" }}
+      >
+        <Text as="span" noOfLines={1}>
+          {selectedCurrency?.code || "Currency"}
+        </Text>
+      </MenuButton>
+      <Portal>
+        <MenuList
+          minW="180px"
+          maxH="280px"
+          overflowY="auto"
+          bg="bg.800"
+          borderColor="whiteAlpha.200"
+          boxShadow="xl"
+          zIndex="popover"
+        >
+          {currencies.map((currency) => (
+            <MenuItem
+              key={currency.id}
+              bg={
+                String(currency.id) === priceCurrencyId
+                  ? "whiteAlpha.200"
+                  : "bg.800"
+              }
+              color="bg.50"
+              onClick={() => onPriceCurrencyChange(String(currency.id))}
+              _hover={{ bg: "whiteAlpha.200" }}
+              _focus={{ bg: "whiteAlpha.200" }}
+            >
+              {currency.code}
+              {currency.name ? ` — ${currency.name}` : ""}
+            </MenuItem>
+          ))}
+        </MenuList>
+      </Portal>
+    </Menu>
+  );
 
   const addRow = () => {
     if (rows.length >= MAX_COMPONENTS) return;
@@ -442,11 +525,17 @@ export function ProductComponentsTable({
           </FormControl>
 
           <FormControl>
-            <HStack>
+            <HStack flexWrap="wrap">
+              <Icon as={FaCoins} color="acid.300" />
               <Text as="span">Full drink price</Text>
-              <Help text="Price charged for the large cup size in local currency." />
+              <Help text="Default price for the large cup. Currency is selected per machine and is not stored on the product dosage." />
             </HStack>
-            <NumberInput min={0} precision={2} value={dosage.fullDrinkPrice}>
+            <NumberInput
+              min={0}
+              precision={2}
+              value={dosage.fullDrinkPrice}
+              position="relative"
+            >
               <NumberInputField
                 onChange={(event) =>
                   onDosageChange({
@@ -455,8 +544,17 @@ export function ProductComponentsTable({
                   })
                 }
                 bg="bg.800"
+                pr="24"
               />
+              {currencyMenu("Change full drink machine currency")}
             </NumberInput>
+            <FormHelperText>
+              {isCurrencySaving
+                ? "Saving machine currency…"
+                : canEditMachineCurrency
+                ? "Changes currency on every machine assigned to this product line."
+                : "Assign this product line to a machine to select currency."}
+            </FormHelperText>
           </FormControl>
         </SimpleGrid>
 
@@ -487,11 +585,17 @@ export function ProductComponentsTable({
             </FormControl>
 
             <FormControl>
-              <HStack>
+              <HStack flexWrap="wrap">
+                <Icon as={FaCoins} color="acid.300" />
                 <Text as="span">Small drink price</Text>
-                <Help text="Price charged for the small cup size in local currency." />
+                <Help text="Default price for the small cup. Currency is selected per machine and is not stored on the product dosage." />
               </HStack>
-              <NumberInput min={0} precision={2} value={dosage.smallDrinkPrice}>
+              <NumberInput
+                min={0}
+                precision={2}
+                value={dosage.smallDrinkPrice}
+                position="relative"
+              >
                 <NumberInputField
                   onChange={(event) =>
                     onDosageChange({
@@ -500,8 +604,17 @@ export function ProductComponentsTable({
                     })
                   }
                   bg="bg.800"
+                  pr="24"
                 />
+                {currencyMenu("Change small drink machine currency")}
               </NumberInput>
+              <FormHelperText>
+                {isCurrencySaving
+                  ? "Saving machine currency…"
+                  : canEditMachineCurrency
+                  ? "Changes currency on every machine assigned to this product line."
+                  : "Assign this product line to a machine to select currency."}
+              </FormHelperText>
             </FormControl>
           </SimpleGrid>
         </Collapse>
@@ -514,7 +627,9 @@ export function ProductComponentsTable({
             isInvalid={Boolean(waterError) || exceedsFullDrinkVolume}
           >
             <HStack>
-              <Text as="span">Water</Text>
+              <Text as="span" fontSize={["xs", "md"]}>
+                Water
+              </Text>
               <Help text="Amount of water (ml) added to the Full drink volume above. Must be between 50–500ml." />
             </HStack>
             <NumberInput min={50} max={500} precision={2} value={dosage.water}>
@@ -535,7 +650,9 @@ export function ProductComponentsTable({
             isInvalid={exceedsFullDrinkVolume}
           >
             <HStack>
-              <Text as="span">Product</Text>
+              <Text as="span" fontSize={["xs", "md"]}>
+                Product
+              </Text>
               <Help text="Amount of this product dispensed into the Full drink volume above — grams for Powder or milliliters for Concentrate/Syrup." />
             </HStack>
             <NumberInput min={0.01} precision={2} value={dosage.product}>
@@ -555,7 +672,9 @@ export function ProductComponentsTable({
 
           <FormControl isRequired flex="1" minW="0">
             <HStack>
-              <Text as="span">Conversion factor</Text>
+              <Text as="span" fontSize={["xs", "md"]}>
+                Conversion
+              </Text>
               <Help text="How fast this machine's pump physically dispenses the product — not a recipe ratio. Starting values are 4 for Powder and 1.5 for Concentrate, but the real number must come from calibrating the machine before the product goes live." />
             </HStack>
             <NumberInput

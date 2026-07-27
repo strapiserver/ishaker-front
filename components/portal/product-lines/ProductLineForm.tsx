@@ -21,19 +21,13 @@ import {
 type ProductLineFormProps = {
   baseOptions: SearchableImageOption[];
   baseProductLineId: string;
-  brandId: string;
-  brandOptions: SearchableImageOption[];
   canSubmit: boolean;
-  cupId: string;
-  cupOptions: SearchableImageOption[];
   customSplashId: string;
   error?: string;
   isSubmitting: boolean;
   machineIds: string[];
   machineOptions: Array<{ id: string; label: string }>;
   onBaseProductLineChange: (value: string) => void;
-  onBrandChange: (value: string) => void;
-  onCupChange: (value: string) => void;
   onCustomSplashChange: (value: string) => void;
   onMachineIdsChange: (values: string[]) => void;
   onSubmit: FormEventHandler<HTMLFormElement>;
@@ -44,19 +38,13 @@ type ProductLineFormProps = {
 export function ProductLineForm({
   baseOptions,
   baseProductLineId,
-  brandId,
-  brandOptions,
   canSubmit,
-  cupId,
-  cupOptions,
   customSplashId,
   error,
   isSubmitting,
   machineIds,
   machineOptions,
   onBaseProductLineChange,
-  onBrandChange,
-  onCupChange,
   onCustomSplashChange,
   onMachineIdsChange,
   onSubmit,
@@ -76,26 +64,15 @@ export function ProductLineForm({
     >
       <VStack spacing="5" align="stretch">
         <FormControl isRequired>
-          <FormLabel>Product line name</FormLabel>
+          <FormLabel>Product line</FormLabel>
           <SearchableImageSelect
-            ariaLabel="Select a product line name"
+            ariaLabel="Select a product line"
             emptyLabel="No root product lines found"
             options={baseOptions}
-            placeholder="Search and select a product line"
+            placeholder="Select a product line"
             value={baseProductLineId}
             onChange={onBaseProductLineChange}
-          />
-        </FormControl>
-
-        <FormControl isRequired>
-          <FormLabel>Cup</FormLabel>
-          <SearchableImageSelect
-            ariaLabel="Select a cup"
-            emptyLabel="No cups found"
-            options={cupOptions}
-            placeholder="Select a cup"
-            value={cupId}
-            onChange={onCupChange}
+            isSearchable={false}
           />
         </FormControl>
 
@@ -105,29 +82,22 @@ export function ProductLineForm({
             ariaLabel="Select a custom splash"
             emptyLabel="No empty splashes found"
             options={splashOptions}
-            placeholder={cupId ? "Select a custom splash" : "Select a cup first"}
             value={customSplashId}
+            placeholder={
+              baseProductLineId
+                ? "Select a custom splash"
+                : "Select a product line first"
+            }
             onChange={onCustomSplashChange}
             clearLabel="Clear selected splash"
-            isDisabled={!cupId}
+            isDisabled={!baseProductLineId}
+            isSearchable={false}
           />
           <FormHelperText>
-            {cupId
+            {baseProductLineId
               ? "Only splashes marked as empty are available."
-              : "Custom splash becomes available after selecting a cup."}
+              : "Custom splash becomes available after selecting a product line."}
           </FormHelperText>
-        </FormControl>
-
-        <FormControl isRequired>
-          <FormLabel>Brand</FormLabel>
-          <SearchableImageSelect
-            ariaLabel="Select a brand"
-            emptyLabel="No brands found"
-            options={brandOptions}
-            placeholder="Select a brand"
-            value={brandId}
-            onChange={onBrandChange}
-          />
         </FormControl>
 
         <FormControl isRequired={machineOptions.length > 0}>
@@ -136,7 +106,12 @@ export function ProductLineForm({
             <CheckboxGroup value={machineIds} onChange={(values) => onMachineIdsChange(values.map(String))}>
               <Stack spacing="3">
                 {machineOptions.map((machine) => (
-                  <Checkbox key={machine.id} value={machine.id} colorScheme="green">
+                  <Checkbox
+                    key={machine.id}
+                    value={machine.id}
+                    colorScheme="green"
+                    isRequired={false}
+                  >
                     {machine.label}
                   </Checkbox>
                 ))}

@@ -7,7 +7,7 @@ import { SPLASH_FADE_MS, useSplashAnimation } from "./Splash";
 const STRAPI_URL =
   process.env.NEXT_PUBLIC_STRAPI_URL || "https://admin.ishaker.xyz";
 const TASTE_SOURCE_QUERY = [
-  "pagination[pageSize]=1000",
+  "pagination[pageSize]=2000",
   "fields[0]=name",
   "fields[1]=isWebsiteVisible",
   "populate[main][fields][0]=url",

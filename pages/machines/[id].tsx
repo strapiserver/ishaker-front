@@ -10,6 +10,8 @@ import {
 } from "@chakra-ui/react";
 import type { GetServerSideProps } from "next";
 import { MachineCellsSection } from "../../components/portal/machines/MachineCellsSection";
+import { MachineRegistrationEditor } from "../../components/portal/machines/MachineRegistrationEditor";
+import { NayaxSettingsSection } from "../../components/portal/NayaxSettingsSection";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { requirePortalSession } from "../../lib/portal/auth";
 import {
@@ -24,12 +26,14 @@ import {
   isTelemetryConfigured,
   resolveTelemetryMachine,
 } from "../../services/server/telemetryClient";
+import { requestStrapiRestAsService } from "../../services/server/strapiClient";
 import type {
   PortalCatalogProduct,
   PortalMachineCell,
   PortalSession,
 } from "../../types/portal";
-import type { Machine } from "../../types/strapi";
+import type { Currency, Machine } from "../../types/strapi";
+import { formatMoney } from "../../lib/portal/currency";
 
 type MachineDetailPageProps = {
   session: PortalSession;
@@ -45,6 +49,7 @@ type MachineDetailPageProps = {
   telemetryHome?: any | null;
   telemetryStorage?: any | null;
   telemetryPrices?: any[] | null;
+  currencies: Currency[];
 };
 
 const displayValue = (value: unknown, fallback = "-"): string => {
@@ -78,6 +83,10 @@ const rows = (machine: Machine) => [
   ["Serial number", displayValue(machine.serial_number)],
   ["Status", displayValue(machine.status)],
   ["Machine type", displayValue(machine.machine_type?.name)],
+  ["Country", displayValue(machine.country)],
+  ["State / region", displayValue(machine.state_region)],
+  ["City", displayValue(machine.city)],
+  ["Site", displayValue(machine.location)],
   ["Hostname", displayValue(machine.hostname)],
   ["AnyDesk ID", displayValue(machine.anydesk_id)],
   ["Tailscale IP", displayValue(machine.tailscale_ip)],
@@ -85,6 +94,22 @@ const rows = (machine: Machine) => [
   ["SSD version", displayValue(machine.ssd_version)],
   ["Bootstrap version", displayValue(machine.bootstrap_version)],
 ];
+
+const telemetryPriceValue = (price: any) => {
+  const candidate =
+    typeof price === "number" || typeof price === "string"
+      ? price
+      : price?.price ?? price?.amount ?? price?.value;
+  if (
+    candidate === null ||
+    candidate === undefined ||
+    candidate === "" ||
+    !Number.isFinite(Number(candidate))
+  ) {
+    return null;
+  }
+  return Number(candidate);
+};
 
 export default function MachineDetailPage({
   session,
@@ -100,6 +125,7 @@ export default function MachineDetailPage({
   telemetryHome,
   telemetryStorage,
   telemetryPrices,
+  currencies,
 }: MachineDetailPageProps) {
   return (
     <PortalShell
@@ -108,6 +134,20 @@ export default function MachineDetailPage({
       clientName={session.client.company}
     >
       <SimpleGrid columns={{ base: 1, xl: 2 }} spacing="6">
+        <Box gridColumn={{ xl: "1 / -1" }}>
+          <MachineRegistrationEditor
+            machine={machine}
+            defaults={{
+              country: session.client.country,
+              state: session.client.state,
+              city: session.client.city,
+            }}
+            currencies={currencies}
+          />
+        </Box>
+        <Box gridColumn={{ xl: "1 / -1" }}>
+          <NayaxSettingsSection client={session.client} machine={machine} />
+        </Box>
         <Box bg="bg.900" border="1px solid" borderColor="whiteAlpha.100" borderRadius="2xl" p="6">
           <Text color="acid.300" fontWeight="800" mb="4">
             Machine metadata
@@ -186,6 +226,7 @@ export default function MachineDetailPage({
           initialCells={cells}
           catalogProducts={catalogProducts}
           loadError={cellsLoadError}
+          currency={machine.currency || session.client.currency}
         />
 
         {telemetryPrices?.length ? (
@@ -204,9 +245,12 @@ export default function MachineDetailPage({
                       )}
                     </Td>
                     <Td color="bg.50" pr="0">
-                      {typeof price?.price !== "undefined"
-                        ? displayValue(price.price)
-                        : displayValue(price)}
+                      {telemetryPriceValue(price) === null
+                        ? "-"
+                        : formatMoney(
+                            telemetryPriceValue(price)!,
+                            machine.currency || session.client.currency,
+                          )}
                     </Td>
                   </Tr>
                 ))}
@@ -233,11 +277,15 @@ export const getServerSideProps: GetServerSideProps<MachineDetailPageProps> = as
   const telemetryConfigured = isTelemetryConfigured();
   let cells: PortalMachineCell[] = [];
   let catalogProducts: PortalCatalogProduct[] = [];
+  let currencies: Currency[] = [];
   let cellsLoadError: string | null = null;
   try {
-    [cells, catalogProducts] = await Promise.all([
+    [cells, catalogProducts, currencies] = await Promise.all([
       getMachineCells(machine.id),
       getMachineCatalogProducts(machine.id, result.session.client.id),
+      requestStrapiRestAsService<Currency[]>(
+        "/api/currencies?filters[isActive][$ne]=false&sort[0]=code:ASC&pagination[pageSize]=2000",
+      ),
     ]);
   } catch (error) {
     console.error("[machines/detail] container loading failed:", error);
@@ -251,6 +299,7 @@ export const getServerSideProps: GetServerSideProps<MachineDetailPageProps> = as
     cells,
     catalogProducts,
     cellsLoadError,
+    currencies,
   };
 
   if (!telemetryConfigured) {

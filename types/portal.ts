@@ -1,12 +1,17 @@
-import type { Client, Machine } from "./strapi";
+import type { Client, Currency, Machine } from "./strapi";
 
 export type RegistrationDraft = {
+  nickname?: string;
+  existingAccount?: boolean;
   machineId?: string | number;
   serialNumber?: string;
   machineTitle?: string;
   machineTypeName?: string;
   clientId?: string | number;
   company?: string;
+  country?: string;
+  state?: string;
+  city?: string;
   location?: string;
   contactName?: string;
   email?: string;
@@ -17,6 +22,9 @@ export type RegistrationDraft = {
   password?: string;
   passwordConfirmation?: string;
   authProvider?: "local" | "google";
+  currencyId?: string | number;
+  currencyCode?: string;
+  currencySymbol?: string;
 };
 
 export type PortalUser = {
@@ -47,8 +55,10 @@ export type PortalMachineSummary = Machine & {
 export type PortalCatalogProduct = {
   id: number;
   name: string;
+  isActive?: boolean;
   product_type: "powder" | "concentrate";
   taste?: { name?: string | null } | null;
+  dosage?: PortalProductDosage | null;
 };
 
 export type PortalMachineCell = {
@@ -57,7 +67,10 @@ export type PortalMachineCell = {
   isActive: boolean;
   cell_category: "powder" | "concentrate" | null;
   product: PortalCatalogProduct | null;
+  price?: number | string | null;
 };
+
+export type PortalCurrency = Currency;
 
 export type PromoCode = {
   id: string | number;
@@ -121,8 +134,10 @@ export type PortalProductPurpose = "milkshake" | "sport nutrition";
 export type PortalProduct = {
   id: string | number;
   name: string;
+  isActive?: boolean;
   author?: Pick<PortalUser, "id" | "username" | "email"> | null;
-  product_line?: Pick<PortalProductLine, "id" | "name" | "brands"> | null;
+  product_line?: Pick<PortalProductLine, "id" | "name"> | null;
+  brand?: PortalBrand | null;
   description?: string | null;
   product_type?: PortalProductType | null;
   product_purpose?: PortalProductPurpose | null;
@@ -175,6 +190,7 @@ export type PortalBrand = {
 export type PortalProductLine = {
   id: string | number;
   name: string;
+  isActive?: boolean;
   isPopular?: boolean;
   author?: Pick<PortalUser, "id" | "username" | "email"> | null;
   client?: Pick<Client, "id" | "company"> | null;

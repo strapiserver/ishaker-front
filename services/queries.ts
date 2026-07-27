@@ -2,7 +2,7 @@ export const MachineBySerialQuery = `
   query MachineBySerial($serial: String) {
     machines(
       filters: { serial_number: { eq: $serial } }
-      pagination: { pageSize: 1000 }
+      pagination: { pageSize: 2000 }
       sort: ["title:ASC"]
     ) {
       data {
@@ -46,7 +46,7 @@ export const AdminClientsQuery = `
   query AdminClients {
     clients(
       filters: { status: { eq: "client" } }
-      pagination: { pageSize: 1000 }
+      pagination: { pageSize: 2000 }
       sort: ["company:ASC"]
     ) {
       data {
@@ -66,7 +66,7 @@ export const AdminClientsQuery = `
               whatsapp
             }
           }
-          machines(sort: ["title:ASC"], pagination: { pageSize: 1000 }) {
+          machines(sort: ["title:ASC"], pagination: { pageSize: 2000 }) {
             data {
               id
               attributes {
@@ -74,7 +74,6 @@ export const AdminClientsQuery = `
                 anydesk_id
                 serial_number
                 tailscale_ip
-                type
                 machine_type {
                   data {
                     id

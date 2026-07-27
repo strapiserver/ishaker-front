@@ -12,7 +12,7 @@ import {
 import { NextSeo } from "next-seo";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,6 +20,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const queryIdentifier = Array.isArray(router.query.identifier)
+      ? router.query.identifier[0]
+      : router.query.identifier;
+    if (queryIdentifier) setIdentifier(queryIdentifier.toLowerCase());
+  }, [router.query.identifier]);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,7 +46,9 @@ export default function LoginPage() {
       return;
     }
 
-    router.replace("/product-lines");
+    router.replace(
+      router.query.reason === "nickname-exists" ? "/step1" : "/machines",
+    );
   };
 
   return (
@@ -54,7 +63,9 @@ export default function LoginPage() {
             Sign in
           </Heading>
           <Text color="bg.300" mb="8">
-            Use the email or username and password assigned to this client account in Strapi.
+            {router.query.reason === "nickname-exists"
+              ? "That nickname already has an account. Sign in to register or manage its machines."
+              : "Use your nickname or email and password."}
           </Text>
 
           <Box
@@ -68,7 +79,7 @@ export default function LoginPage() {
           >
             <VStack spacing="4" align="stretch">
               <FormControl>
-                <FormLabel>Email or username</FormLabel>
+                <FormLabel>Nickname or email</FormLabel>
                 <Input
                   type="text"
                   value={identifier}

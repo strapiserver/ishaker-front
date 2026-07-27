@@ -3,7 +3,6 @@ import { capitalizeName } from "../../../../lib/formatName";
 import { getPortalSessionFromApiRequest } from "../../../../lib/portal/auth";
 import { requestStrapiRestAsService } from "../../../../services/server/strapiClient";
 import type {
-  PortalBrand,
   PortalCup,
   PortalProductLine,
   PortalSplash,
@@ -36,7 +35,7 @@ const createOwnershipParams = (
   } else if (session) {
     params.set("filters[author][id][$eq]", String(session.user.id));
   }
-  params.set("pagination[pageSize]", "1000");
+  params.set("pagination[pageSize]", "2000");
   return params;
 };
 
@@ -73,7 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const cascadeParams = new URLSearchParams();
       cascadeParams.set("filters[product_line][id][$eq]", String(ownedProductLine.id));
       cascadeParams.set("fields[0]", "id");
-      cascadeParams.set("pagination[pageSize]", "200");
+      cascadeParams.set("pagination[pageSize]", "2000");
       const ownedProducts = await requestStrapiRestAsService<{ id: string | number }[]>(
         `/api/products?${cascadeParams.toString()}`,
       );
@@ -89,10 +88,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ deleted: true, deletedProducts: ownedProducts.length });
     }
 
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "isActive")) {
+      if (typeof req.body.isActive !== "boolean") {
+        return res.status(400).json({
+          error: "invalid_active_state",
+          message: "Active state must be true or false.",
+        });
+      }
+
+      const productLine = await requestStrapiRestAsService<PortalProductLine>(
+        `/api/product-lines/${ownedProductLine.id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            data: { isActive: req.body.isActive },
+          }),
+        },
+      );
+      return res.status(200).json({ productLine });
+    }
+
     const name = capitalizeName(asString(req.body?.name));
     const baseProductLineId = asId(req.body?.baseProductLineId);
     const cupId = asId(req.body?.cupId);
-    const brandId = asId(req.body?.brandId);
     const customSplashId = asId(req.body?.customSplashId);
     const machineIds = asIds(req.body?.machineIds);
     const allowedMachineIds = new Set(session.machines.map((machine) => String(machine.id)));
@@ -118,17 +136,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    if (!baseProductLineId || !cupId || !brandId) {
+    if (!baseProductLineId || !cupId) {
       return res.status(400).json({
         error: "missing_selection",
-        message: "Base product line, cup, and brand are required.",
+        message: "Base product line and cup are required.",
       });
     }
 
     const baseParams = new URLSearchParams();
     baseParams.set("filters[id][$eq]", baseProductLineId);
     baseParams.set("filters[author][username][$eq]", "root");
-    baseParams.set("pagination[pageSize]", "1000");
+    baseParams.set("populate[cup][fields][0]", "name");
+    baseParams.set("pagination[pageSize]", "2000");
 
     const duplicateParams = new URLSearchParams();
     duplicateParams.set("filters[name][$eqi]", name);
@@ -143,13 +162,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     duplicateParams.set("filters[id][$ne]", String(ownedProductLine.id));
     duplicateParams.set("pagination[pageSize]", "1");
 
-    const [baseProductLines, cup, brand, customSplash, duplicateProductLines] =
+    const [baseProductLines, cup, customSplash, duplicateProductLines] =
       await Promise.all([
         requestStrapiRestAsService<PortalProductLine[]>(
           `/api/product-lines?${baseParams.toString()}`,
         ),
         requestStrapiRestAsService<PortalCup>(`/api/cups/${cupId}`),
-        requestStrapiRestAsService<PortalBrand>(`/api/brands/${brandId}`),
         customSplashId
           ? requestStrapiRestAsService<PortalSplash>(
               `/api/splashes/${customSplashId}`,
@@ -175,10 +193,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    if (!cup?.id || !brand?.id) {
+    if (!cup?.id) {
       return res.status(400).json({
         error: "invalid_selection",
-        message: "The selected cup or brand no longer exists.",
+        message: "The selected cup no longer exists.",
+      });
+    }
+
+    if (
+      String(baseProductLine.cup?.id) !== String(cup.id) ||
+      name !== capitalizeName(cup.name)
+    ) {
+      return res.status(400).json({
+        error: "product_line_cup_mismatch",
+        message: "Product line name and cup must match the selected root product line.",
       });
     }
 
@@ -198,7 +226,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             name,
             base_product_line: baseProductLine.id,
             cup: cup.id,
-            brands: [brand.id],
             custom_splash: customSplash?.id || null,
             ...(session.access === "client" ? { client: session.client.id } : {}),
             machines: machineIds,

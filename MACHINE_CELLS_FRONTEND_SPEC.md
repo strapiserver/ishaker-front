@@ -30,7 +30,7 @@ which treats machine-cell rows as authoritative, with a never-wipe guard for cat
 - **Ownership**: `const allowed = new Set(session.machines.map(m => String(m.id)));`
   reject if `!allowed.has(machineId)` -> 403. (session.machines already lists the client's machines.)
 - **GET** -> list this machine's cells, sorted:
-  `/api/machine-cells?filters[machine][id][$eq]=${machineId}&populate[product][populate][taste]=*&sort[0]=position:asc&pagination[pageSize]=200`
+  `/api/machine-cells?filters[machine][id][$eq]=${machineId}&populate[product][populate][taste]=*&sort[0]=position:asc&pagination[pageSize]=2000`
 - **PUT** body `{ assignments: [{ position:number, productId:number|null, isActive:boolean }] }`:
   1. Load existing rows for the machine (as above) -> map by position.
   2. For each assignment whose `position` EXISTS as a row: `PUT /api/machine-cells/{id}`

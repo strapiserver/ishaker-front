@@ -28,11 +28,14 @@ export function useSplashAnimation(
   const activeFrame = activeSplash[frameIndex] ?? activeSplash[0];
 
   useEffect(() => {
-    splashes.flat().forEach((frame) => {
+    // Preloading every frame for every taste at once can create hundreds of
+    // simultaneous requests against Strapi. Only warm the animation currently
+    // being displayed; later tastes are loaded when they become active.
+    activeSplash.forEach((frame) => {
       const image = new window.Image();
       image.src = frame;
     });
-  }, [splashes]);
+  }, [activeSplash]);
 
   useEffect(() => {
     if (splashIndex >= splashes.length) {

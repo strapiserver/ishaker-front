@@ -9,8 +9,8 @@ const asId = (value: unknown) => {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "DELETE") {
-    res.setHeader("Allow", ["DELETE"]);
+  if (req.method !== "PATCH" && req.method !== "DELETE") {
+    res.setHeader("Allow", ["PATCH", "DELETE"]);
     return res.status(405).json({ error: "method_not_allowed" });
   }
 
@@ -59,6 +59,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({
         error: "product_not_found",
         message: "Product was not found in this product line.",
+      });
+    }
+
+    if (req.method === "PATCH") {
+      if (typeof req.body?.isActive !== "boolean") {
+        return res.status(400).json({
+          error: "invalid_active_state",
+          message: "Active state must be true or false.",
+        });
+      }
+
+      await requestStrapiRestAsService(`/api/products/${productId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          data: { isActive: req.body.isActive },
+        }),
+      });
+
+      return res.status(200).json({
+        product: { id: productId, isActive: req.body.isActive },
       });
     }
 
