@@ -20,7 +20,6 @@ type Assignment = {
   position: number;
   productId: number | null;
   isActive: boolean;
-  price: number | null;
   cellCategory: "powder" | "concentrate";
 };
 
@@ -43,13 +42,8 @@ const parseAssignments = (value: unknown): Assignment[] | null => {
     const rawProductId = (row as { productId?: unknown }).productId;
     const productId = rawProductId === null ? null : Number(rawProductId);
     const isActive = (row as { isActive?: unknown }).isActive;
-    const rawPrice = (row as { price?: unknown }).price;
-    const price =
-      rawPrice === null || rawPrice === "" || rawPrice === undefined
-        ? null
-        : Number(rawPrice);
     const cellCategory = (row as { cellCategory?: unknown }).cellCategory;
-    return { cellId, position, productId, isActive, price, cellCategory };
+    return { cellId, position, productId, isActive, cellCategory };
   });
 
   if (
@@ -62,8 +56,6 @@ const parseAssignments = (value: unknown): Assignment[] | null => {
         (assignment.productId !== null &&
           (!Number.isInteger(assignment.productId) || assignment.productId <= 0)) ||
         typeof assignment.isActive !== "boolean" ||
-        (assignment.price !== null &&
-          (!Number.isFinite(assignment.price) || assignment.price <= 0)) ||
         (typeof assignment.cellCategory !== "string" ||
           !["powder", "concentrate"].includes(assignment.cellCategory)),
     )
@@ -126,7 +118,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!assignment) {
         return res.status(400).json({
           error: "invalid_machine_cell",
-          message: "Enter a valid position, category, product, active state, and optional price.",
+          message: "Enter a valid position, category, product, and active state.",
         });
       }
       if (assignment.position > containerCount) {
@@ -182,6 +174,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await createMachineCell({
         machineId,
         ...assignment,
+        price: null,
       });
       return res.status(201).json(await getMachineCells(machineId));
     }
@@ -267,12 +260,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             assignment.position,
             assignment.productId,
             assignment.isActive,
-            assignment.price,
+            null,
             assignment.cellCategory,
           );
         }
         if (assignment.productId === null) return Promise.resolve();
-        return createMachineCell({ machineId, ...assignment });
+        return createMachineCell({ machineId, ...assignment, price: null });
       }),
     );
 

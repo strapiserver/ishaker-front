@@ -7,23 +7,31 @@ import {
   FormControl,
   FormErrorMessage,
   HStack,
-  NumberInput,
-  NumberInputField,
+  IconButton,
   Select,
   SimpleGrid,
   Switch,
   Text,
+  Tooltip,
   useToast,
   VStack,
 } from "@chakra-ui/react";
 import { useMemo, useState } from "react";
-import { getDuplicateContainerSlots, isValidContainerSlot } from "../../../lib/portal/containerSlots";
+import { GiPowder } from "react-icons/gi";
+import { IoWaterSharp } from "react-icons/io5";
+import {
+  getDuplicateContainerSlots,
+  isValidContainerSlot,
+} from "../../../lib/portal/containerSlots";
 import { formatMoney } from "../../../lib/portal/currency";
 import {
   canAssignProduct,
   getProductAssignmentProblems,
 } from "../../../lib/portal/productAssignment";
-import type { PortalCatalogProduct, PortalMachineCell } from "../../../types/portal";
+import type {
+  PortalCatalogProduct,
+  PortalMachineCell,
+} from "../../../types/portal";
 import type { Currency } from "../../../types/strapi";
 
 type MachineCellsSectionProps = {
@@ -39,7 +47,6 @@ type MachineCellsSectionProps = {
 type CellDraft = Omit<PortalMachineCell, "id"> & {
   id: number | null;
   productId: string;
-  priceValue: string;
   cellCategory: "powder" | "concentrate";
 };
 
@@ -62,8 +69,6 @@ const hydrateCell = (cell: PortalMachineCell): CellDraft => ({
   ...cell,
   id: Number(cell.id),
   productId: cell.product ? String(cell.product.id) : "",
-  priceValue:
-    cell.price === null || cell.price === undefined ? "" : String(cell.price),
   cellCategory: cell.cell_category || "powder",
 });
 
@@ -75,7 +80,6 @@ const emptySlot = (position: number): CellDraft => ({
   cellCategory: "powder",
   product: null,
   productId: "",
-  priceValue: "",
 });
 
 const buildDrafts = (
@@ -120,13 +124,16 @@ export function MachineCellsSection({
   const [saveError, setSaveError] = useState("");
   const [planogram, setPlanogram] = useState<PlanogramFeedback | null>(null);
   const productsById = useMemo(
-    () => new Map(catalogProducts.map((product) => [String(product.id), product])),
+    () =>
+      new Map(catalogProducts.map((product) => [String(product.id), product])),
     [catalogProducts],
   );
   const duplicatePositions = useMemo(
     () =>
       getDuplicateContainerSlots(
-        cells.filter((cell) => cell.id !== null || cell.productId).map((cell) => cell.position),
+        cells
+          .filter((cell) => cell.id !== null || cell.productId)
+          .map((cell) => cell.position),
       ),
     [cells],
   );
@@ -139,7 +146,8 @@ export function MachineCellsSection({
   const selectedProductProblems = cells.flatMap((cell) => {
     if (!cell.productId) return [];
     const product = productsById.get(cell.productId);
-    if (!product) return [`Container ${cell.position}: product is not in this library.`];
+    if (!product)
+      return [`Container ${cell.position}: product is not in this library.`];
     const problems = getProductAssignmentProblems(product);
     if (product.product_type && product.product_type !== cell.cellCategory) {
       problems.push({
@@ -151,25 +159,16 @@ export function MachineCellsSection({
       (problem) => `Container ${cell.position}: ${problem.detail}`,
     );
   });
-  const invalidPricePositions = cells
-    .filter(
-      (cell) =>
-        cell.priceValue !== "" &&
-        (!Number.isFinite(Number(cell.priceValue)) ||
-          Number(cell.priceValue) <= 0),
-    )
-    .map((cell) => cell.position);
   const hasValidationError =
     containerCount === null ||
     invalidLegacyCells.length > 0 ||
     duplicatePositions.size > 0 ||
-    selectedProductProblems.length > 0 ||
-    invalidPricePositions.length > 0;
+    selectedProductProblems.length > 0;
 
   const updateCell = (
     target: CellDraft,
     patch: Partial<
-      Pick<CellDraft, "position" | "productId" | "isActive" | "priceValue" | "cellCategory">
+      Pick<CellDraft, "position" | "productId" | "isActive" | "cellCategory">
     >,
   ) => {
     setCells((current) => {
@@ -257,16 +256,19 @@ export function MachineCellsSection({
             position: cell.position,
             productId: cell.productId ? Number(cell.productId) : null,
             isActive: cell.isActive,
-            price: cell.priceValue === "" ? null : Number(cell.priceValue),
             cellCategory: cell.cellCategory,
           })),
         }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(payload?.message || "Container assignments could not be saved.");
+        throw new Error(
+          payload?.message || "Container assignments could not be saved.",
+        );
       }
-      const refreshed = (Array.isArray(payload) ? payload : payload?.cells || []) as PortalMachineCell[];
+      const refreshed = (
+        Array.isArray(payload) ? payload : payload?.cells || []
+      ) as PortalMachineCell[];
       setCells(buildDrafts(refreshed, containerCount));
       toast({
         title: "Container assignments saved",
@@ -277,7 +279,9 @@ export function MachineCellsSection({
       await validatePlanogram();
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Container assignments could not be saved.";
+        error instanceof Error
+          ? error.message
+          : "Container assignments could not be saved.";
       setSaveError(message);
       toast({ title: "Save failed", description: message, status: "error" });
     } finally {
@@ -292,7 +296,7 @@ export function MachineCellsSection({
       : [];
     const categoryMismatch = Boolean(
       selectedProduct?.product_type &&
-        selectedProduct.product_type !== cell.cellCategory,
+      selectedProduct.product_type !== cell.cellCategory,
     );
     return (
       <Box
@@ -325,14 +329,21 @@ export function MachineCellsSection({
           {isLegacy ? (
             <FormControl isInvalid>
               <Select
-                value={isValidContainerSlot(cell.position, containerCount) ? cell.position : ""}
+                value={
+                  isValidContainerSlot(cell.position, containerCount)
+                    ? cell.position
+                    : ""
+                }
                 placeholder={`Invalid saved position (${cell.position})`}
                 bg="bg.900"
                 onChange={(event) =>
                   updateCell(cell, { position: Number(event.target.value) })
                 }
               >
-                {Array.from({ length: containerCount || 0 }, (_, index) => index + 1)
+                {Array.from(
+                  { length: containerCount || 0 },
+                  (_, index) => index + 1,
+                )
                   .filter(
                     (position) =>
                       !cells.some(
@@ -353,67 +364,103 @@ export function MachineCellsSection({
               </FormErrorMessage>
             </FormControl>
           ) : null}
-          <Select
-            value={cell.cellCategory}
-            bg="bg.900"
-            aria-label={`Category for container ${cell.position}`}
-            onChange={(event) =>
-              updateCell(cell, {
-                cellCategory: event.target.value as "powder" | "concentrate",
-              })
-            }
-          >
-            <option value="powder">Powder</option>
-            <option value="concentrate">Concentrate</option>
-          </Select>
-          <FormControl isInvalid={productProblems.length > 0 || categoryMismatch}>
-            <Select
-              value={cell.productId}
+          <HStack align="center" spacing="3">
+            <HStack
+              spacing="1"
+              flexShrink={0}
               bg="bg.900"
-              aria-label={`Product for container ${cell.position}`}
-              onChange={(event) =>
-                updateCell(cell, { productId: event.target.value })
-              }
+              border="1px solid"
+              borderColor="whiteAlpha.200"
+              borderRadius="md"
+              p="0.5"
             >
-              <option value="">— Empty —</option>
-              {catalogProducts.map((product) => {
-                const unavailable = !canAssignProduct(product);
-                return (
-                  <option
-                    key={product.id}
-                    value={product.id}
-                    disabled={unavailable && String(product.id) !== cell.productId}
-                  >
-                    {productLabel(product)}
-                    {unavailable ? " — unavailable" : ""}
-                  </option>
-                );
-              })}
-            </Select>
-            <FormErrorMessage>
-              {categoryMismatch
-                ? `Choose a ${cell.cellCategory} product.`
-                : productProblems[0]?.detail}
-            </FormErrorMessage>
-          </FormControl>
-          <NumberInput min={0.01} precision={2} value={cell.priceValue}>
-            <NumberInputField
-              placeholder="Optional price override"
-              aria-label={`Price override for container ${cell.position}`}
-              onChange={(event) =>
-                updateCell(cell, { priceValue: event.target.value })
-              }
-            />
-          </NumberInput>
+              <Tooltip label="Powder">
+                <IconButton
+                  aria-label={`Powder container ${cell.position}`}
+                  aria-pressed={cell.cellCategory === "powder"}
+                  icon={<GiPowder size="1.5rem" />}
+                  size="sm"
+                  maxH="6"
+                  p="0"
+                  minW="8"
+                  variant={cell.cellCategory === "powder" ? "solid" : "ghost"}
+                  bg={
+                    cell.cellCategory === "powder" ? "#D8C3A5" : "transparent"
+                  }
+                  color={cell.cellCategory === "powder" ? "#3B2F24" : "bg.300"}
+                  _hover={{
+                    bg:
+                      cell.cellCategory === "powder"
+                        ? "#CBB28F"
+                        : "whiteAlpha.100",
+                  }}
+                  onClick={() => updateCell(cell, { cellCategory: "powder" })}
+                />
+              </Tooltip>
+              <Tooltip label="Concentrate">
+                <IconButton
+                  aria-label={`Concentrate container ${cell.position}`}
+                  aria-pressed={cell.cellCategory === "concentrate"}
+                  icon={<IoWaterSharp size="1.5rem" />}
+                  size="sm"
+                  maxH="6"
+                  p="0"
+                  minW="8"
+                  variant={
+                    cell.cellCategory === "concentrate" ? "solid" : "ghost"
+                  }
+                  colorScheme={
+                    cell.cellCategory === "concentrate" ? "blue" : "gray"
+                  }
+                  onClick={() =>
+                    updateCell(cell, { cellCategory: "concentrate" })
+                  }
+                />
+              </Tooltip>
+            </HStack>
+            <FormControl
+              flex="1"
+              isInvalid={productProblems.length > 0 || categoryMismatch}
+            >
+              <Select
+                value={cell.productId}
+                bg="bg.900"
+                minH="45px"
+                aria-label={`Product for container ${cell.position}`}
+                onChange={(event) =>
+                  updateCell(cell, { productId: event.target.value })
+                }
+              >
+                <option value="">— Empty —</option>
+                {catalogProducts.map((product) => {
+                  const unavailable = !canAssignProduct(product);
+                  return (
+                    <option
+                      key={product.id}
+                      value={product.id}
+                      disabled={
+                        unavailable && String(product.id) !== cell.productId
+                      }
+                    >
+                      {productLabel(product)}
+                      {unavailable ? " — unavailable" : ""}
+                    </option>
+                  );
+                })}
+              </Select>
+              <FormErrorMessage>
+                {categoryMismatch
+                  ? `Choose a ${cell.cellCategory} product.`
+                  : productProblems[0]?.detail}
+              </FormErrorMessage>
+            </FormControl>
+          </HStack>
           <HStack justify="space-between">
             <Text color="bg.300" fontSize="sm">
               Effective price
             </Text>
             <Text fontWeight="700">
-              {formatMoney(
-                cell.priceValue || selectedProduct?.dosage?.full_drink_price,
-                currency,
-              )}
+              {formatMoney(selectedProduct?.dosage?.full_drink_price, currency)}
             </Text>
           </HStack>
         </VStack>
@@ -421,33 +468,55 @@ export function MachineCellsSection({
     );
   };
 
-  const slots = Array.from({ length: containerCount || 0 }, (_, index) => index + 1);
+  const slots = Array.from(
+    { length: containerCount || 0 },
+    (_, index) => index + 1,
+  );
   const primaryCells = slots.map((position) => {
     const matches = cells.filter(
       (cell) =>
-        cell.position === position &&
-        !invalidLegacyCells.includes(cell),
+        cell.position === position && !invalidLegacyCells.includes(cell),
     );
     return matches[0] || emptySlot(position);
   });
 
   return (
-    <Box bg="bg.900" border="1px solid" borderColor="whiteAlpha.100" borderRadius="2xl" p={{ base: "5", md: "6" }} gridColumn={{ xl: "1 / -1" }}>
+    <Box
+      bg="bg.900"
+      border="1px solid"
+      borderColor="whiteAlpha.100"
+      borderRadius="2xl"
+      p={{ base: "5", md: "6" }}
+      gridColumn={{ xl: "1 / -1" }}
+    >
       <VStack spacing="4" align="stretch">
         <Box>
           <Text color="acid.300" fontWeight="800" fontSize="lg">
             Container assignment
           </Text>
           <Text color="bg.300" mt="1">
-            Each card is one physical machine container. The product library is not a machine binding.
+            Each card is one physical machine container. The product library is
+            not a machine binding.
           </Text>
         </Box>
-        {loadError ? <Alert status="error"><AlertIcon />{loadError}</Alert> : null}
+        {loadError ? (
+          <Alert status="error">
+            <AlertIcon />
+            {loadError}
+          </Alert>
+        ) : null}
         {containerCount === null ? (
-          <Alert status="error"><AlertIcon />This machine type has no container count.</Alert>
+          <Alert status="error">
+            <AlertIcon />
+            This machine type has no container count.
+          </Alert>
         ) : null}
         {invalidLegacyCells.length ? (
-          <Alert status="error"><AlertIcon />Repair the saved invalid or duplicate positions below. Positions are never shifted automatically.</Alert>
+          <Alert status="error">
+            <AlertIcon />
+            Repair the saved invalid or duplicate positions below. Positions are
+            never shifted automatically.
+          </Alert>
         ) : null}
         {selectedProductProblems.length ? (
           <Alert status="error">
@@ -459,14 +528,12 @@ export function MachineCellsSection({
             </VStack>
           </Alert>
         ) : null}
-        {invalidPricePositions.length ? (
+        {saveError ? (
           <Alert status="error">
             <AlertIcon />
-            Price overrides must be greater than zero in container{" "}
-            {invalidPricePositions.join(", ")}.
+            {saveError}
           </Alert>
         ) : null}
-        {saveError ? <Alert status="error"><AlertIcon />{saveError}</Alert> : null}
         {planogram?.source ? (
           <Text color="bg.300">
             Planogram source: <Badge>{planogram.source}</Badge>
@@ -485,7 +552,8 @@ export function MachineCellsSection({
             <VStack align="start" spacing="1">
               {planogram.problems.map((problem, index) => (
                 <Text key={`${problem.cell_id}-${problem.code}-${index}`}>
-                  Container {problem.position ?? "?"}: {problem.detail || problem.code}
+                  Container {problem.position ?? "?"}:{" "}
+                  {problem.detail || problem.code}
                 </Text>
               ))}
             </VStack>
@@ -508,7 +576,9 @@ export function MachineCellsSection({
         </SimpleGrid>
         {invalidLegacyCells.length ? (
           <Box>
-            <Text fontWeight="800" color="red.200" mb="3">Saved rows requiring repair</Text>
+            <Text fontWeight="800" color="red.200" mb="3">
+              Saved rows requiring repair
+            </Text>
             <SimpleGrid columns={{ base: 1, xl: 2 }} spacing="4">
               {invalidLegacyCells.map((cell) => renderSlot(cell, true))}
             </SimpleGrid>
