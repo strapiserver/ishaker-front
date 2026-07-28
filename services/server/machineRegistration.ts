@@ -1,4 +1,5 @@
 import type { Client, Machine } from "../../types/strapi";
+import { capitalize } from "../helper";
 import { requestStrapiRestAsService } from "./strapiClient";
 
 const clean = (value: unknown) =>
@@ -54,9 +55,12 @@ export const updateMachineRegistrationData = async (params: {
   nayaxTerminalId?: string;
 }) => {
   const index = await getMachineOwnerIndex(params.client.id, params.machine.id);
-  const title = `${params.stateRegion} ${params.nickname}'s ${getMachineTypeLabel(
-    params.machine,
-  )} ${index}`.replace(/\s+/g, " ").trim();
+  const title =
+    `${params.stateRegion.toUpperCase()} • ${capitalize(params.nickname)}'s iShaker ${getMachineTypeLabel(
+      params.machine,
+    ).toUpperCase()} #${index}`
+      .replace(/\s+/g, " ")
+      .trim();
 
   return requestStrapiRestAsService<Machine>(
     `/api/machines/${params.machine.id}`,

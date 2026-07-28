@@ -29,6 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const baseProductLineId = asId(req.body?.baseProductLineId);
   const cupId = asId(req.body?.cupId);
   const customSplashId = asId(req.body?.customSplashId);
+  const confirmDuplicate = req.body?.confirmDuplicate === true;
   if (name.length < 2 || name.length > 100) {
     return res.status(400).json({
       error: "invalid_name",
@@ -79,10 +80,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ]);
     const baseProductLine = baseProductLines[0];
 
-    if (duplicateProductLines.length) {
+    if (duplicateProductLines.length && !confirmDuplicate) {
       return res.status(409).json({
         error: "duplicate_name",
-        message: "A product line with this name already exists.",
+        message: "A product line with this name already exists. Are you sure?",
+        requiresConfirmation: true,
       });
     }
 

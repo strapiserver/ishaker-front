@@ -137,28 +137,54 @@ export function NewProductLinePage({
     setIsSubmitting(true);
     setError("");
     try {
-      const response = await fetch(
-        isEditing
-          ? `/api/portal/product-lines/${productLine?.id}`
-          : "/api/portal/product-lines",
-        {
-          method: isEditing ? "PATCH" : "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            name: capitalizeName(name),
-            baseProductLineId,
-            cupId,
-            customSplashId,
-          }),
-        },
-      );
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(
-          payload?.message ||
-            `Product line could not be ${isEditing ? "updated" : "created"}.`,
+      const saveProductLine = async (
+        confirmDuplicate = false,
+      ): Promise<boolean> => {
+        const response = await fetch(
+          isEditing
+            ? `/api/portal/product-lines/${productLine?.id}`
+            : "/api/portal/product-lines",
+          {
+            method: isEditing ? "PATCH" : "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              name: capitalizeName(name),
+              baseProductLineId,
+              cupId,
+              customSplashId,
+              ...(!isEditing && confirmDuplicate
+                ? { confirmDuplicate: true }
+                : {}),
+            }),
+          },
         );
-      }
+        const payload = await response.json().catch(() => null);
+
+        if (
+          !isEditing &&
+          response.status === 409 &&
+          payload?.error === "duplicate_name" &&
+          payload?.requiresConfirmation === true
+        ) {
+          const confirmed = window.confirm(
+            "A product line with this name already exists. Are you sure you want to create another one?",
+          );
+          return confirmed ? saveProductLine(true) : false;
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            payload?.message ||
+              `Product line could not be ${isEditing ? "updated" : "created"}.`,
+          );
+        }
+
+        return true;
+      };
+
+      const wasSaved = await saveProductLine();
+      if (!wasSaved) return;
+
       toast({
         title: isEditing ? "Drink updated" : "Drink created",
         description:

@@ -9,15 +9,10 @@ import {
   Tr,
 } from "@chakra-ui/react";
 import type { GetServerSideProps } from "next";
-import { MachineCellsSection } from "../../components/portal/machines/MachineCellsSection";
 import { MachineRegistrationEditor } from "../../components/portal/machines/MachineRegistrationEditor";
 import { NayaxSettingsSection } from "../../components/portal/NayaxSettingsSection";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { requirePortalSession } from "../../lib/portal/auth";
-import {
-  getMachineCatalogProducts,
-  getMachineCells,
-} from "../../services/server/machineCells";
 import {
   getTelemetryMachineHome,
   getTelemetryMachinePrices,
@@ -27,21 +22,13 @@ import {
   resolveTelemetryMachine,
 } from "../../services/server/telemetryClient";
 import { requestStrapiRestAsService } from "../../services/server/strapiClient";
-import type {
-  PortalCatalogProduct,
-  PortalMachineCell,
-  PortalSession,
-} from "../../types/portal";
+import type { PortalSession } from "../../types/portal";
 import type { Currency, Machine } from "../../types/strapi";
 import { formatMoney } from "../../lib/portal/currency";
-import { getMachineContainerCount } from "../../lib/portal/containerSlots";
 
 type MachineDetailPageProps = {
   session: PortalSession;
   machine: Machine;
-  cells: PortalMachineCell[];
-  catalogProducts: PortalCatalogProduct[];
-  cellsLoadError?: string | null;
   telemetryConfigured: boolean;
   telemetryConnected?: boolean;
   telemetryOrganizationId?: number | null;
@@ -115,9 +102,6 @@ const telemetryPriceValue = (price: any) => {
 export default function MachineDetailPage({
   session,
   machine,
-  cells,
-  catalogProducts,
-  cellsLoadError,
   telemetryConfigured,
   telemetryConnected,
   telemetryOrganizationId,
@@ -222,16 +206,6 @@ export default function MachineDetailPage({
           </VStack>
         </Box>
 
-        <MachineCellsSection
-          machineId={machine.id}
-          machineSerial={machine.serial_number || null}
-          initialCells={cells}
-          catalogProducts={catalogProducts}
-          loadError={cellsLoadError}
-          currency={machine.currency || session.client.currency}
-          containerCount={getMachineContainerCount(machine.machine_type)}
-        />
-
         {telemetryPrices?.length ? (
           <Box bg="bg.900" border="1px solid" borderColor="whiteAlpha.100" borderRadius="2xl" p="6" gridColumn={{ xl: "1 / -1" }}>
             <Text color="acid.300" fontWeight="800" mb="4">
@@ -278,30 +252,19 @@ export const getServerSideProps: GetServerSideProps<MachineDetailPageProps> = as
   }
 
   const telemetryConfigured = isTelemetryConfigured();
-  let cells: PortalMachineCell[] = [];
-  let catalogProducts: PortalCatalogProduct[] = [];
   let currencies: Currency[] = [];
-  let cellsLoadError: string | null = null;
   try {
-    [cells, catalogProducts, currencies] = await Promise.all([
-      getMachineCells(machine.id),
-      getMachineCatalogProducts(machine.id, result.session.client.id),
-      requestStrapiRestAsService<Currency[]>(
-        "/api/currencies?filters[isActive][$ne]=false&sort[0]=code:ASC&pagination[pageSize]=2000",
-      ),
-    ]);
+    currencies = await requestStrapiRestAsService<Currency[]>(
+      "/api/currencies?filters[isActive][$ne]=false&sort[0]=code:ASC&pagination[pageSize]=2000",
+    );
   } catch (error) {
-    console.error("[machines/detail] container loading failed:", error);
-    cellsLoadError = "Machine containers could not be loaded.";
+    console.error("[machines/detail] currency loading failed:", error);
   }
 
   const commonProps = {
     session: result.session,
     machine,
     telemetryConfigured,
-    cells,
-    catalogProducts,
-    cellsLoadError,
     currencies,
   };
 

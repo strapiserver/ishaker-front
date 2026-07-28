@@ -369,6 +369,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
+  if (!/^\d+$/.test(serialNumber)) {
+    return res.status(400).json({
+      error: "invalid_serial_number",
+      message: "Serial number must contain digits only.",
+    });
+  }
+
   if (!isValidNickname(nickname)) {
     return res.status(400).json({
       error: "invalid_nickname",

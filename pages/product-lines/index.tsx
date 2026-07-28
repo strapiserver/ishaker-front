@@ -1,11 +1,21 @@
 import type { GetServerSideProps } from "next";
 import {
   ProductLinesPage,
+  type MachineContainerAssignment,
   type ProductLinesPageProps,
 } from "../../components/portal/product-lines";
 import { requirePortalSession } from "../../lib/portal/auth";
+import {
+  getMachineCatalogProducts,
+  getMachineCells,
+} from "../../services/server/machineCells";
 import { requestStrapiRestAsService } from "../../services/server/strapiClient";
-import type { PortalProduct, PortalProductLine, PortalSession } from "../../types/portal";
+import type {
+  PortalCatalogProduct,
+  PortalProduct,
+  PortalProductLine,
+  PortalSession,
+} from "../../types/portal";
 
 export default ProductLinesPage;
 
@@ -54,6 +64,43 @@ export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = asy
   const result = await requirePortalSession(context);
   if ("redirect" in result) return { redirect: result.redirect };
 
+  let catalogProducts: PortalCatalogProduct[] = [];
+  let machineAssignments: MachineContainerAssignment[] = [];
+  try {
+    const [catalog, ...cellResults] = await Promise.all([
+      result.session.machines[0]
+        ? getMachineCatalogProducts(
+            result.session.machines[0].id,
+            result.session.client.id,
+          )
+        : Promise.resolve([]),
+      ...result.session.machines.map((machine) =>
+        getMachineCells(machine.id)
+          .then((cells) => ({ machine, cells, loadError: null }))
+          .catch((error) => {
+            console.error(
+              `[product-lines] containers for machine ${machine.id} failed:`,
+              error,
+            );
+            return {
+              machine,
+              cells: [],
+              loadError: "Machine containers could not be loaded.",
+            };
+          }),
+      ),
+    ]);
+    catalogProducts = catalog;
+    machineAssignments = cellResults;
+  } catch (error) {
+    console.error("[product-lines] container catalog loading failed:", error);
+    machineAssignments = result.session.machines.map((machine) => ({
+      machine,
+      cells: [],
+      loadError: "Product library could not be loaded for assignment.",
+    }));
+  }
+
   try {
     const ownProductLines = await requestStrapiRestAsService<PortalProductLine[]>(
       `/api/product-lines?${createProductLineParams(result.session).toString()}`,
@@ -74,6 +121,8 @@ export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = asy
         session: result.session,
         productLines,
         orphanProducts: ownProducts.filter((product) => !product.product_line),
+        catalogProducts,
+        machineAssignments,
       },
     };
   } catch (error) {
@@ -83,6 +132,8 @@ export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = asy
         session: result.session,
         productLines: [],
         orphanProducts: [],
+        catalogProducts,
+        machineAssignments,
         loadError: "Product lines could not be loaded.",
       },
     };

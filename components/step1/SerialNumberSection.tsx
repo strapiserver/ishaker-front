@@ -112,7 +112,7 @@ export function SerialNumberSection({
   }, [dispatch, trimmedSerial]);
 
   const handleSerialChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setSerial(event.target.value);
+    setSerial(event.target.value.replace(/\D/g, ""));
     dispatch(clearMachineLookup());
   };
 
@@ -184,6 +184,8 @@ export function SerialNumberSection({
                 <Input
                   value={serial}
                   onChange={handleSerialChange}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="Enter numbers only"
                   bg="whiteAlpha.50"
                   borderColor={borderColor}

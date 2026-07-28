@@ -80,6 +80,10 @@ export default async function handler(
     return res.status(400).json({ error: "serial_required" });
   }
 
+  if (!/^\d+$/.test(serial)) {
+    return res.status(400).json({ error: "serial_must_contain_digits_only" });
+  }
+
   try {
     const serviceRestResult = await loadViaServiceRest(serial);
     if (serviceRestResult.machine) {
