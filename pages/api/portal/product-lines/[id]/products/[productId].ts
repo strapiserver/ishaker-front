@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getPortalSessionFromApiRequest } from "../../../../../../lib/portal/auth";
+import { deleteProductAndAssignments } from "../../../../../../services/server/deleteProduct";
 import { requestStrapiRestAsService } from "../../../../../../services/server/strapiClient";
 import type { PortalProductLine } from "../../../../../../types/portal";
 
@@ -82,31 +83,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const referenceParams = new URLSearchParams();
-    referenceParams.set("filters[product][id][$eq]", productId);
-    referenceParams.set("fields[0]", "id");
-    referenceParams.set("pagination[pageSize]", "1");
-    const [machineCells, presetCells] = await Promise.all([
-      requestStrapiRestAsService<Array<{ id: string | number }>>(
-        `/api/machine-cells?${referenceParams.toString()}`,
-      ),
-      requestStrapiRestAsService<Array<{ id: string | number }>>(
-        `/api/preset-cells?${referenceParams.toString()}`,
-      ),
-    ]);
-    if (machineCells.length || presetCells.length) {
-      return res.status(409).json({
-        error: "product_in_use",
-        message:
-          "Reassign this product from every machine and preset container before deleting it.",
-      });
-    }
+    const cleanup = await deleteProductAndAssignments(productId);
 
-    await requestStrapiRestAsService(`/api/products/${productId}`, {
-      method: "DELETE",
-    });
-
-    return res.status(200).json({ deleted: true });
+    return res.status(200).json({ deleted: true, ...cleanup });
   } catch (error) {
     console.error(
       "[portal/product-lines/:id/products/:productId] deletion failed:",

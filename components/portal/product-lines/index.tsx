@@ -137,8 +137,8 @@ export function ProductLinesPage({
           </Heading>
           <Text color="orange.200" mb="4">
             Legacy flavours detached by the old edit flow. Attach one to recover
-            it, or delete it when no machine or preset container uses it. This
-            section disappears when no orphan products remain.
+            it, or delete it and its machine or preset container assignments.
+            This section disappears when no orphan products remain.
           </Text>
           <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing="4">
             {orphanProducts.map((product) => (

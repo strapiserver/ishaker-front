@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getPortalSessionFromApiRequest } from "../../../../lib/portal/auth";
+import { deleteProductAndAssignments } from "../../../../services/server/deleteProduct";
 import { requestStrapiRestAsService } from "../../../../services/server/strapiClient";
 import type { PortalProduct } from "../../../../types/portal";
 
@@ -95,30 +96,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
-      const references = new URLSearchParams();
-      references.set("filters[product][id][$eq]", productId);
-      references.set("fields[0]", "id");
-      references.set("pagination[pageSize]", "1");
-      const [machineCells, presetCells] = await Promise.all([
-        requestStrapiRestAsService<Array<{ id: string | number }>>(
-          `/api/machine-cells?${references.toString()}`,
-        ),
-        requestStrapiRestAsService<Array<{ id: string | number }>>(
-          `/api/preset-cells?${references.toString()}`,
-        ),
-      ]);
-      if (machineCells.length || presetCells.length) {
-        return res.status(409).json({
-          error: "product_in_use",
-          message:
-            "Reassign this product from every machine and preset container before deleting it.",
-        });
-      }
-
-      await requestStrapiRestAsService(`/api/products/${productId}`, {
-        method: "DELETE",
-      });
-      return res.status(200).json({ deleted: true });
+      const cleanup = await deleteProductAndAssignments(productId);
+      return res.status(200).json({ deleted: true, ...cleanup });
     } catch (error) {
       console.error("[portal/products/:id] orphan mutation failed:", error);
       return res.status(500).json({

@@ -49,7 +49,8 @@ export function DeleteProductDialog({
               <Text as="span" color="bg.50" fontWeight="700">
                 {productName}
               </Text>{" "}
-              will be removed from this product line.
+              will be removed from this product line and automatically cleared
+              from every machine and preset container.
             </Text>
           </AlertDialogBody>
           <AlertDialogFooter>
