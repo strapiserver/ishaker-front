@@ -6,6 +6,7 @@ import {
   Button,
   Checkbox,
   FormControl,
+  FormErrorMessage,
   FormLabel,
   HStack,
   Input,
@@ -13,7 +14,6 @@ import {
   NumberInputField,
   Select,
   SimpleGrid,
-  Spinner,
   Switch,
   Table,
   TableContainer,
@@ -38,12 +38,23 @@ import {
 import type { GetServerSideProps } from "next";
 import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "../../components/admin";
+import Loader from "../../components/shared/Loader";
 import { SearchableImageSelect } from "../../components/portal/product-lines";
 import { requireAdminSession } from "../../lib/admin/auth";
 import { formatMoney } from "../../lib/portal/currency";
 import { getSmallestMediaUrl } from "../../lib/portal/media";
+import {
+  getDuplicateContainerSlots,
+  getMachineContainerCount,
+  isValidContainerSlot,
+} from "../../lib/portal/containerSlots";
+import {
+  canAssignProduct,
+  getProductAssignmentProblems,
+} from "../../lib/portal/productAssignment";
 
 type Row = {
+  id?: number;
   position: number;
   cellCategory: "powder" | "concentrate";
   productId: string;
@@ -65,6 +76,28 @@ const emptyForm = () => ({
   productLineId: "",
   cells: [] as Row[],
 });
+
+const fillPhysicalSlots = (cells: Row[], containerCount: number | null) => {
+  if (!containerCount) return cells;
+  const assignedCells = cells.filter((cell) => cell.productId);
+  const occupied = new Set(
+    assignedCells
+      .map((cell) => cell.position)
+      .filter((position) => isValidContainerSlot(position, containerCount)),
+  );
+  return [
+    ...assignedCells,
+    ...Array.from({ length: containerCount }, (_, index) => index + 1)
+      .filter((position) => !occupied.has(position))
+      .map((position) => ({
+        position,
+        cellCategory: "powder" as const,
+        productId: "",
+        price: "",
+        isActive: true,
+      })),
+  ].sort((left, right) => left.position - right.position);
+};
 
 export default function AdminPresetsPage() {
   const toast = useToast();
@@ -103,6 +136,7 @@ export default function AdminPresetsPage() {
       setForm(emptyForm());
       return;
     }
+    const presetMachineType = preset.machine_type;
     setForm({
       id: String(preset.id),
       name: preset.name || "",
@@ -119,9 +153,10 @@ export default function AdminPresetsPage() {
       productLineId: preset.product_line?.id
         ? String(preset.product_line.id)
         : "",
-      cells: (preset.cells || [])
+      cells: fillPhysicalSlots((preset.cells || [])
         .sort((a: any, b: any) => Number(a.position) - Number(b.position))
         .map((cell: any) => ({
+          id: Number(cell.id),
           position: Number(cell.position),
           cellCategory: cell.cell_category || "powder",
           productId: cell.product?.id ? String(cell.product.id) : "",
@@ -130,36 +165,83 @@ export default function AdminPresetsPage() {
               ? ""
               : String(cell.price),
           isActive: cell.isActive !== false,
-        })),
+        })), getMachineContainerCount(presetMachineType)),
     });
   };
 
   const products = useMemo(
     () =>
-      (data?.options?.products || []).filter(
-        (product: any) =>
-          product.isPopular === true &&
-          String(product.product_line?.id) === form.productLineId,
-      ),
-    [data, form.productLineId],
+      data?.options?.products || [],
+    [data],
   );
   const productOptions = useMemo(
     () =>
-      products.map((product: any) => ({
-        id: String(product.id),
-        name: product.name || `Product ${product.id}`,
-        imageUrl: getSmallestMediaUrl(
-          product.custom_main || product.taste?.main,
-        ),
-        subtitle: product.brand?.name || product.product_line?.name,
-      })),
+      products.map((product: any) => {
+        const problems = getProductAssignmentProblems(product);
+        return {
+          id: String(product.id),
+          name: `${product.product_line?.name || "Orphan"} — ${product.taste?.name || product.name || `Product ${product.id}`}`,
+          imageUrl: getSmallestMediaUrl(
+            product.custom_main || product.taste?.main,
+          ),
+          subtitle: product.brand?.name,
+          isDisabled: problems.length > 0,
+          disabledReason: problems[0]?.detail,
+        };
+      }),
     [products],
   );
   const selectedCurrency = data?.options?.currencies?.find(
     (currency: any) => String(currency.id) === form.currencyId,
   );
+  const selectedMachineType = data?.options?.machineTypes?.find(
+    (machineType: any) => String(machineType.id) === form.machineTypeId,
+  );
+  const containerCount = getMachineContainerCount(selectedMachineType);
+  const duplicatePositions = useMemo(
+    () =>
+      getDuplicateContainerSlots(
+        form.cells
+          .filter((cell) => cell.productId)
+          .map((cell) => cell.position),
+      ),
+    [form.cells],
+  );
+  const hasInvalidPosition = form.cells.filter((cell) => cell.productId).some(
+    (cell) => !isValidContainerSlot(cell.position, containerCount),
+  );
+  const hasInvalidProduct = form.cells.some((cell) => {
+    if (!cell.productId) return false;
+    const product = products.find(
+      (item: any) => String(item.id) === cell.productId,
+    );
+    return (
+      !product ||
+      !canAssignProduct(product) ||
+      product.product_type !== cell.cellCategory
+    );
+  });
+  const hasInvalidPrice = form.cells.some(
+    (cell) =>
+      cell.price !== "" &&
+      (!Number.isFinite(Number(cell.price)) || Number(cell.price) <= 0),
+  );
+  const hasContainerPositionError =
+    containerCount === null ||
+    hasInvalidPosition ||
+    duplicatePositions.size > 0 ||
+    hasInvalidProduct ||
+    hasInvalidPrice;
 
   const save = async () => {
+    if (hasContainerPositionError) {
+      setError(
+        containerCount === null
+          ? "The selected machine model must define its powder container count."
+          : "Choose a unique physical container slot from the available range for every preset cell.",
+      );
+      return;
+    }
     setIsSaving(true);
     setError("");
     const response = await fetch(
@@ -167,7 +249,10 @@ export default function AdminPresetsPage() {
       {
         method: form.id ? "PUT" : "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          cells: form.cells.filter((cell) => cell.productId),
+        }),
       },
     );
     const payload = await response.json().catch(() => null);
@@ -250,13 +335,37 @@ export default function AdminPresetsPage() {
       return;
     }
     confirm.onClose();
-    toast({ title: "Preset applied", status: "success" });
+    const planogramPayload = payload?.planogram?.data || payload?.planogram;
+    const problems = Array.isArray(planogramPayload?.problems)
+      ? planogramPayload.problems
+      : [];
+    const skipped = Array.isArray(planogramPayload?.skipped)
+      ? planogramPayload.skipped
+      : [];
+    toast({
+      title: problems.length
+        ? "Preset applied with planogram errors"
+        : "Preset applied",
+      description: problems.length
+        ? problems
+            .map(
+              (problem: any) =>
+                `Container ${problem.position ?? "?"}: ${problem.detail || problem.code}`,
+            )
+            .join(" · ")
+        : skipped.length
+          ? `${skipped.length} disabled item(s) skipped. Source: ${payload.planogramSource || "unknown"}.`
+          : `Planogram source: ${payload.planogramSource || "unknown"}.`,
+      status: problems.length ? "error" : skipped.length ? "info" : "success",
+      duration: 9000,
+      isClosable: true,
+    });
     await load();
   };
 
   return (
     <AdminShell title="Presets">
-      {isLoading ? <Spinner /> : null}
+      {isLoading ? <Loader size="lg" mb="5" /> : null}
       {error ? (
         <Alert status="error" mb="5"><AlertIcon />{error}</Alert>
       ) : null}
@@ -311,26 +420,29 @@ export default function AdminPresetsPage() {
                 ["Machine type", "machineTypeId", data?.options?.machineTypes, "name"],
                 ["Currency", "currencyId", data?.options?.currencies, "code"],
                 ["Language", "languageId", data?.options?.languages, "name"],
-                ["Product line", "productLineId", data?.options?.productLines, "name"],
               ].map(([label, key, options, display]: any) => (
                 <FormControl isRequired key={key}>
                   <FormLabel>{label}</FormLabel>
                   <Select
                     value={(form as any)[key]}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      const nextCount =
+                        key === "machineTypeId"
+                          ? getMachineContainerCount(
+                              (options || []).find(
+                                (option: any) => String(option.id) === value,
+                              ),
+                            )
+                          : containerCount;
                       setForm({
                         ...form,
-                        [key]: event.target.value,
-                        ...(key === "productLineId"
-                          ? {
-                              cells: form.cells.map((cell) => ({
-                                ...cell,
-                                productId: "",
-                              })),
-                            }
+                        [key]: value,
+                        ...(key === "machineTypeId"
+                          ? { cells: fillPhysicalSlots(form.cells, nextCount) }
                           : {}),
-                      })
-                    }
+                      });
+                    }}
                     placeholder={`Select ${String(label).toLowerCase()}`}
                   >
                     {(options || []).map((option: any) => (
@@ -350,34 +462,35 @@ export default function AdminPresetsPage() {
               <Checkbox isChecked={form.isActive} onChange={(event) => setForm({ ...form, isActive: event.target.checked })}>Active</Checkbox>
             </HStack>
 
-            <HStack justify="space-between">
-              <Text color="acid.300" fontWeight="800">Planogram</Text>
-              <Button
-                size="sm"
-                onClick={() =>
-                  setForm({
-                    ...form,
-                    cells: [
-                      ...form.cells,
-                      {
-                        position: form.cells.length
-                          ? Math.max(...form.cells.map((cell) => cell.position)) + 1
-                          : 0,
-                        cellCategory: "powder",
-                        productId: "",
-                        price: "",
-                        isActive: true,
-                      },
-                    ],
-                  })
-                }
-              >
-                Add position
-              </Button>
-            </HStack>
+            <Text color="acid.300" fontWeight="800">Container assignment</Text>
+            {form.machineTypeId && containerCount === null ? (
+              <Alert status="error" borderRadius="xl">
+                <AlertIcon />
+                This machine model has no container count configured.
+                Configure it before editing or saving its preset.
+              </Alert>
+            ) : null}
+            {duplicatePositions.size ? (
+              <Alert status="error" borderRadius="xl">
+                <AlertIcon />
+                Each physical container slot can be used only once.
+              </Alert>
+            ) : null}
+            {hasInvalidProduct ? (
+              <Alert status="error" borderRadius="xl">
+                <AlertIcon />
+                Every assigned product must be complete and match its container category.
+              </Alert>
+            ) : null}
+            {hasInvalidPrice ? (
+              <Alert status="error" borderRadius="xl">
+                <AlertIcon />
+                Price overrides must be greater than zero.
+              </Alert>
+            ) : null}
             <TableContainer>
               <Table minW="840px">
-                <Thead><Tr><Th>Position</Th><Th>Category</Th><Th>Product</Th><Th>Price</Th><Th>Active</Th><Th /></Tr></Thead>
+                <Thead><Tr><Th>Container slot</Th><Th>Category</Th><Th>Product</Th><Th>Price</Th><Th>Active</Th><Th /></Tr></Thead>
                 <Tbody>
                   {form.cells.map((cell, index) => {
                     const selectedProduct = products.find(
@@ -387,26 +500,84 @@ export default function AdminPresetsPage() {
                       selectedProduct?.dosage?.full_drink_price ?? null;
                     const effectivePrice =
                       cell.price === "" ? dosagePrice : cell.price;
+                    const hasDuplicatePosition =
+                      duplicatePositions.has(cell.position);
+                    const hasInvalidSlot = !isValidContainerSlot(
+                      cell.position,
+                      containerCount,
+                    );
+                    const occupiedByAnotherCell = new Set(
+                      form.cells
+                        .filter(
+                          (otherCell, cellIndex) =>
+                            cellIndex !== index && Boolean(otherCell.productId),
+                        )
+                        .map((otherCell) => otherCell.position),
+                    );
                     return (
-                    <Tr key={`${cell.position}-${index}`}>
-                      <Td><NumberInput min={0} value={cell.position}><NumberInputField onChange={(event) => {
-                        const cells = [...form.cells]; cells[index] = { ...cell, position: Number(event.target.value) }; setForm({ ...form, cells });
-                      }} /></NumberInput></Td>
+                    <Tr key={`preset-cell-${index}`}>
+                      <Td minW="180px">
+                        <FormControl
+                          isInvalid={hasDuplicatePosition || hasInvalidSlot}
+                        >
+                          {hasDuplicatePosition || hasInvalidSlot ? <Select
+                            aria-label={`Physical container slot for preset row ${index + 1}`}
+                            value={String(cell.position)}
+                            onChange={(event) => {
+                              const nextPosition = Number(event.target.value);
+                              const cells = form.cells
+                                .filter(
+                                  (otherCell, cellIndex) =>
+                                    cellIndex === index ||
+                                    Boolean(otherCell.productId) ||
+                                    otherCell.position !== nextPosition,
+                                )
+                                .map((otherCell) =>
+                                  otherCell === cell
+                                    ? { ...cell, position: nextPosition }
+                                    : otherCell,
+                                );
+                              setForm({ ...form, cells });
+                            }}
+                          >
+                            {hasInvalidSlot ? (
+                              <option value={String(cell.position)} disabled>
+                                Invalid slot ({String(cell.position)})
+                              </option>
+                            ) : null}
+                            {Array.from(
+                              { length: containerCount || 0 },
+                              (_, slotIndex) => slotIndex + 1,
+                            ).map((slot) => (
+                              <option
+                                key={slot}
+                                value={slot}
+                                disabled={occupiedByAnotherCell.has(slot)}
+                              >
+                                Slot {slot}
+                              </option>
+                            ))}
+                          </Select> : (
+                            <Text fontWeight="800">Container {cell.position}</Text>
+                          )}
+                          <FormErrorMessage>
+                            {hasDuplicatePosition
+                              ? `Slot ${cell.position} is already assigned.`
+                              : `Choose a slot from 1 to ${containerCount || "N"}.`}
+                          </FormErrorMessage>
+                        </FormControl>
+                      </Td>
                       <Td><Select value={cell.cellCategory} onChange={(event) => {
                         const cells = [...form.cells]; cells[index] = { ...cell, cellCategory: event.target.value as Row["cellCategory"] }; setForm({ ...form, cells });
                       }}><option value="powder">Powder</option><option value="concentrate">Concentrate</option></Select></Td>
                       <Td minW="320px">
                         <SearchableImageSelect
                           ariaLabel={`Product for preset position ${cell.position}`}
-                          emptyLabel={
-                            form.productLineId
-                              ? "Nothing found"
-                              : "Select a product line first"
-                          }
+                          emptyLabel="No library products found"
                           options={productOptions}
-                          placeholder="Search products"
+                          placeholder="Empty container"
+                          clearLabel="Empty container"
                           value={cell.productId}
-                          isDisabled={!form.productLineId}
                           onChange={(value) => {
                             const cells = [...form.cells];
                             cells[index] = { ...cell, productId: value };
@@ -415,7 +586,7 @@ export default function AdminPresetsPage() {
                         />
                       </Td>
                       <Td>
-                        <NumberInput min={0} precision={2} value={cell.price}>
+                        <NumberInput min={0.01} precision={2} value={cell.price}>
                           <NumberInputField placeholder="Inherit dosage" onChange={(event) => {
                             const cells = [...form.cells]; cells[index] = { ...cell, price: event.target.value }; setForm({ ...form, cells });
                           }} />
@@ -434,7 +605,7 @@ export default function AdminPresetsPage() {
                       <Td><Switch isChecked={cell.isActive} onChange={(event) => {
                         const cells = [...form.cells]; cells[index] = { ...cell, isActive: event.target.checked }; setForm({ ...form, cells });
                       }} /></Td>
-                      <Td><Button colorScheme="red" variant="ghost" onClick={() => setForm({ ...form, cells: form.cells.filter((_, cellIndex) => cellIndex !== index) })}>Remove</Button></Td>
+                      <Td><Text color="bg.400">Physical slot {cell.position}</Text></Td>
                     </Tr>
                     );
                   })}
@@ -442,7 +613,14 @@ export default function AdminPresetsPage() {
               </Table>
             </TableContainer>
             <HStack>
-              <Button variant="primary" onClick={save} isLoading={isSaving}>Save preset</Button>
+              <Button
+                variant="primary"
+                onClick={save}
+                isLoading={isSaving}
+                isDisabled={hasContainerPositionError}
+              >
+                Save preset
+              </Button>
               {form.id ? <Button colorScheme="red" variant="outline" onClick={remove}>Delete</Button> : null}
             </HStack>
 
@@ -461,7 +639,12 @@ export default function AdminPresetsPage() {
                     Replace prices too
                   </Checkbox>
                 </SimpleGrid>
-                <Button mt="3" onClick={previewApply} isLoading={isApplying} isDisabled={!targetMachineId}>
+                <Button
+                  mt="3"
+                  onClick={previewApply}
+                  isLoading={isApplying}
+                  isDisabled={!targetMachineId || hasContainerPositionError}
+                >
                   Preview apply diff
                 </Button>
               </Box>

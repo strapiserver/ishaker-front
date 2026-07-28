@@ -56,8 +56,14 @@ export type PortalCatalogProduct = {
   id: number;
   name: string;
   isActive?: boolean;
-  product_type: "powder" | "concentrate";
-  taste?: { name?: string | null } | null;
+  product_type?: "powder" | "concentrate" | null;
+  product_line?: Pick<PortalProductLine, "id" | "name"> | null;
+  brand?: PortalBrand | null;
+  custom_main?: PortalMedia | null;
+  taste?: {
+    name?: string | null;
+    main?: PortalMedia | null;
+  } | null;
   dosage?: PortalProductDosage | null;
 };
 

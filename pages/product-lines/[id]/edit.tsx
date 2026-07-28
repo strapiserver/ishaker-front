@@ -39,7 +39,6 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
   ownParams.set("populate[0]", "base_product_line");
   ownParams.set("populate[1]", "cup.image");
   ownParams.set("populate[2]", "custom_splash");
-  ownParams.set("populate[3]", "machines");
   ownParams.set("pagination[pageSize]", "2000");
 
   const rootParams = new URLSearchParams();

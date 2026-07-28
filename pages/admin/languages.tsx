@@ -13,7 +13,6 @@ import {
   NumberInput,
   NumberInputField,
   SimpleGrid,
-  Spinner,
   Text,
   VStack,
   useToast,
@@ -23,6 +22,7 @@ import { useEffect, useState } from "react";
 import { AdminShell } from "../../components/admin";
 import { requireAdminSession } from "../../lib/admin/auth";
 import { getSmallestMediaUrl } from "../../lib/portal/media";
+import Loader from "../../components/shared/Loader";
 
 const empty = {
   id: "",
@@ -135,7 +135,7 @@ export default function AdminLanguagesPage() {
 
   return (
     <AdminShell title="Languages">
-      {isLoading ? <Spinner /> : null}
+      {isLoading ? <Loader size="lg" mb="5" /> : null}
       {error ? <Alert status="error" mb="5"><AlertIcon />{error}</Alert> : null}
       <SimpleGrid columns={{ base: 1, lg: 3 }} spacing="6">
         <VStack align="stretch" bg="bg.900" p="5" borderRadius="2xl">

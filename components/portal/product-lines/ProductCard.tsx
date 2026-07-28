@@ -185,16 +185,22 @@ export function ProductCard({ product, productLineId }: ProductCardProps) {
             <Text color="bg.200" fontSize="sm" fontWeight="700" noOfLines={2}>
               {productName}
             </Text>
-            <HStack spacing="2">
+            <HStack spacing="3">
               {brandImage ? (
                 <Image
                   src={brandImage}
-                  alt=""
-                  boxSize="28px"
+                  alt={`${brandName} logo`}
+                  boxSize={{ base: "40px", sm: "48px" }}
                   objectFit="contain"
+                  flex="0 0 auto"
                 />
               ) : null}
-              <Text color="bg.400" fontSize="xs" noOfLines={1}>
+              <Text
+                color="bg.300"
+                fontSize={{ base: "sm", sm: "md" }}
+                fontWeight="600"
+                noOfLines={1}
+              >
                 {brandName || "No brand"}
               </Text>
             </HStack>

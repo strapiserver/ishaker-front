@@ -10,7 +10,6 @@ import {
   Input,
   Select,
   SimpleGrid,
-  Spinner,
   Stat,
   StatLabel,
   StatNumber,
@@ -33,6 +32,7 @@ import { requirePortalSession } from "../lib/portal/auth";
 import { formatMoney } from "../lib/portal/currency";
 import type { PortalSession } from "../types/portal";
 import type { Currency, Sale } from "../types/strapi";
+import Loader from "../components/shared/Loader";
 
 type SalesPageProps = {
   session: PortalSession;
@@ -216,7 +216,7 @@ export default function SalesPage({ session }: SalesPageProps) {
       >
         {isLoading ? (
           <HStack py="10" justify="center">
-            <Spinner />
+            <Loader size="md" />
             <Text color="bg.300">Loading sales…</Text>
           </HStack>
         ) : payload?.nayax.status === "unconfigured" &&

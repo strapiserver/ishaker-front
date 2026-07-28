@@ -136,62 +136,18 @@ export function ProductComponentsTable({
     (currency) => String(currency.id) === priceCurrencyId,
   );
   const currencyMenu = (ariaLabel: string) => (
-    <Menu placement="bottom-end">
-      <MenuButton
-        as={Button}
-        type="button"
-        aria-label={ariaLabel}
-        isDisabled={isCurrencySaving || !canEditMachineCurrency}
-        variant="ghost"
-        size="xs"
-        position="absolute"
-        right="2"
-        top="50%"
-        transform="translateY(-50%)"
-        zIndex="1"
-        maxW="94px"
-        h="30px"
-        px="2"
-        color="acid.300"
-        fontWeight="800"
-        rightIcon={<FaChevronDown size="0.7rem" />}
-        _hover={{ bg: "whiteAlpha.100" }}
-        _active={{ bg: "whiteAlpha.200" }}
-      >
-        <Text as="span" noOfLines={1}>
-          {selectedCurrency?.code || "Currency"}
-        </Text>
-      </MenuButton>
-      <Portal>
-        <MenuList
-          minW="180px"
-          maxH="280px"
-          overflowY="auto"
-          bg="bg.800"
-          borderColor="whiteAlpha.200"
-          boxShadow="xl"
-          zIndex="popover"
-        >
-          {currencies.map((currency) => (
-            <MenuItem
-              key={currency.id}
-              bg={
-                String(currency.id) === priceCurrencyId
-                  ? "whiteAlpha.200"
-                  : "bg.800"
-              }
-              color="bg.50"
-              onClick={() => onPriceCurrencyChange(String(currency.id))}
-              _hover={{ bg: "whiteAlpha.200" }}
-              _focus={{ bg: "whiteAlpha.200" }}
-            >
-              {currency.code}
-              {currency.name ? ` — ${currency.name}` : ""}
-            </MenuItem>
-          ))}
-        </MenuList>
-      </Portal>
-    </Menu>
+    <Text
+      aria-label={ariaLabel}
+      position="absolute"
+      right="4"
+      top="50%"
+      transform="translateY(-50%)"
+      color="acid.300"
+      fontWeight="800"
+      pointerEvents="none"
+    >
+      {selectedCurrency?.code || "Currency"}
+    </Text>
   );
 
   const addRow = () => {
@@ -511,7 +467,7 @@ export function ProductComponentsTable({
               <Text as="span">Full drink volume</Text>
               <Help text="Total size of the large cup drink, in ml (e.g. 300). Water, Product and Conversion factor below are set for this size; smaller cup sizes are calculated automatically." />
             </HStack>
-            <NumberInput min={0.01} precision={2} value={dosage.drinkVolume}>
+            <NumberInput min={50} precision={2} value={dosage.drinkVolume}>
               <NumberInputField
                 onChange={(event) =>
                   onDosageChange({
@@ -528,10 +484,10 @@ export function ProductComponentsTable({
             <HStack flexWrap="wrap">
               <Icon as={FaCoins} color="acid.300" />
               <Text as="span">Full drink price</Text>
-              <Help text="Default price for the large cup. Currency is selected per machine and is not stored on the product dosage." />
+              <Help text="Default library price for the large cup. A container can override it." />
             </HStack>
             <NumberInput
-              min={0}
+              min={0.01}
               precision={2}
               value={dosage.fullDrinkPrice}
               position="relative"
@@ -546,14 +502,10 @@ export function ProductComponentsTable({
                 bg="bg.800"
                 pr="24"
               />
-              {currencyMenu("Change full drink machine currency")}
+                {currencyMenu("Full drink price currency")}
             </NumberInput>
             <FormHelperText>
-              {isCurrencySaving
-                ? "Saving machine currency…"
-                : canEditMachineCurrency
-                ? "Changes currency on every machine assigned to this product line."
-                : "Assign this product line to a machine to select currency."}
+              This is the library default. A container can override the price.
             </FormHelperText>
           </FormControl>
         </SimpleGrid>
@@ -588,7 +540,7 @@ export function ProductComponentsTable({
               <HStack flexWrap="wrap">
                 <Icon as={FaCoins} color="acid.300" />
                 <Text as="span">Small drink price</Text>
-                <Help text="Default price for the small cup. Currency is selected per machine and is not stored on the product dosage." />
+                <Help text="Default library price for the small cup. A container can override it." />
               </HStack>
               <NumberInput
                 min={0}
@@ -606,14 +558,10 @@ export function ProductComponentsTable({
                   bg="bg.800"
                   pr="24"
                 />
-                {currencyMenu("Change small drink machine currency")}
+                {currencyMenu("Small drink price currency")}
               </NumberInput>
               <FormHelperText>
-                {isCurrencySaving
-                  ? "Saving machine currency…"
-                  : canEditMachineCurrency
-                  ? "Changes currency on every machine assigned to this product line."
-                  : "Assign this product line to a machine to select currency."}
+                This is the library default. A container can override the price.
               </FormHelperText>
             </FormControl>
           </SimpleGrid>

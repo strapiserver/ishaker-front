@@ -8,7 +8,6 @@ import {
   InputGroup,
   InputRightElement,
   SimpleGrid,
-  Spinner,
   VStack,
   Text,
   useColorModeValue,
@@ -27,6 +26,7 @@ import {
   mergeRegistrationDraft,
 } from "../../lib/portal/registration";
 import CustomTitle from "../home/CutsomTitle";
+import Loader from "../shared/Loader";
 
 const SERIAL_DEBOUNCE_MS = 3000;
 
@@ -196,7 +196,7 @@ export function SerialNumberSection({
                 />
                 {isSearching ? (
                   <InputRightElement>
-                    <Spinner color="acid.300" size="sm" />
+                    <Loader size="sm" />
                   </InputRightElement>
                 ) : canContinue ? (
                   <InputRightElement color={successColor}>

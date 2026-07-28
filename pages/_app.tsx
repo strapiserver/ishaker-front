@@ -4,11 +4,19 @@ import { ChakraProvider } from "@chakra-ui/react";
 import { DefaultSeo } from "next-seo";
 import Head from "next/head";
 import { Provider } from "react-redux";
+import { useEffect } from "react";
 import theme from "../styles/theme";
 import store from "../redux/store";
 import { Footer } from "../components/Footer";
+import RouteLoadingOverlay from "../components/shared/RouteLoadingOverlay";
 
 function MyApp({ Component, pageProps }: AppProps) {
+  useEffect(() => {
+    import("@lottiefiles/dotlottie-react").then(({ setWasmUrl }) => {
+      setWasmUrl("/dotlottie-player.wasm");
+    });
+  }, []);
+
   return (
     <>
       <Head>
@@ -29,6 +37,7 @@ function MyApp({ Component, pageProps }: AppProps) {
               siteName: "iShaker",
             }}
           />
+          <RouteLoadingOverlay />
           <Component {...pageProps} />
           <Footer />
         </ChakraProvider>

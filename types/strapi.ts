@@ -30,6 +30,7 @@ export type Machine = {
   machine_type?: {
     id: string | number;
     name?: string;
+    container_count?: number | null;
     preview?: {
       id: string | number;
       name?: string;

@@ -1,7 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdminApiSession } from "../../../../../lib/admin/auth";
 import { requestStrapiRestAsService } from "../../../../../services/server/strapiClient";
-import { arePopularProductsValid, parseCells } from "../index";
+import {
+  arePresetProductsValid,
+  arePresetCellSlotsValid,
+  getMachineTypeContainerCount,
+  parseCells,
+} from "../index";
 
 const idFrom = (value: string | string[] | undefined) => {
   const id = Array.isArray(value) ? value[0] : value;
@@ -45,23 +50,34 @@ export default async function handler(
     const machineTypeId = relationId(req.body?.machineTypeId);
     const currencyId = relationId(req.body?.currencyId);
     const languageId = relationId(req.body?.languageId);
-    const productLineId = relationId(req.body?.productLineId);
     if (
       !req.body?.name?.trim() ||
       !req.body?.slug?.trim() ||
       !machineTypeId ||
       !currencyId ||
       !languageId ||
-      !productLineId ||
       !cells
     ) {
       return res.status(400).json({ error: "invalid_preset" });
     }
-    if (!(await arePopularProductsValid(productLineId, cells))) {
+    const containerCount = await getMachineTypeContainerCount(machineTypeId);
+    if (
+      containerCount === null ||
+      !arePresetCellSlotsValid(cells, containerCount)
+    ) {
+      return res.status(400).json({
+        error: "invalid_container_slot",
+        message:
+          containerCount === null
+            ? "The selected machine model has no powder container count configured."
+            : `Every preset cell must use a unique physical container slot from 1 to ${containerCount}.`,
+      });
+    }
+    if (!(await arePresetProductsValid(cells))) {
       return res.status(400).json({
         error: "invalid_preset_products",
         message:
-          "Every planogram product must be popular and belong to the selected product line.",
+          "Every assigned product must be complete, active, and match its container category.",
       });
     }
 
@@ -81,24 +97,34 @@ export default async function handler(
           machine_type: machineTypeId,
           currency: currencyId,
           language: languageId,
-          product_line: productLineId,
         },
       }),
     });
 
-    const existingByPosition = new Map(
-      existingCells.map((cell) => [Number(cell.position), cell]),
+    const existingById = new Map(
+      existingCells.map((cell) => [Number(cell.id), cell]),
     );
-    const nextPositions = new Set(cells.map((cell) => cell.position));
+    const submittedIds = new Set(
+      cells
+        .map((cell) => cell.cellId)
+        .filter((cellId): cellId is number => cellId !== null),
+    );
+    if ([...submittedIds].some((cellId) => !existingById.has(cellId))) {
+      return res.status(403).json({
+        error: "preset_cell_access_denied",
+        message: "A preset cell does not belong to this preset.",
+      });
+    }
     for (const cell of existingCells) {
-      if (!nextPositions.has(Number(cell.position))) {
+      if (!submittedIds.has(Number(cell.id))) {
         await requestStrapiRestAsService(`/api/preset-cells/${cell.id}`, {
           method: "DELETE",
         });
       }
     }
     for (const cell of cells) {
-      const existing = existingByPosition.get(cell.position);
+      const existing =
+        cell.cellId === null ? null : existingById.get(cell.cellId);
       await requestStrapiRestAsService(
         existing ? `/api/preset-cells/${existing.id}` : "/api/preset-cells",
         {

@@ -1,5 +1,4 @@
 import {
-  Badge,
   Box,
   Button,
   Divider,
@@ -10,8 +9,6 @@ import {
   Text,
   useDisclosure,
   VStack,
-  Wrap,
-  WrapItem,
 } from "@chakra-ui/react";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -37,7 +34,6 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
   const cupImage = getSmallestMediaUrl(productLine.cup?.image);
   const productLineName = capitalizeName(productLine.name);
   const productCount = productLine.products?.length || 0;
-  const machines = productLine.machines || [];
   const brandCount = new Set(
     (productLine.products || [])
       .map((product) => product.brand?.id)
@@ -192,54 +188,6 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
             </HStack>
           </VStack>
         </HStack>
-        <Box mt="4">
-          <Text
-            color="bg.300"
-            fontSize="xs"
-            fontWeight="700"
-            mb="2"
-            textTransform="uppercase"
-            letterSpacing="wide"
-          >
-            {machines.length === 1 ? "Machine" : "Machines"}
-          </Text>
-          {machines.length ? (
-            <Wrap spacing="2">
-              {machines.map((machine) => {
-                const machineName =
-                  machine.title || `Machine #${machine.id}`;
-                const machineLabel = machine.serial_number
-                  ? `${machineName} · Serial ${machine.serial_number}`
-                  : machineName;
-
-                return (
-                  <WrapItem key={machine.id}>
-                    <Badge
-                      px="2.5"
-                      py="1.5"
-                      borderRadius="md"
-                      colorScheme="green"
-                      textTransform="none"
-                      whiteSpace="normal"
-                    >
-                      {machineLabel}
-                    </Badge>
-                  </WrapItem>
-                );
-              })}
-            </Wrap>
-          ) : (
-            <Badge
-              px="2.5"
-              py="1.5"
-              borderRadius="md"
-              colorScheme="orange"
-              textTransform="none"
-            >
-              Not assigned to a machine
-            </Badge>
-          )}
-        </Box>
         <Divider my="4" />
         {productLine.products?.length ? (
           <VStack spacing="3" mt="5" align="stretch" w="full">

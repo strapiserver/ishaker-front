@@ -10,6 +10,10 @@ import {
   getMachineCells,
   updateMachineCell,
 } from "../../../../../services/server/machineCells";
+import { getMachineContainerCount } from "../../../../../lib/portal/containerSlots";
+import {
+  getProductAssignmentProblems,
+} from "../../../../../lib/portal/productAssignment";
 
 type Assignment = {
   cellId: number | null;
@@ -54,12 +58,12 @@ const parseAssignments = (value: unknown): Assignment[] | null => {
         (assignment.cellId !== null &&
           (!Number.isInteger(assignment.cellId) || assignment.cellId <= 0)) ||
         !Number.isInteger(assignment.position) ||
-        assignment.position < 0 ||
+        assignment.position <= 0 ||
         (assignment.productId !== null &&
           (!Number.isInteger(assignment.productId) || assignment.productId <= 0)) ||
         typeof assignment.isActive !== "boolean" ||
         (assignment.price !== null &&
-          (!Number.isFinite(assignment.price) || assignment.price < 0)) ||
+          (!Number.isFinite(assignment.price) || assignment.price <= 0)) ||
         (typeof assignment.cellCategory !== "string" ||
           !["powder", "concentrate"].includes(assignment.cellCategory)),
     )
@@ -107,6 +111,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ deleted: true, cellId: cell.id });
     }
 
+    const containerCount = getMachineContainerCount(machine.machine_type);
+    if (containerCount === null) {
+      return res.status(409).json({
+        error: "container_count_not_configured",
+        message:
+          "This machine model has no powder container count configured.",
+      });
+    }
+
     if (req.method === "POST") {
       const assignments = parseAssignments([req.body]);
       const assignment = assignments?.[0];
@@ -114,6 +127,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({
           error: "invalid_machine_cell",
           message: "Enter a valid position, category, product, active state, and optional price.",
+        });
+      }
+      if (assignment.position > containerCount) {
+        return res.status(400).json({
+          error: "invalid_container_slot",
+          message: `Choose a physical container slot from 1 to ${containerCount}.`,
+        });
+      }
+      if (cells.length >= containerCount) {
+        return res.status(409).json({
+          error: "container_capacity_reached",
+          message: `This machine model has exactly ${containerCount} physical container slots.`,
         });
       }
       if (cells.some((cell) => cell.position === assignment.position)) {
@@ -129,6 +154,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         );
         if (!product) {
           return res.status(400).json({ error: "product_not_in_catalog" });
+        }
+        const productProblems = getProductAssignmentProblems(product);
+        if (productProblems.length) {
+          return res.status(400).json({
+            error: productProblems[0].code,
+            message: productProblems[0].detail,
+          });
         }
         if (product.product_type !== assignment.cellCategory) {
           return res.status(400).json({ error: "category_mismatch" });
@@ -161,15 +193,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         message: "Assignments must contain valid, unique container positions.",
       });
     }
-
     if (
-      assignments.some((assignment) => assignment.cellId === null) ||
-      new Set(assignments.map((assignment) => assignment.cellId)).size !==
-        assignments.length
+      assignments.some(
+        (assignment) => assignment.position > containerCount,
+      )
     ) {
       return res.status(400).json({
+        error: "invalid_container_slot",
+        message: `Every container must use a physical slot from 1 to ${containerCount}.`,
+      });
+    }
+
+    const persistedIds = assignments
+      .map((assignment) => assignment.cellId)
+      .filter((id): id is number => id !== null);
+    if (new Set(persistedIds).size !== persistedIds.length) {
+      return res.status(400).json({
         error: "invalid_machine_cells",
-        message: "Each updated container must have a unique cell ID.",
+        message: "Each saved container must have a unique cell ID.",
       });
     }
 
@@ -177,7 +218,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       cells.map((cell) => [Number(cell.id), cell]),
     );
     const unknownCell = assignments.find(
-      (assignment) => !cellsById.has(assignment.cellId!),
+      (assignment) =>
+        assignment.cellId !== null && !cellsById.has(assignment.cellId),
     );
     if (unknownCell) {
       return res.status(403).json({
@@ -199,6 +241,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
+      const productProblems = getProductAssignmentProblems(product);
+      if (productProblems.length) {
+        return res.status(400).json({
+          error: productProblems[0].code,
+          message: `Container ${assignment.position}: ${productProblems[0].detail}`,
+        });
+      }
+
       if (product.product_type !== assignment.cellCategory) {
         return res.status(400).json({
           error: "category_mismatch",
@@ -207,51 +257,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    const assignmentsById = new Map(
-      assignments.map((assignment) => [assignment.cellId!, assignment]),
-    );
-    const effectiveAssignments = cells
-      .map((cell) => {
-        const assignment = assignmentsById.get(Number(cell.id));
-        return assignment || {
-          cellId: Number(cell.id),
-          position: cell.position,
-          productId: cell.product?.id ?? null,
-          isActive: cell.isActive,
-          price: cell.price === null ? null : Number(cell.price),
-          cellCategory: cell.cell_category || "powder",
-        };
-      });
-    if (
-      new Set(effectiveAssignments.map((assignment) => assignment.position))
-        .size !== effectiveAssignments.length
-    ) {
-      return res.status(409).json({
-        error: "duplicate_position",
-        message: "Container positions must be unique.",
-      });
-    }
-    const activeProductIds = effectiveAssignments
-      .filter((assignment) => assignment.isActive && assignment.productId !== null)
-      .map((assignment) => String(assignment.productId));
-    if (new Set(activeProductIds).size !== activeProductIds.length) {
-      return res.status(400).json({
-        error: "duplicate_active_product",
-        message: "A product cannot be assigned to two active containers.",
-      });
-    }
-
     await Promise.all(
       assignments.map((assignment) => {
-        const cell = cellsById.get(assignment.cellId!)!;
-        return updateMachineCell(
-          cell.id,
-          assignment.position,
-          assignment.productId,
-          assignment.isActive,
-          assignment.price,
-          assignment.cellCategory,
-        );
+        if (assignment.cellId !== null) {
+          const cell = cellsById.get(assignment.cellId)!;
+          if (assignment.productId === null) return deleteMachineCell(cell.id);
+          return updateMachineCell(
+            cell.id,
+            assignment.position,
+            assignment.productId,
+            assignment.isActive,
+            assignment.price,
+            assignment.cellCategory,
+          );
+        }
+        if (assignment.productId === null) return Promise.resolve();
+        return createMachineCell({ machineId, ...assignment });
       }),
     );
 

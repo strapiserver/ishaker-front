@@ -9,8 +9,8 @@ const asId = (value: unknown) => {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "GET") {
-    res.setHeader("Allow", ["GET"]);
+  if (!["GET", "PATCH", "DELETE"].includes(req.method || "")) {
+    res.setHeader("Allow", ["GET", "PATCH", "DELETE"]);
     return res.status(405).json({ error: "method_not_allowed" });
   }
 
@@ -19,6 +19,117 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const productId = asId(Array.isArray(req.query.id) ? req.query.id[0] : req.query.id);
   if (!productId) return res.status(400).json({ error: "invalid_product" });
+
+  if (req.method === "DELETE" || req.method === "PATCH") {
+    const ownershipParams = new URLSearchParams();
+    ownershipParams.set("filters[id][$eq]", productId);
+    ownershipParams.set("filters[product_line][id][$null]", "true");
+    if (session.access === "client") {
+      ownershipParams.set(
+        "filters[author][client][id][$eq]",
+        String(session.client.id),
+      );
+    } else {
+      ownershipParams.set(
+        "filters[author][id][$eq]",
+        String(session.user.id),
+      );
+    }
+    ownershipParams.set("fields[0]", "id");
+    ownershipParams.set("pagination[pageSize]", "1");
+
+    try {
+      const products = await requestStrapiRestAsService<PortalProduct[]>(
+        `/api/products?${ownershipParams.toString()}`,
+      );
+      if (!products[0]) {
+        return res.status(404).json({
+          error: "orphan_not_found",
+          message: "This orphan product was not found.",
+        });
+      }
+
+      if (req.method === "PATCH") {
+        const targetId = asId(
+          typeof req.body?.productLineId === "number"
+            ? String(req.body.productLineId)
+            : req.body?.productLineId,
+        );
+        if (!targetId) {
+          return res.status(400).json({
+            error: "invalid_product_line",
+            message: "Choose a product line.",
+          });
+        }
+        const lineParams = new URLSearchParams();
+        lineParams.set("filters[id][$eq]", targetId);
+        if (session.access === "client") {
+          lineParams.set(
+            "filters[author][client][id][$eq]",
+            String(session.client.id),
+          );
+        } else {
+          lineParams.set(
+            "filters[author][id][$eq]",
+            String(session.user.id),
+          );
+        }
+        lineParams.set("fields[0]", "id");
+        lineParams.set("pagination[pageSize]", "1");
+        const productLines = await requestStrapiRestAsService<
+          Array<{ id: string | number }>
+        >(`/api/product-lines?${lineParams.toString()}`);
+        if (!productLines[0]) {
+          return res.status(404).json({
+            error: "product_line_not_found",
+            message: "Product line was not found.",
+          });
+        }
+        await requestStrapiRestAsService(`/api/products/${productId}`, {
+          method: "PUT",
+          body: JSON.stringify({ data: { product_line: Number(targetId) } }),
+        });
+        return res.status(200).json({
+          product: { id: Number(productId), product_line: Number(targetId) },
+          updatedInPlace: true,
+        });
+      }
+
+      const references = new URLSearchParams();
+      references.set("filters[product][id][$eq]", productId);
+      references.set("fields[0]", "id");
+      references.set("pagination[pageSize]", "1");
+      const [machineCells, presetCells] = await Promise.all([
+        requestStrapiRestAsService<Array<{ id: string | number }>>(
+          `/api/machine-cells?${references.toString()}`,
+        ),
+        requestStrapiRestAsService<Array<{ id: string | number }>>(
+          `/api/preset-cells?${references.toString()}`,
+        ),
+      ]);
+      if (machineCells.length || presetCells.length) {
+        return res.status(409).json({
+          error: "product_in_use",
+          message:
+            "Reassign this product from every machine and preset container before deleting it.",
+        });
+      }
+
+      await requestStrapiRestAsService(`/api/products/${productId}`, {
+        method: "DELETE",
+      });
+      return res.status(200).json({ deleted: true });
+    } catch (error) {
+      console.error("[portal/products/:id] orphan mutation failed:", error);
+      return res.status(500).json({
+        error: "product_mutation_failed",
+        message:
+          req.method === "PATCH"
+            ? "Product could not be attached."
+            : "Product could not be deleted.",
+      });
+    }
+  }
 
   const params = new URLSearchParams();
   params.set("fields[0]", "name");

@@ -25,6 +25,8 @@ export type SearchableImageOption = {
   subtitleColor?: string;
   badge?: string;
   badgeColorScheme?: string;
+  isDisabled?: boolean;
+  disabledReason?: string;
 };
 
 export type SearchableImageSelectProps = {
@@ -57,12 +59,12 @@ export function SearchableImageSelect({
   const inputName = `portal-combobox-${useId().replace(/:/g, "")}`;
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [menuPosition, setMenuPosition] = useState({
-    left: 0,
-    top: 0,
-    width: 0,
-    maxHeight: 360,
-  });
+  const [menuPosition, setMenuPosition] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
   const selected = options.find((option) => option.id === value);
   const listboxId = `${ariaLabel.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}-options`;
   const filteredOptions = useMemo(() => {
@@ -75,6 +77,7 @@ export function SearchableImageSelect({
 
   const closeAndBlur = () => {
     setIsOpen(false);
+    setMenuPosition(null);
     setQuery("");
     triggerRef.current?.blur();
   };
@@ -129,6 +132,7 @@ export function SearchableImageSelect({
     <VStack spacing="1" maxH={maxHeight} overflowY="auto" align="stretch">
       {clearLabel && value ? (
         <Button
+          type="button"
           variant="default"
           h="52px"
           px="3"
@@ -146,9 +150,11 @@ export function SearchableImageSelect({
       {filteredOptions.map((option) => (
         <Button
           key={option.id}
+          type="button"
           role="option"
           aria-selected={option.id === value}
           variant={option.id === value ? "primary" : "default"}
+          isDisabled={option.isDisabled && option.id !== value}
           h="52px"
           px="3"
           justifyContent="flex-start"
@@ -200,12 +206,12 @@ export function SearchableImageSelect({
                 </Badge>
               ) : null}
             </Box>
-            {option.subtitle ? (
+            {option.disabledReason || option.subtitle ? (
               <Text
                 fontSize="xs"
-                color={option.subtitleColor || "bg.300"}
+                color={option.disabledReason ? "orange.200" : option.subtitleColor || "bg.300"}
               >
-                {option.subtitle}
+                {option.disabledReason || option.subtitle}
               </Text>
             ) : null}
           </VStack>
@@ -278,6 +284,7 @@ export function SearchableImageSelect({
               window.setTimeout(() => {
                 if (!containerRef.current?.contains(document.activeElement)) {
                   setIsOpen(false);
+                  setMenuPosition(null);
                   setQuery("");
                 }
               }, 0);
@@ -328,11 +335,19 @@ export function SearchableImageSelect({
             borderColor: "acid.300",
             boxShadow: "0 0 0 1px var(--chakra-colors-acid-300)",
           }}
-          onClick={() => setIsOpen((current) => !current)}
+          onClick={() => {
+            if (isOpen) {
+              setIsOpen(false);
+              setMenuPosition(null);
+              return;
+            }
+            setIsOpen(true);
+          }}
           onBlur={() => {
             window.setTimeout(() => {
               if (!containerRef.current?.contains(document.activeElement)) {
                 setIsOpen(false);
+                setMenuPosition(null);
               }
             }, 0);
           }}
@@ -388,10 +403,11 @@ export function SearchableImageSelect({
               display={{ base: "none", md: "block" }}
               position="fixed"
               zIndex="popover"
-              left={`${menuPosition.left}px`}
-              top={`${menuPosition.top}px`}
-              w={`${menuPosition.width}px`}
-              maxH={`${menuPosition.maxHeight}px`}
+              left={`${menuPosition?.left ?? 0}px`}
+              top={`${menuPosition?.top ?? 0}px`}
+              w={`${menuPosition?.width ?? 0}px`}
+              maxH={`${menuPosition?.maxHeight ?? 0}px`}
+              visibility={menuPosition ? "visible" : "hidden"}
               overflow="hidden"
               bg="bg.800"
               border="1px solid"
@@ -403,6 +419,7 @@ export function SearchableImageSelect({
             >
               {onShowMore ? (
                 <Button
+                  type="button"
                   variant="no_contrast"
                   w="full"
                   my="4"
@@ -418,7 +435,8 @@ export function SearchableImageSelect({
               {optionList(
                 `${Math.max(
                   80,
-                  menuPosition.maxHeight - (onShowMore ? 100 : 24),
+                  (menuPosition?.maxHeight ?? 0) -
+                    (onShowMore ? 100 : 24),
                 )}px`,
               )}
             </Box>
@@ -471,6 +489,7 @@ export function SearchableImageSelect({
             ) : null}
             {onShowMore ? (
               <Button
+                type="button"
                 variant="no_contrast"
                 w="full"
                 my="3"

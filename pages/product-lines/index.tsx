@@ -23,30 +23,26 @@ const createProductLineParams = (session: PortalSession) => {
   params.set("populate[0]", "author");
   params.set("populate[1]", "cup.image");
   params.set("populate[2]", "base_product_line");
-  params.set("populate[3]", "machines");
   params.set("sort[0]", "name:ASC");
   params.set("pagination[pageSize]", "2000");
   return params;
 };
 
-const createProductParams = (
-  authorId: number,
-  productLines: PortalProductLine[],
-) => {
+const createProductParams = (session: PortalSession) => {
   const params = new URLSearchParams();
-  params.set("filters[author][id][$eq]", String(authorId));
-  productLines.forEach((productLine, index) => {
-    params.set(
-      `filters[product_line][id][$in][${index}]`,
-      String(productLine.id),
-    );
-  });
+  if (session.access === "client") {
+    params.set("filters[author][client][id][$eq]", String(session.client.id));
+  } else {
+    params.set("filters[author][id][$eq]", String(session.user.id));
+  }
   params.set("fields[0]", "name");
   params.set("fields[1]", "isActive");
+  params.set("fields[2]", "product_type");
   params.set("populate[0]", "custom_main");
   params.set("populate[1]", "taste.main");
   params.set("populate[2]", "product_line");
   params.set("populate[3]", "brand.logo");
+  params.set("populate[4]", "dosage");
   params.set("sort[0]", "name:ASC");
   params.set("pagination[pageSize]", "2000");
   return params;
@@ -62,14 +58,9 @@ export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = asy
     const ownProductLines = await requestStrapiRestAsService<PortalProductLine[]>(
       `/api/product-lines?${createProductLineParams(result.session).toString()}`,
     );
-    const ownProducts = ownProductLines.length
-      ? await requestStrapiRestAsService<ProductWithLine[]>(
-          `/api/products?${createProductParams(
-            result.session.user.id,
-            ownProductLines,
-          ).toString()}`,
-        )
-      : [];
+    const ownProducts = await requestStrapiRestAsService<ProductWithLine[]>(
+      `/api/products?${createProductParams(result.session).toString()}`,
+    );
     const productLines = ownProductLines.map((productLine) => ({
       ...productLine,
       products: ownProducts.filter(
@@ -78,13 +69,20 @@ export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = asy
       ),
     }));
 
-    return { props: { session: result.session, productLines } };
+    return {
+      props: {
+        session: result.session,
+        productLines,
+        orphanProducts: ownProducts.filter((product) => !product.product_line),
+      },
+    };
   } catch (error) {
     console.error("[product-lines] loading failed:", error);
     return {
       props: {
         session: result.session,
         productLines: [],
+        orphanProducts: [],
         loadError: "Product lines could not be loaded.",
       },
     };

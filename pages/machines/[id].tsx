@@ -34,6 +34,7 @@ import type {
 } from "../../types/portal";
 import type { Currency, Machine } from "../../types/strapi";
 import { formatMoney } from "../../lib/portal/currency";
+import { getMachineContainerCount } from "../../lib/portal/containerSlots";
 
 type MachineDetailPageProps = {
   session: PortalSession;
@@ -223,10 +224,12 @@ export default function MachineDetailPage({
 
         <MachineCellsSection
           machineId={machine.id}
+          machineSerial={machine.serial_number || null}
           initialCells={cells}
           catalogProducts={catalogProducts}
           loadError={cellsLoadError}
           currency={machine.currency || session.client.currency}
+          containerCount={getMachineContainerCount(machine.machine_type)}
         />
 
         {telemetryPrices?.length ? (

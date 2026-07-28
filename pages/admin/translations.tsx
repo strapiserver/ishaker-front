@@ -8,7 +8,6 @@ import {
   HStack,
   Input,
   Select,
-  Spinner,
   Table,
   TableContainer,
   Tbody,
@@ -24,6 +23,7 @@ import {
 import type { GetServerSideProps } from "next";
 import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "../../components/admin";
+import Loader from "../../components/shared/Loader";
 import { requireAdminSession } from "../../lib/admin/auth";
 
 export default function AdminTranslationsPage() {
@@ -167,7 +167,7 @@ export default function AdminTranslationsPage() {
 
   return (
     <AdminShell title="Translations">
-      {isLoading ? <Spinner /> : null}
+      {isLoading ? <Loader size="lg" mb="5" /> : null}
       {error ? <Alert status="error"><AlertIcon />{error}</Alert> : null}
       <Box bg="bg.900" p="5" borderRadius="2xl" mb="5">
         <HStack flexWrap="wrap">

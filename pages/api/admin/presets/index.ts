@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdminApiSession } from "../../../../lib/admin/auth";
+import { getMachineContainerCount } from "../../../../lib/portal/containerSlots";
+import { getProductAssignmentProblems } from "../../../../lib/portal/productAssignment";
 import { requestStrapiRestAsService } from "../../../../services/server/strapiClient";
+import type { PortalCatalogProduct } from "../../../../types/portal";
 
 const asString = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
@@ -11,10 +14,11 @@ const asId = (value: unknown) => {
 const asPrice = (value: unknown) => {
   if (value === "" || value === null || value === undefined) return null;
   const price = Number(value);
-  return Number.isFinite(price) && price >= 0 ? price : undefined;
+  return Number.isFinite(price) && price > 0 ? price : undefined;
 };
 
 type PresetCellInput = {
+  cellId: number | null;
   position: number;
   cellCategory: "powder" | "concentrate";
   productId: number;
@@ -22,24 +26,46 @@ type PresetCellInput = {
   isActive: boolean;
 };
 
-const arePopularProductsValid = async (
-  productLineId: number,
-  cells: PresetCellInput[],
-) => {
-  const productLine: any = await requestStrapiRestAsService(
-    `/api/product-lines/${productLineId}?populate[products][fields][0]=id&populate[products][fields][1]=isPopular`,
+const arePresetProductsValid = async (cells: PresetCellInput[]) => {
+  if (!cells.length) return true;
+  const params = new URLSearchParams();
+  cells.forEach((cell, index) =>
+    params.set(`filters[id][$in][${index}]`, String(cell.productId)),
   );
-  const productIds = new Set(
-    (productLine.products || [])
-      .filter((product: any) => product.isPopular === true)
-      .map((product: any) => Number(product.id)),
+  params.set("fields[0]", "name");
+  params.set("fields[1]", "product_type");
+  params.set("fields[2]", "isActive");
+  params.set("populate[product_line][fields][0]", "name");
+  params.set("populate[brand][fields][0]", "name");
+  params.set("populate[custom_main][fields][0]", "name");
+  params.set("populate[custom_main][fields][1]", "url");
+  params.set("populate[taste][populate][main][fields][0]", "name");
+  params.set("populate[taste][populate][main][fields][1]", "url");
+  params.set("populate[dosage]", "*");
+  params.set("pagination[pageSize]", "2000");
+  const products = await requestStrapiRestAsService<PortalCatalogProduct[]>(
+    `/api/products?${params.toString()}`,
   );
-  return cells.every((cell) => productIds.has(cell.productId));
+  const productsById = new Map(
+    products.map((product) => [Number(product.id), product]),
+  );
+  return cells.every((cell) => {
+    const product = productsById.get(cell.productId);
+    return (
+      Boolean(product) &&
+      getProductAssignmentProblems(product!).length === 0 &&
+      product!.product_type === cell.cellCategory
+    );
+  });
 };
 
 const parseCells = (value: unknown): PresetCellInput[] | null => {
   if (!Array.isArray(value) || value.length > 200) return null;
   const cells = value.map((row: any) => ({
+    cellId:
+      row?.id === null || row?.id === undefined || row?.id === ""
+        ? null
+        : Number(row.id),
     position: Number(row?.position),
     cellCategory: row?.cellCategory,
     productId: Number(row?.productId),
@@ -50,18 +76,38 @@ const parseCells = (value: unknown): PresetCellInput[] | null => {
     cells.some(
       (cell) =>
         !Number.isInteger(cell.position) ||
-        cell.position < 0 ||
+        cell.position <= 0 ||
+        (cell.cellId !== null &&
+          (!Number.isInteger(cell.cellId) || cell.cellId <= 0)) ||
         !["powder", "concentrate"].includes(cell.cellCategory) ||
         !Number.isInteger(cell.productId) ||
         cell.productId <= 0 ||
         cell.price === undefined,
     ) ||
-    new Set(cells.map((cell) => cell.position)).size !== cells.length
+    new Set(cells.map((cell) => cell.position)).size !== cells.length ||
+    new Set(
+      cells.filter((cell) => cell.cellId !== null).map((cell) => cell.cellId),
+    ).size !== cells.filter((cell) => cell.cellId !== null).length
   ) {
     return null;
   }
   return cells as PresetCellInput[];
 };
+
+const getMachineTypeContainerCount = async (machineTypeId: number) => {
+  const machineType = await requestStrapiRestAsService<{
+    container_count?: number | null;
+    name?: string;
+  }>(
+    `/api/machine-types/${machineTypeId}?fields[0]=container_count&fields[1]=name`,
+  );
+  return getMachineContainerCount(machineType);
+};
+
+const arePresetCellSlotsValid = (
+  cells: PresetCellInput[],
+  containerCount: number,
+) => cells.every((cell) => cell.position <= containerCount);
 
 const presetPopulateQuery =
   "populate[machine_type]=*&populate[currency]=*&populate[language]=*&" +
@@ -97,10 +143,10 @@ export default async function handler(
             "/api/product-lines?sort[0]=name:ASC&pagination[pageSize]=2000",
           ),
           requestStrapiRestAsService(
-            "/api/products?filters[isPopular][$eq]=true&" +
+            "/api/products?fields[0]=name&fields[1]=product_type&fields[2]=isActive&" +
               "populate[dosage]=*&populate[product_line]=*&" +
-              "populate[custom_main][fields][0]=url&populate[custom_main][fields][1]=formats&" +
-              "populate[taste][populate][main][fields][0]=url&populate[taste][populate][main][fields][1]=formats&" +
+              "populate[custom_main][fields][0]=name&populate[custom_main][fields][1]=url&populate[custom_main][fields][2]=formats&" +
+              "populate[taste][populate][main][fields][0]=name&populate[taste][populate][main][fields][1]=url&populate[taste][populate][main][fields][2]=formats&" +
               "populate[brand][fields][0]=name&populate[brand][populate][logo][fields][0]=url&" +
               "populate[brand][populate][logo][fields][1]=formats&" +
               "sort[0]=name:ASC&pagination[pageSize]=2000",
@@ -124,7 +170,6 @@ export default async function handler(
   const machineTypeId = asId(req.body?.machineTypeId);
   const currencyId = asId(req.body?.currencyId);
   const languageId = asId(req.body?.languageId);
-  const productLineId = asId(req.body?.productLineId);
   const cells = parseCells(req.body?.cells);
   if (
     !name ||
@@ -132,7 +177,6 @@ export default async function handler(
     !machineTypeId ||
     !currencyId ||
     !languageId ||
-    !productLineId ||
     !cells
   ) {
     return res.status(400).json({
@@ -142,11 +186,24 @@ export default async function handler(
   }
 
   try {
-    if (!(await arePopularProductsValid(productLineId, cells))) {
+    const containerCount = await getMachineTypeContainerCount(machineTypeId);
+    if (
+      containerCount === null ||
+      !arePresetCellSlotsValid(cells, containerCount)
+    ) {
+      return res.status(400).json({
+        error: "invalid_container_slot",
+        message:
+          containerCount === null
+            ? "The selected machine model has no powder container count configured."
+            : `Every preset cell must use a unique physical container slot from 1 to ${containerCount}.`,
+      });
+    }
+    if (!(await arePresetProductsValid(cells))) {
       return res.status(400).json({
         error: "invalid_preset_products",
         message:
-          "Every planogram product must be popular and belong to the selected product line.",
+          "Every assigned product must be complete, active, and match its container category.",
       });
     }
     const preset: any = await requestStrapiRestAsService("/api/presets", {
@@ -162,7 +219,6 @@ export default async function handler(
           machine_type: machineTypeId,
           currency: currencyId,
           language: languageId,
-          product_line: productLineId,
         },
       }),
     });
@@ -193,4 +249,10 @@ export default async function handler(
   }
 }
 
-export { arePopularProductsValid, parseCells, presetPopulateQuery };
+export {
+  arePresetProductsValid,
+  arePresetCellSlotsValid,
+  getMachineTypeContainerCount,
+  parseCells,
+  presetPopulateQuery,
+};

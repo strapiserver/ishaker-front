@@ -55,7 +55,7 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
   return (
     <PortalShell
       title="Machines"
-      description="All machines registered to your account. You can create new product lines for each machine."
+      description="All machines registered to your account. Assign library products to their physical containers."
       clientName={session.client.company}
     >
       <HStack spacing="3" mb="6" flexWrap="wrap">

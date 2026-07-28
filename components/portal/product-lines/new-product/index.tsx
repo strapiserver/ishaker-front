@@ -266,57 +266,9 @@ export function NewProductPage({
       : "",
   );
   const productLineName = capitalizeName(productLine.name);
-  const assignedCurrencies = Array.from(
-    new Set(
-      (productLine.machines || [])
-        .map((machine) =>
-          machine.currency?.id ? String(machine.currency.id) : "",
-        )
-        .filter(Boolean),
-    ),
-  );
-  const [priceCurrencyId, setPriceCurrencyId] = useState(
-    assignedCurrencies.length === 1
-      ? assignedCurrencies[0]
-      : assignedCurrencies.length > 1
-        ? ""
-        : session.client.currency?.id
-          ? String(session.client.currency.id)
-          : "",
-  );
-  const canEditMachineCurrency =
-    session.access === "client" && Boolean(productLine.machines?.length);
-  const [isCurrencySaving, setIsCurrencySaving] = useState(false);
-  const updateMachineCurrency = async (currencyId: string) => {
-    const previousCurrencyId = priceCurrencyId;
-    setPriceCurrencyId(currencyId);
-    setIsCurrencySaving(true);
-    const response = await fetch(
-      `/api/portal/product-lines/${productLine.id}/machine-currency`,
-      {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ currencyId }),
-      },
-    );
-    const payload = await response.json().catch(() => null);
-    setIsCurrencySaving(false);
-    if (!response.ok) {
-      setPriceCurrencyId(previousCurrencyId);
-      toast({
-        title: "Currency update failed",
-        description:
-          payload?.message || "Machine currency could not be updated.",
-        status: "error",
-      });
-      return;
-    }
-    toast({
-      title: "Machine currency updated",
-      description: `${payload.updatedMachineIds?.length || 0} assigned machine(s) now use ${payload.currency?.code || "the selected currency"}.`,
-      status: "success",
-    });
-  };
+  const priceCurrencyId = session.client.currency?.id
+    ? String(session.client.currency.id)
+    : "";
   const selectedProduct = templateProducts.find(
     (product) => String(product.id) === existingProductId,
   ) ||
@@ -493,14 +445,11 @@ export function NewProductPage({
     if (!(Number(servingQuantity) > 0)) {
       return "Serving quantity must be greater than zero.";
     }
-    if (!(Number(dosage.drinkVolume) > 0)) {
-      return "Drink volume must be greater than zero.";
+    if (!(Number(dosage.drinkVolume) >= 50)) {
+      return "Full drink volume must be at least 50ml.";
     }
-    if (
-      dosage.fullDrinkPrice !== "" &&
-      !(Number(dosage.fullDrinkPrice) >= 0)
-    ) {
-      return "Full drink price cannot be negative.";
+    if (!(Number(dosage.fullDrinkPrice) > 0)) {
+      return "Full drink price must be greater than zero.";
     }
     if (
       dosage.smallDrinkVolume !== "" &&
@@ -610,13 +559,12 @@ export function NewProductPage({
       const response = await fetch(
         `/api/portal/product-lines/${productLine.id}/products`,
         {
-          method: "POST",
+          method: isEditing ? "PUT" : "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             name: capitalizeName(name),
             brandId,
             existingProductId,
-            isEditing,
             splashId,
             circleId,
             mainImageId,
@@ -745,10 +693,10 @@ export function NewProductPage({
           }}
           productLineName={productLineName}
           currencies={currencies}
-          canEditMachineCurrency={canEditMachineCurrency}
+          canEditMachineCurrency={false}
           priceCurrencyId={priceCurrencyId}
-          isCurrencySaving={isCurrencySaving}
-          onPriceCurrencyChange={updateMachineCurrency}
+          isCurrencySaving={false}
+          onPriceCurrencyChange={() => undefined}
           productOptions={productOptions}
           productPurpose={productPurpose}
           productType={productType}

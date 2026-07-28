@@ -1,8 +1,9 @@
-import { Box, Button, Container, Spinner, Text, VStack } from "@chakra-ui/react";
+import { Box, Button, Container, Text, VStack } from "@chakra-ui/react";
 import { NextSeo } from "next-seo";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import Loader from "../../../components/shared/Loader";
 
 export default function GoogleCallbackPage() {
   const router = useRouter();
@@ -61,7 +62,7 @@ export default function GoogleCallbackPage() {
               </>
             ) : (
               <>
-                <Spinner color="acid.300" size="lg" />
+                <Loader size="lg" />
                 <Text color="bg.300">Completing your sign-in.</Text>
               </>
             )}

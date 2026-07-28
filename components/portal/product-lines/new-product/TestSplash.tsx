@@ -5,7 +5,6 @@ import {
   Button,
   HStack,
   SimpleGrid,
-  Spinner,
   Text,
   VStack,
   useBreakpointValue,
@@ -16,6 +15,7 @@ import { SPLASH_FADE_MS, useSplashAnimation } from "../../../home/Splash";
 import { capitalizeName } from "../../../../lib/formatName";
 import { getSmallestMediaUrl } from "../../../../lib/portal/media";
 import type { PortalSplash } from "../../../../types/portal";
+import Loader from "../../../shared/Loader";
 
 const fetcher = async <T,>(url: string): Promise<T> => {
   const response = await fetch(url);
@@ -92,12 +92,12 @@ function TestSplashItem({ isSelected, onSelect, splash }: TestSplashItemProps) {
       </Text>
       <Box position="relative" w="full" aspectRatio="1">
         {isLoading && splash.images === undefined ? (
-          <Spinner
+          <Loader
+            size="md"
             position="absolute"
             left="50%"
             top="50%"
             transform="translate(-50%, -50%)"
-            color="acid.300"
           />
         ) : activeFrame ? (
           <Box

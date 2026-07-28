@@ -13,7 +13,6 @@ import {
   NumberInputField,
   Select,
   SimpleGrid,
-  Spinner,
   Text,
   VStack,
   useToast,
@@ -24,6 +23,7 @@ import { AdminShell } from "../../components/admin";
 import { requireAdminSession } from "../../lib/admin/auth";
 import { formatMoney } from "../../lib/portal/currency";
 import type { Currency } from "../../types/strapi";
+import Loader from "../../components/shared/Loader";
 
 const emptyForm = {
   id: "",
@@ -137,7 +137,7 @@ export default function AdminCurrenciesPage() {
 
   return (
     <AdminShell title="Currencies">
-      {isLoading ? <Spinner /> : null}
+      {isLoading ? <Loader size="lg" mb="5" /> : null}
       {error ? (
         <Alert status="error" mb="5">
           <AlertIcon />

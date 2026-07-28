@@ -9,13 +9,13 @@ import {
   HStack,
   Alert,
   AlertIcon,
-  Spinner,
   Center,
 } from "@chakra-ui/react";
 import { useState } from "react";
 import type { PortalSplash, PortalTaste } from "../../../../types/portal";
 import { TestSplash } from "./TestSplash";
 import { TestTasteMain } from "./TestTasteMain";
+import Loader from "../../../shared/Loader";
 
 type NewProductSelectionDialogsProps = {
   isMainImageOpen: boolean;
@@ -96,7 +96,7 @@ export function NewProductSelectionDialogs({
           <ModalCloseButton />
           <ModalBody pb="6">
             {isSplashLoading ? (
-              <Center py="12"><Spinner color="acid.300" /></Center>
+              <Center py="12"><Loader size="lg" /></Center>
             ) : splashError ? (
               <Alert status="error"><AlertIcon />All splash images could not be loaded.</Alert>
             ) : isSplashOpen ? (
@@ -134,7 +134,7 @@ export function NewProductSelectionDialogs({
           <ModalCloseButton />
           <ModalBody pb="6">
             {isMainImageLoading ? (
-              <Center py="12"><Spinner color="acid.300" /></Center>
+              <Center py="12"><Loader size="lg" /></Center>
             ) : mainImageError ? (
               <Alert status="error"><AlertIcon />All taste main images could not be loaded.</Alert>
             ) : isMainImageOpen ? (

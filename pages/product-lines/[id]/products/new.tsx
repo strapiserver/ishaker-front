@@ -51,8 +51,6 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
   params.set("populate[cup][populate][image][fields][0]", "url");
   params.set("populate[cup][populate][image][fields][1]", "formats");
   params.set("populate[base_product_line][fields][0]", "name");
-  params.set("populate[machines][fields][0]", "title");
-  params.set("populate[machines][populate][currency]", "*");
   params.set("pagination[pageSize]", "2000");
 
   const productParams = new URLSearchParams();

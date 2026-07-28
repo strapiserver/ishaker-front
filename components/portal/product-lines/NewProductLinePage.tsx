@@ -19,7 +19,6 @@ export type NewProductLinePageProps = {
   rootProductLines: PortalProductLine[];
   splashes: PortalSplash[];
   productLine?: PortalProductLine;
-  initialMachineId?: string;
   loadError?: string;
 };
 
@@ -46,7 +45,6 @@ export function NewProductLinePage({
   rootProductLines,
   splashes,
   productLine,
-  initialMachineId,
   loadError,
 }: NewProductLinePageProps) {
   const router = useRouter();
@@ -65,18 +63,6 @@ export function NewProductLinePage({
   );
   const [customSplashId, setCustomSplashId] = useState(
     productLine?.custom_splash?.id ? String(productLine.custom_splash.id) : "",
-  );
-  const availableMachineIds = session.machines.map((machine) => String(machine.id));
-  const defaultMachineId =
-    initialMachineId && availableMachineIds.includes(initialMachineId)
-      ? initialMachineId
-      : availableMachineIds[0] || "";
-  const [machineIds, setMachineIds] = useState<string[]>(
-    productLine?.machines?.length
-      ? productLine.machines.map((machine) => String(machine.id))
-      : defaultMachineId
-        ? [defaultMachineId]
-        : [],
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -141,7 +127,6 @@ export function NewProductLinePage({
     name.trim().length >= 2 &&
     baseProductLineId &&
     cupId &&
-    (session.access === "product" || machineIds.length > 0) &&
     !loadError,
   );
 
@@ -164,7 +149,6 @@ export function NewProductLinePage({
             baseProductLineId,
             cupId,
             customSplashId,
-            machineIds,
           }),
         },
       );
@@ -176,8 +160,9 @@ export function NewProductLinePage({
         );
       }
       toast({
-        title: "Updates will take 5 minutes",
-        description: "Check machine after that time",
+        title: isEditing ? "Drink updated" : "Drink created",
+        description:
+          "This library change does not affect a machine until a container is assigned.",
         status: "success",
         duration: 5000,
         isClosable: true,
@@ -227,11 +212,6 @@ export function NewProductLinePage({
           customSplashId={customSplashId}
           error={error}
           isSubmitting={isSubmitting}
-          machineIds={machineIds}
-          machineOptions={session.machines.map((machine) => ({
-            id: String(machine.id),
-            label: machine.title || machine.serial_number || `Machine #${machine.id}`,
-          }))}
           onBaseProductLineChange={(value) => {
             setBaseProductLineId(value);
             const rootLine = rootProductLines.find(
@@ -248,7 +228,6 @@ export function NewProductLinePage({
             }
           }}
           onCustomSplashChange={setCustomSplashId}
-          onMachineIdsChange={setMachineIds}
           onSubmit={onSubmit}
           splashOptions={splashOptions}
           submitLabel={isEditing ? "Save changes" : "Create product line"}

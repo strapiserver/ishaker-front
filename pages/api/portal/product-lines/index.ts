@@ -16,11 +16,6 @@ const asId = (value: unknown) => {
   return /^\d+$/.test(id) ? id : "";
 };
 
-const asIds = (value: unknown) =>
-  Array.isArray(value)
-    ? [...new Set(value.map(asId).filter(Boolean))]
-    : [];
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST"]);
@@ -34,23 +29,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const baseProductLineId = asId(req.body?.baseProductLineId);
   const cupId = asId(req.body?.cupId);
   const customSplashId = asId(req.body?.customSplashId);
-  const machineIds = asIds(req.body?.machineIds);
-  const allowedMachineIds = new Set(session.machines.map((machine) => String(machine.id)));
-
-  if (machineIds.some((id) => !allowedMachineIds.has(id))) {
-    return res.status(403).json({
-      error: "invalid_machine",
-      message: "Every selected machine must belong to your client account.",
-    });
-  }
-
-  if (session.access === "client" && !machineIds.length) {
-    return res.status(400).json({
-      error: "machine_required",
-      message: "Select at least one machine for this product line.",
-    });
-  }
-
   if (name.length < 2 || name.length > 100) {
     return res.status(400).json({
       error: "invalid_name",
@@ -150,7 +128,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             cup: cup.id,
             author: session.user.id,
             ...(session.access === "client" ? { client: session.client.id } : {}),
-            machines: machineIds,
             ...(customSplash ? { custom_splash: customSplash.id } : {}),
           },
         }),

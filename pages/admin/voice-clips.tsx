@@ -12,7 +12,6 @@ import {
   Link,
   Select,
   SimpleGrid,
-  Spinner,
   Text,
   VStack,
   useToast,
@@ -22,6 +21,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "../../components/admin";
 import { requireAdminSession } from "../../lib/admin/auth";
 import { getMediaUrl } from "../../lib/portal/media";
+import Loader from "../../components/shared/Loader";
 
 const categories = ["event", "screen", "cup", "payment", "button"];
 const statuses = ["draft", "reviewed", "approved"];
@@ -158,7 +158,7 @@ export default function AdminVoiceClipsPage() {
 
   return (
     <AdminShell title="Voice clips">
-      {isLoading ? <Spinner /> : null}
+      {isLoading ? <Loader size="lg" mb="5" /> : null}
       {error ? (
         <Alert status="error" mb="5">
           <AlertIcon />

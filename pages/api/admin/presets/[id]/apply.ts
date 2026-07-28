@@ -1,7 +1,15 @@
 import crypto from "crypto";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdminApiSession } from "../../../../../lib/admin/auth";
-import { requestStrapiRestAsService } from "../../../../../services/server/strapiClient";
+import {
+  fetchStrapiCatalogEndpoint,
+  requestStrapiRestAsService,
+} from "../../../../../services/server/strapiClient";
+import {
+  getDuplicateContainerSlots,
+  getMachineContainerCount,
+  isValidContainerSlot,
+} from "../../../../../lib/portal/containerSlots";
 
 const asId = (value: unknown) => {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -45,7 +53,7 @@ export default async function handler(
     const [preset, machine, presetCells, machineCells]: any[] =
       await Promise.all([
         requestStrapiRestAsService(
-          `/api/presets/${presetId}?populate[0]=currency&populate[1]=language&populate[2]=machine_type&populate[3]=product_line`,
+          `/api/presets/${presetId}?populate[0]=currency&populate[1]=language&populate[2]=machine_type`,
         ),
         requestStrapiRestAsService(
           `/api/machines/${machineId}?populate[0]=currency&populate[1]=language&populate[2]=machine_type`,
@@ -69,6 +77,26 @@ export default async function handler(
       return res.status(409).json({
         error: "machine_type_mismatch",
         message: "Preset and target machine types do not match.",
+      });
+    }
+    const containerCount = getMachineContainerCount(preset.machine_type);
+    const presetPositions: number[] = presetCells.map((cell: Cell) =>
+      Number(cell.position),
+    );
+    if (
+      containerCount === null ||
+      presetPositions.some(
+        (position: number) =>
+          !isValidContainerSlot(position, containerCount),
+      ) ||
+      getDuplicateContainerSlots(presetPositions).size > 0
+    ) {
+      return res.status(400).json({
+        error: "invalid_preset_container_slots",
+        message:
+          containerCount === null
+            ? "The preset machine model has no powder container count configured."
+            : `The preset must use unique physical container slots from 1 to ${containerCount}.`,
       });
     }
     if (!preset.currency?.id || !preset.language?.id) {
@@ -179,9 +207,6 @@ export default async function handler(
           currency: preset.currency.id,
           language: preset.language.id,
           preset: preset.id,
-          ...(preset.product_line?.id
-            ? { product_lines: { connect: [preset.product_line.id] } }
-            : {}),
         },
       }),
     });
@@ -212,7 +237,26 @@ export default async function handler(
       );
     }
 
-    return res.status(200).json({ applied: true, hash, diff });
+    let planogram = null;
+    let planogramStatus = null;
+    let planogramSource = null;
+    if (machine.serial_number) {
+      const validationResponse = await fetchStrapiCatalogEndpoint(
+        `/api/machines/${encodeURIComponent(machine.serial_number)}/planogram`,
+      );
+      planogramStatus = validationResponse.status;
+      planogramSource = validationResponse.headers.get("x-planogram-source");
+      planogram = await validationResponse.json().catch(() => null);
+    }
+
+    return res.status(200).json({
+      applied: true,
+      hash,
+      diff,
+      planogram,
+      planogramStatus,
+      planogramSource,
+    });
   } catch (error) {
     console.error("[admin/presets/:id/apply] failed:", error);
     return res.status(500).json({

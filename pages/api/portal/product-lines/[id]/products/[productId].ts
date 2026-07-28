@@ -82,11 +82,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    await requestStrapiRestAsService(`/api/product-lines/${productLine.id}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        data: { products: { disconnect: [productId] } },
-      }),
+    const referenceParams = new URLSearchParams();
+    referenceParams.set("filters[product][id][$eq]", productId);
+    referenceParams.set("fields[0]", "id");
+    referenceParams.set("pagination[pageSize]", "1");
+    const [machineCells, presetCells] = await Promise.all([
+      requestStrapiRestAsService<Array<{ id: string | number }>>(
+        `/api/machine-cells?${referenceParams.toString()}`,
+      ),
+      requestStrapiRestAsService<Array<{ id: string | number }>>(
+        `/api/preset-cells?${referenceParams.toString()}`,
+      ),
+    ]);
+    if (machineCells.length || presetCells.length) {
+      return res.status(409).json({
+        error: "product_in_use",
+        message:
+          "Reassign this product from every machine and preset container before deleting it.",
+      });
+    }
+
+    await requestStrapiRestAsService(`/api/products/${productId}`, {
+      method: "DELETE",
     });
 
     return res.status(200).json({ deleted: true });

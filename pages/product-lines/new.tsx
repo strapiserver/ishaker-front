@@ -17,16 +17,6 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
 ) => {
   const result = await requirePortalSession(context);
   if ("redirect" in result) return { redirect: result.redirect };
-  const requestedMachineId = Array.isArray(context.query.machineId)
-    ? context.query.machineId[0]
-    : context.query.machineId;
-  const initialMachineId = result.session.machines.some(
-    (machine) => String(machine.id) === requestedMachineId,
-  )
-    ? requestedMachineId
-    : result.session.machines[0]?.id
-      ? String(result.session.machines[0].id)
-      : "";
 
   const rootParams = new URLSearchParams();
   rootParams.set("filters[author][username][$eq]", "root");
@@ -60,7 +50,6 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
         session: result.session,
         rootProductLines,
         splashes,
-        initialMachineId,
       },
     };
   } catch (error) {
@@ -70,7 +59,6 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
         session: result.session,
         rootProductLines: [],
         splashes: [],
-        initialMachineId,
         loadError: "Product line options could not be loaded.",
       },
     };

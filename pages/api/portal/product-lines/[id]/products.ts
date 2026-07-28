@@ -40,7 +40,7 @@ type SubmittedComponent = {
 
 type SubmittedDosage = {
   full_drink_volume: number;
-  full_drink_price: number | null;
+  full_drink_price: number;
   small_drink_volume: number | null;
   small_drink_price: number | null;
   water: number;
@@ -73,7 +73,7 @@ const parseDosage = (value: unknown): SubmittedDosage | null => {
   if (!value || typeof value !== "object") return null;
   const dosage = value as Record<string, unknown>;
   const fullDrinkVolume = Number(dosage.fullDrinkVolume);
-  const fullDrinkPrice = optionalAmount(dosage.fullDrinkPrice, true);
+  const fullDrinkPrice = optionalAmount(dosage.fullDrinkPrice);
   const smallDrinkVolume = optionalAmount(dosage.smallDrinkVolume);
   const smallDrinkPrice = optionalAmount(dosage.smallDrinkPrice, true);
   const water = Number(dosage.water);
@@ -83,7 +83,7 @@ const parseDosage = (value: unknown): SubmittedDosage | null => {
     ![fullDrinkVolume, water, product, conversionFactor].every(
       (amount) => Number.isFinite(amount) && amount > 0,
     ) ||
-    fullDrinkPrice === undefined ||
+    typeof fullDrinkPrice !== "number" ||
     smallDrinkVolume === undefined ||
     smallDrinkPrice === undefined
   ) {
@@ -139,8 +139,8 @@ const parseComponents = (value: unknown): SubmittedComponent[] | null => {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", ["POST"]);
+  if (req.method !== "POST" && req.method !== "PUT") {
+    res.setHeader("Allow", ["POST", "PUT"]);
     return res.status(405).json({ error: "method_not_allowed" });
   }
 
@@ -150,7 +150,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const productLineId = asId(Array.isArray(req.query.id) ? req.query.id[0] : req.query.id);
   const brandId = asId(req.body?.brandId);
   const existingProductId = asId(req.body?.existingProductId);
-  const isEditing = req.body?.isEditing === true;
+  const isEditing = req.method === "PUT";
   const splashId = asId(req.body?.splashId);
   const circleId = asId(req.body?.circleId);
   const mainImageId = asId(req.body?.mainImageId);
@@ -165,6 +165,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!productLineId) {
     return res.status(400).json({ error: "invalid_product_line" });
+  }
+  if (isEditing && !existingProductId) {
+    return res.status(400).json({
+      error: "invalid_product",
+      message: "An existing product ID is required for an in-place edit.",
+    });
   }
   if (!brandId) {
     return res.status(400).json({
@@ -190,7 +196,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!submittedDosage) {
     return res.status(400).json({
       error: "invalid_dosage",
-      message: "Required dosage values must be positive and prices cannot be negative.",
+      message: "Required dosage values and the full-drink price must be positive.",
+    });
+  }
+  if (submittedDosage.full_drink_volume < 50) {
+    return res.status(400).json({
+      error: "drink_volume_too_low",
+      message: "Full drink volume must be at least 50ml.",
     });
   }
   if (
@@ -290,7 +302,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     String(session.user.id),
   );
   ownershipParams.set("populate[base_product_line][fields][0]", "name");
-  ownershipParams.set("populate[machines][fields][0]", "title");
   ownershipParams.set("pagination[pageSize]", "2000");
 
   const componentParams = new URLSearchParams();
@@ -334,15 +345,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         message: "This product line is not linked to a root generic line.",
       });
     }
-    const machineIds = (productLine.machines || []).map((machine) => String(machine.id));
     const duplicateNameParams = new URLSearchParams();
     duplicateNameParams.set("filters[name][$eqi]", name);
-    machineIds.forEach((machineId, index) => {
-      duplicateNameParams.set(
-        `filters[product_line][machines][id][$in][${index}]`,
-        machineId,
-      );
-    });
+    duplicateNameParams.set(
+      "filters[product_line][id][$eq]",
+      productLineId,
+    );
     if (isEditing && existingProductId) {
       duplicateNameParams.set("filters[id][$ne]", existingProductId);
     }
@@ -435,11 +443,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             `/api/components?${componentParams.toString()}`,
           )
         : Promise.resolve([]),
-      machineIds.length
-        ? requestStrapiRestAsService<CreatedProduct[]>(
-            `/api/products?${duplicateNameParams.toString()}`,
-          )
-        : Promise.resolve([]),
+      requestStrapiRestAsService<CreatedProduct[]>(
+        `/api/products?${duplicateNameParams.toString()}`,
+      ),
       requestStrapiRestAsService<RelatedEntity>(`/api/brands/${brandId}`),
     ]);
 
@@ -453,7 +459,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (duplicateProducts.length) {
       return res.status(409).json({
         error: "duplicate_name",
-        message: "A product with this name already exists on this machine.",
+        message: "A product with this name already exists in this product line.",
       });
     }
 
@@ -560,16 +566,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }),
       });
 
-      await requestStrapiRestAsService(`/api/product-lines/${productLine.id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          data: {
-            products: { connect: [existingProduct.id] },
-          },
-        }),
+      return res.status(200).json({
+        product: { ...existingProduct, id: existingProduct.id },
+        updatedInPlace: true,
       });
-
-      return res.status(200).json({ product: existingProduct, reused: true });
     }
 
     // Reusing a reference product must NOT connect it (Product.product_line is

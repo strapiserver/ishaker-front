@@ -1,9 +1,7 @@
 import type {
   PortalCatalogProduct,
   PortalMachineCell,
-  PortalProductLine,
 } from "../../types/portal";
-import type { Machine } from "../../types/strapi";
 import { requestStrapiRestAsService } from "./strapiClient";
 
 const PAGE_SIZE = "2000";
@@ -23,53 +21,24 @@ export const getMachineCells = async (
   );
 };
 
-const getEffectiveProductLineIds = async (
-  machineId: string | number,
-  clientId: string | number,
-) => {
-  const machineParams = new URLSearchParams();
-  machineParams.set("fields[0]", "id");
-  machineParams.set("populate[product_lines][fields][0]", "id");
-  machineParams.set("populate[product_lines][fields][1]", "isActive");
-
-  const machine = await requestStrapiRestAsService<Machine>(
-    `/api/machines/${machineId}?${machineParams.toString()}`,
-  );
-  const assignedLines = machine.product_lines || [];
-  if (assignedLines.length) {
-    return assignedLines
-      .filter((line) => line.isActive !== false)
-      .map((line) => String(line.id));
-  }
-
-  const fallbackParams = new URLSearchParams();
-  fallbackParams.set("filters[author][client][id][$eq]", String(clientId));
-  fallbackParams.set("filters[isActive][$ne]", "false");
-  fallbackParams.set("filters[is_template][$ne]", "true");
-  fallbackParams.set("fields[0]", "id");
-  fallbackParams.set("pagination[pageSize]", PAGE_SIZE);
-
-  const lines = await requestStrapiRestAsService<PortalProductLine[]>(
-    `/api/product-lines?${fallbackParams.toString()}`,
-  );
-  return lines.map((line) => String(line.id));
-};
-
 export const getMachineCatalogProducts = async (
-  machineId: string | number,
+  _machineId: string | number,
   clientId: string | number,
 ): Promise<PortalCatalogProduct[]> => {
-  const productLineIds = await getEffectiveProductLineIds(machineId, clientId);
-  if (!productLineIds.length) return [];
-
   const params = new URLSearchParams();
-  productLineIds.forEach((lineId, index) => {
-    params.set(`filters[product_line][id][$in][${index}]`, lineId);
-  });
-  params.set("filters[isActive][$ne]", "false");
+  params.set("filters[author][client][id][$eq]", String(clientId));
   params.set("fields[0]", "name");
   params.set("fields[1]", "product_type");
+  params.set("fields[2]", "isActive");
+  params.set("populate[product_line][fields][0]", "name");
+  params.set("populate[brand][fields][0]", "name");
+  params.set("populate[brand][populate][logo][fields][0]", "name");
+  params.set("populate[brand][populate][logo][fields][1]", "url");
+  params.set("populate[custom_main][fields][0]", "name");
+  params.set("populate[custom_main][fields][1]", "url");
   params.set("populate[taste][fields][0]", "name");
+  params.set("populate[taste][populate][main][fields][0]", "name");
+  params.set("populate[taste][populate][main][fields][1]", "url");
   params.set("populate[dosage]", "*");
   params.set("sort[0]", "name:asc");
   params.set("pagination[pageSize]", PAGE_SIZE);

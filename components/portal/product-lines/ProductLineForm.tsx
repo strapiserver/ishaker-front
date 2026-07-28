@@ -3,13 +3,9 @@ import {
   AlertIcon,
   Box,
   Button,
-  Checkbox,
-  CheckboxGroup,
   FormControl,
   FormHelperText,
   FormLabel,
-  Stack,
-  Text,
   VStack,
 } from "@chakra-ui/react";
 import type { FormEventHandler } from "react";
@@ -25,11 +21,8 @@ type ProductLineFormProps = {
   customSplashId: string;
   error?: string;
   isSubmitting: boolean;
-  machineIds: string[];
-  machineOptions: Array<{ id: string; label: string }>;
   onBaseProductLineChange: (value: string) => void;
   onCustomSplashChange: (value: string) => void;
-  onMachineIdsChange: (values: string[]) => void;
   onSubmit: FormEventHandler<HTMLFormElement>;
   splashOptions: SearchableImageOption[];
   submitLabel?: string;
@@ -42,11 +35,8 @@ export function ProductLineForm({
   customSplashId,
   error,
   isSubmitting,
-  machineIds,
-  machineOptions,
   onBaseProductLineChange,
   onCustomSplashChange,
-  onMachineIdsChange,
   onSubmit,
   splashOptions,
   submitLabel = "Create product line",
@@ -97,31 +87,6 @@ export function ProductLineForm({
             {baseProductLineId
               ? "Only splashes marked as empty are available."
               : "Custom splash becomes available after selecting a product line."}
-          </FormHelperText>
-        </FormControl>
-
-        <FormControl isRequired={machineOptions.length > 0}>
-          <FormLabel>Machines</FormLabel>
-          {machineOptions.length ? (
-            <CheckboxGroup value={machineIds} onChange={(values) => onMachineIdsChange(values.map(String))}>
-              <Stack spacing="3">
-                {machineOptions.map((machine) => (
-                  <Checkbox
-                    key={machine.id}
-                    value={machine.id}
-                    colorScheme="green"
-                    isRequired={false}
-                  >
-                    {machine.label}
-                  </Checkbox>
-                ))}
-              </Stack>
-            </CheckboxGroup>
-          ) : (
-            <Text color="orange.200">No machines are registered for this client.</Text>
-          )}
-          <FormHelperText>
-            This product line will only be delivered to the selected machines.
           </FormHelperText>
         </FormControl>
 

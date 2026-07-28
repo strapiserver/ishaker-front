@@ -250,3 +250,20 @@ export const requestStrapiRestWithJwt = async <T = any>(
   jwt: string,
   init?: RequestInit,
 ) => requestStrapiRest<T>(path, init, jwt);
+
+export const fetchStrapiCatalogEndpoint = async (
+  path: string,
+  init?: RequestInit,
+) => {
+  const catalogToken =
+    process.env.CATALOG_TOKEN || localStrapiEnv.CATALOG_TOKEN;
+  return fetch(`${getStrapiBaseUrl()}${path}`, {
+    ...init,
+    headers: {
+      ...(catalogToken
+        ? { Authorization: `Bearer ${catalogToken}` }
+        : {}),
+      ...(init?.headers || {}),
+    },
+  });
+};
