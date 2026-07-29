@@ -117,7 +117,9 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                       <Image
                         src={previewUrl}
                         alt={
-                          machine.machine_type?.name || machine.title || "Machine"
+                          machine.machine_type?.name ||
+                          machine.title ||
+                          "Machine"
                         }
                         w="full"
                         h="full"
@@ -130,7 +132,11 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                   </AspectRatio>
 
                   <VStack spacing="2" align="stretch" flex="1" minW="0">
-                    <HStack justify="space-between" align="flex-start" spacing="3">
+                    <HStack
+                      justify="space-between"
+                      align="flex-start"
+                      spacing="3"
+                    >
                       <Text
                         color="bg.50"
                         fontWeight="800"
@@ -172,7 +178,8 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                     </Stack>
                     {machine.last_seen_at ? (
                       <Text color="bg.400" fontSize="xs" noOfLines={1}>
-                        Last seen: {new Date(machine.last_seen_at).toLocaleString()}
+                        Last seen:{" "}
+                        {new Date(machine.last_seen_at).toLocaleString()}
                       </Text>
                     ) : null}
                   </VStack>
@@ -186,24 +193,24 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                   borderColor="whiteAlpha.100"
                   flexWrap="wrap"
                 >
-                <Button
-                  as={Link}
-                  href={`/machines/${machine.id}`}
-                  variant="contrast"
-                  size="sm"
-                  rightIcon={<Icon as={FaArrowRight} boxSize="3" />}
-                >
-                  Open details
-                </Button>
-                <Button
-                  as={Link}
-                  href={`/product-lines/new?machineId=${machine.id}`}
-                  variant="ghost"
-                  size="sm"
-                  leftIcon={<Icon as={FaPlus} boxSize="3" />}
-                >
-                  Add product line
-                </Button>
+                  <Button
+                    as={Link}
+                    href={`/machines/${machine.id}`}
+                    variant="contrast"
+                    size="sm"
+                    rightIcon={<Icon as={FaArrowRight} boxSize="3" />}
+                  >
+                    Open details
+                  </Button>
+                  <Button
+                    as={Link}
+                    href={`/product-lines`}
+                    variant="ghost"
+                    size="sm"
+                    leftIcon={<Icon as={FaPlus} boxSize="3" />}
+                  >
+                    Add product line
+                  </Button>
                 </HStack>
               </VStack>
             </Box>

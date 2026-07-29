@@ -604,6 +604,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
+  let presetResult: unknown = null;
+  let presetNote = "";
+  try {
+    presetResult = await requestStrapiRestAsService(
+      `/api/machines/${assignedMachine.id}/apply-preset`,
+      { method: "POST", body: JSON.stringify({}) },
+    );
+
+    const result = presetResult as {
+      applied?: boolean;
+      reason?: string;
+      preset?: { name?: string };
+      lines?: { created?: unknown[] };
+      products?: { created?: unknown[] };
+      cells?: { created?: unknown[] };
+    };
+    presetNote = result.applied
+      ? `Catalog seeded from preset "${result.preset?.name || "unknown"}": ${
+          result.lines?.created?.length || 0
+        } lines, ${result.products?.created?.length || 0} products, ${
+          result.cells?.created?.length || 0
+        } cells.`
+      : `Catalog not seeded: ${result.reason || "preset was not applied"}.`;
+  } catch (error) {
+    // Non-fatal: the assigned machine can keep selling its preset until ops
+    // re-runs catalog seeding.
+    console.error("[portal/register-machine] preset apply failed:", error);
+    const payload = getErrorPayload(error);
+    presetNote = `Catalog not seeded: ${payload.message}.`;
+  }
+
   let telemetryResult: {
     status: string;
     organizationId?: number | null;
@@ -647,6 +678,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       messengerType && messengerValue
         ? `WhatsApp: ${messengerCountryCode} ${messengerValue}`.trim()
         : "",
+      presetNote,
       telemetryResult?.note || "",
       telemetryErrorNote,
     ]
