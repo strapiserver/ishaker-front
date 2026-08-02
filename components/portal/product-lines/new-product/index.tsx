@@ -72,6 +72,44 @@ const DEFAULT_DOSAGE: ProductDosageValue = {
 const componentUnits = new Set(["mg", "g", "mcg", "kJ", "kcal"]);
 const NEW_PRODUCT_FORM_ID = "new-product-form";
 
+type PlanogramCheck = {
+  serial?: string | null;
+  title?: string | null;
+  status?: number;
+  payload?: any;
+};
+
+const planogramWarnings = (checks: PlanogramCheck[] = []) =>
+  checks.flatMap((check) => {
+    const payload = check.payload?.data || check.payload || {};
+    const machine = check.title || check.serial || "Target machine";
+    const mediaKeys =
+      payload.media_keys ||
+      payload.fleet_status?.media_keys ||
+      payload.body?.media_keys;
+    const missing = Array.isArray(mediaKeys?.missing) ? mediaKeys.missing : [];
+    const problems = Array.isArray(payload.problems) ? payload.problems : [];
+    const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
+
+    return [
+      ...missing.map((key: unknown) => `${machine}: missing artwork ${String(key)}`),
+      ...problems.map(
+        (problem: any) =>
+          `${machine}: ${problem?.detail || problem?.code || "planogram problem"}`,
+      ),
+      ...warnings.map((warning: any) =>
+        `${machine}: ${warning?.detail || warning?.message || String(warning)}`,
+      ),
+      ...(Number(check.status) >= 400 && !problems.length
+        ? [
+            `${machine}: ${
+              payload.message || payload.error?.message || payload.error || "planogram validation failed"
+            }`,
+          ]
+        : []),
+    ];
+  });
+
 const toDosageValue = (product?: PortalProduct): ProductDosageValue => ({
   drinkVolume:
     product?.dosage?.full_drink_volume !== undefined &&
@@ -620,6 +658,21 @@ export function NewProductPage({
         duration: 5000,
         isClosable: true,
       });
+      const validationWarnings = planogramWarnings(payload?.planogramChecks);
+      if (validationWarnings.length) {
+        const warning = `Product saved, but machine validation reported: ${validationWarnings.join(
+          " · ",
+        )}`;
+        setError(warning);
+        toast({
+          title: "Machine artwork or planogram needs attention",
+          description: validationWarnings.join(" · "),
+          status: "warning",
+          duration: 12000,
+          isClosable: true,
+        });
+        return;
+      }
       await router.push("/product-lines");
     } catch (submissionError) {
       const message =

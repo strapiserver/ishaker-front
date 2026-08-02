@@ -7,6 +7,7 @@ import {
   Input,
   InputGroup,
   InputRightElement,
+  Link,
   SimpleGrid,
   VStack,
   Text,
@@ -27,6 +28,7 @@ import {
 } from "../../lib/portal/registration";
 import CustomTitle from "../home/CutsomTitle";
 import Loader from "../shared/Loader";
+import { WHATSAPP_SUPPORT_URL } from "../../lib/portal/support";
 
 const SERIAL_DEBOUNCE_MS = 3000;
 
@@ -45,9 +47,12 @@ export function SerialNumberSection({
 }) {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { selectedMachine, selectedClient, serialLookupStatus } = useAppSelector(
-    (state) => state.strapi,
-  );
+  const {
+    selectedMachine,
+    selectedClient,
+    serialLookupStatus,
+    serialLookupError,
+  } = useAppSelector((state) => state.strapi);
 
   const [serial, setSerial] = useState("");
   const [isDebouncing, setIsDebouncing] = useState(false);
@@ -243,6 +248,19 @@ export function SerialNumberSection({
                   </Text>
                 ) : null}
               </VStack>
+            ) : null}
+            {serialLookupError === "serial_number_issue" ? (
+              <Text color={errorColor} fontSize="sm" fontWeight="700" mt="4">
+                This machine has a serial number issue. Please{" "}
+                <Link
+                  href={WHATSAPP_SUPPORT_URL}
+                  isExternal
+                  textDecoration="underline"
+                >
+                  contact support on WhatsApp
+                </Link>
+                .
+              </Text>
             ) : null}
           </Box>
         </VStack>

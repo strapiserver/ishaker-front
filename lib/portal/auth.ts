@@ -9,6 +9,10 @@ import {
   requestStrapiRestAsService,
   requestStrapiRestWithJwt,
 } from "../../services/server/strapiClient";
+import {
+  findMachineBySerialBase,
+  getMachineSerialBase,
+} from "./machineSerial";
 
 const COOKIE_NAME = "ishaker_portal_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
@@ -110,8 +114,9 @@ export const fetchMachineByIdAsService = async (machineId: string | number) => {
 };
 
 export const fetchMachineBySerialAsService = async (serialNumber: string) => {
+  const serialBase = getMachineSerialBase(serialNumber);
   const params = new URLSearchParams();
-  params.set("filters[serial_number][$eq]", serialNumber);
+  params.set("filters[serial_number][$startsWith]", serialBase);
   params.set("populate[0]", "client");
   params.set("populate[1]", "machine_type");
   params.set("populate[2]", "currency");
@@ -122,7 +127,7 @@ export const fetchMachineBySerialAsService = async (serialNumber: string) => {
     `/api/machines?${params.toString()}`,
   );
 
-  return machines[0] || null;
+  return findMachineBySerialBase(machines, serialBase);
 };
 
 export const resolvePortalSession = async (

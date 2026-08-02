@@ -1,7 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { capitalizeName } from "../../../../../lib/formatName";
 import { getPortalSessionFromApiRequest } from "../../../../../lib/portal/auth";
-import { requestStrapiRestAsService } from "../../../../../services/server/strapiClient";
+import {
+  fetchStrapiCatalogEndpoint,
+  requestStrapiRestAsService,
+} from "../../../../../services/server/strapiClient";
 import type { PortalProductLine } from "../../../../../types/portal";
 
 type CreatedProduct = {
@@ -48,7 +51,47 @@ type SubmittedDosage = {
   conversion_factor: number;
 };
 
+type TargetMachine = {
+  id: string | number;
+  serial_number?: string | null;
+  title?: string | null;
+};
+
 const componentUnits = new Set(["mg", "g", "mcg", "kJ", "kcal"]);
+
+const validateTargetMachines = async (machines: TargetMachine[] = []) =>
+  Promise.all(
+    machines
+      .filter((machine) => Boolean(machine.serial_number))
+      .map(async (machine) => {
+        try {
+          const response = await fetchStrapiCatalogEndpoint(
+            `/api/machines/${encodeURIComponent(machine.serial_number!)}/planogram`,
+          );
+          const payload = await response.json().catch(() => null);
+          return {
+            machineId: machine.id,
+            serial: machine.serial_number,
+            title: machine.title || null,
+            status: response.status,
+            source: response.headers.get("x-planogram-source"),
+            payload,
+          };
+        } catch {
+          return {
+            machineId: machine.id,
+            serial: machine.serial_number,
+            title: machine.title || null,
+            status: 502,
+            source: null,
+            payload: {
+              error: "planogram_unavailable",
+              message: "The saved product could not be validated for this machine.",
+            },
+          };
+        }
+      }),
+  );
 
 const asString = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
@@ -302,6 +345,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     String(session.user.id),
   );
   ownershipParams.set("populate[base_product_line][fields][0]", "name");
+  ownershipParams.set("populate[machines][fields][0]", "serial_number");
+  ownershipParams.set("populate[machines][fields][1]", "title");
   ownershipParams.set("pagination[pageSize]", "2000");
 
   const componentParams = new URLSearchParams();
@@ -566,9 +611,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }),
       });
 
+      const planogramChecks = await validateTargetMachines(
+        productLine.machines as TargetMachine[] | undefined,
+      );
       return res.status(200).json({
         product: { ...existingProduct, id: existingProduct.id },
         updatedInPlace: true,
+        planogramChecks,
       });
     }
 
@@ -599,7 +648,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }),
     });
 
-    return res.status(201).json({ product });
+    const planogramChecks = await validateTargetMachines(
+      productLine.machines as TargetMachine[] | undefined,
+    );
+    return res.status(201).json({ product, planogramChecks });
   } catch (error) {
     console.error("[portal/product-lines/:id/products] creation failed:", error);
     const apiError = error as {

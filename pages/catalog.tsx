@@ -19,6 +19,10 @@ import { FormEvent, useState } from "react";
 import { PortalShell } from "../components/portal/PortalShell";
 import { requirePortalSession } from "../lib/portal/auth";
 import { getSmallestMediaUrl } from "../lib/portal/media";
+import {
+  mediaKeyFromFilename,
+  normalizeMediaFilename,
+} from "../lib/portal/mediaFilename";
 import { requestStrapiRestAsService } from "../services/server/strapiClient";
 import type { PortalSession, PortalTaste } from "../types/portal";
 
@@ -28,6 +32,14 @@ type CatalogPageProps = {
 };
 
 type EncodedFile = { name: string; type: string; data: string };
+
+const MediaKeyPreview = ({ file }: { file: File | null }) =>
+  file ? (
+    <FormHelperText color="acid.300">
+      Stored as <strong>{normalizeMediaFilename(file.name)}</strong>; machine
+      key: <strong>{mediaKeyFromFilename(file.name)}</strong>
+    </FormHelperText>
+  ) : null;
 
 const encodeFile = (file: File): Promise<EncodedFile> =>
   new Promise((resolve, reject) => {
@@ -189,6 +201,7 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
               onChange={(event) => setMain(event.target.files?.[0] || null)}
             />
             <FormHelperText>PNG, JPEG, or WebP; maximum 5 MB.</FormHelperText>
+            <MediaKeyPreview file={main} />
           </FormControl>
 
           <FormControl isRequired>
@@ -202,6 +215,7 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
             <FormHelperText>
               Square transparent PNG works best; maximum 5 MB.
             </FormHelperText>
+            <MediaKeyPreview file={circle} />
           </FormControl>
 
           <FormControl>

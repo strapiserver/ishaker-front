@@ -22,6 +22,8 @@ import {
 } from "../../../services/server/telemetryClient";
 import type { Client, Currency, Machine } from "../../../types/strapi";
 import { updateMachineRegistrationData } from "../../../services/server/machineRegistration";
+import { MachineSerialIssueError } from "../../../lib/portal/machineSerial";
+import { WHATSAPP_SUPPORT_URL } from "../../../lib/portal/support";
 
 const asString = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 const WHATSAPP_COUNTRY_CODE_REGEX = /^\+[1-9]\d{0,3}$/;
@@ -442,10 +444,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  const matchedMachine = await fetchMachineBySerialAsService(serialNumber).catch((error) => {
+  let matchedMachine: Machine | null;
+  try {
+    matchedMachine = await fetchMachineBySerialAsService(serialNumber);
+  } catch (error) {
+    if (error instanceof MachineSerialIssueError) {
+      return res.status(409).json({
+        error: "serial_number_issue",
+        message:
+          "This machine has a serial number issue. Please contact support.",
+        supportUrl: WHATSAPP_SUPPORT_URL,
+      });
+    }
+
     console.error("[portal/register-machine] machine lookup failed:", error);
-    return null;
-  });
+    matchedMachine = null;
+  }
 
   if (!matchedMachine?.id) {
     return res.status(404).json({

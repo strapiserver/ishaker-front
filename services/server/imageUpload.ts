@@ -1,4 +1,5 @@
 import { requestStrapiRestAsService } from "./strapiClient";
+import { normalizeMediaFilename } from "../../lib/portal/mediaFilename";
 
 export type EncodedImage = {
   name?: unknown;
@@ -37,10 +38,12 @@ export const uploadPortalImages = async (
     form.append(
       "files",
       new Blob([Uint8Array.from(file.buffer)], { type: file.type }),
-      file.name,
+      normalizeMediaFilename(file.name),
     );
   });
-  return requestStrapiRestAsService<Array<{ id: string | number }>>(
+  return requestStrapiRestAsService<
+    Array<{ id: string | number; name?: string }>
+  >(
     "/api/upload",
     { method: "POST", body: form },
   );

@@ -61,24 +61,30 @@ export function ProductLinesPage({
       description="Manage your drink and flavour library, then assign products to physical machine containers."
       clientName={session.client.company}
       access={session.access}
+      showSupportBanner={false}
+      headerAction={
+        <Button
+          as={Link}
+          href="/product-lines/new"
+          bg="#69e65d"
+          color="#071008"
+          size="md"
+          px="5"
+          fontWeight="700"
+          boxShadow="0 8px 24px rgba(70, 220, 84, 0.18)"
+          _hover={{ bg: "#80ef75", transform: "translateY(-1px)" }}
+        >
+          +&nbsp; New product line
+        </Button>
+      }
     >
-      <Button
-        as={Link}
-        href="/product-lines/new"
-        variant="primary"
-        size="lg"
-        mb="8"
-      >
-        + New product line
-      </Button>
-
       {loadError ? (
         <Text color="orange.200" mb="5">
           {loadError}
         </Text>
       ) : null}
 
-      <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing="5">
+      <SimpleGrid columns={1} spacing="4">
         {productLines.map((productLine) => (
           <ProductLineCard key={productLine.id} productLine={productLine} />
         ))}

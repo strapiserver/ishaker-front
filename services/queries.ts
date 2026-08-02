@@ -1,7 +1,7 @@
 export const MachineBySerialQuery = `
   query MachineBySerial($serial: String) {
     machines(
-      filters: { serial_number: { eq: $serial } }
+      filters: { serial_number: { startsWith: $serial } }
       pagination: { pageSize: 2000 }
       sort: ["title:ASC"]
     ) {

@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   Container,
+  Link,
   SimpleGrid,
   VStack,
   Text,
@@ -39,6 +40,7 @@ export default function Step4Page() {
   const [draft, setDraft] = useState<RegistrationDraft | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [errorSupportUrl, setErrorSupportUrl] = useState("");
 
   useEffect(() => {
     const nextDraft = loadRegistrationDraft();
@@ -64,6 +66,7 @@ export default function Step4Page() {
   const submit = async () => {
     if (!draft) return;
     setError("");
+    setErrorSupportUrl("");
     setIsSubmitting(true);
 
     const response = await fetch("/api/portal/register-machine", {
@@ -81,6 +84,12 @@ export default function Step4Page() {
         return;
       }
       setError(getErrorMessage(payload));
+      if (
+        payload?.error === "serial_number_issue" &&
+        typeof payload?.supportUrl === "string"
+      ) {
+        setErrorSupportUrl(payload.supportUrl);
+      }
       return;
     }
 
@@ -153,7 +162,17 @@ export default function Step4Page() {
 
           {error ? (
             <Text color="red.300" mt="5">
-              {error}
+              {error}{" "}
+              {errorSupportUrl ? (
+                <Link
+                  href={errorSupportUrl}
+                  isExternal
+                  fontWeight="700"
+                  textDecoration="underline"
+                >
+                  Contact support on WhatsApp
+                </Link>
+              ) : null}
             </Text>
           ) : null}
 

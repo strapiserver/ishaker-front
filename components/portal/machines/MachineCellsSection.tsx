@@ -62,6 +62,11 @@ type PlanogramFeedback = {
   source: string | null;
   problems: PlanogramItem[];
   skipped: PlanogramItem[];
+  warnings: string[];
+  mediaKeys: {
+    checked: number | null;
+    missing: string[];
+  } | null;
   validationError: string | null;
 };
 
@@ -201,6 +206,10 @@ export function MachineCellsSection({
       );
       const payload = await response.json().catch(() => ({}));
       const body = payload?.data || payload;
+      const mediaKeys =
+        body?.media_keys ||
+        body?.fleet_status?.media_keys ||
+        body?.body?.media_keys;
       const validationError =
         response.ok || response.status === 422
           ? null
@@ -211,6 +220,21 @@ export function MachineCellsSection({
         source: response.headers.get("x-planogram-source"),
         problems: Array.isArray(body?.problems) ? body.problems : [],
         skipped: Array.isArray(body?.skipped) ? body.skipped : [],
+        warnings: Array.isArray(body?.warnings)
+          ? body.warnings.map((warning: any) =>
+              String(warning?.detail || warning?.message || warning),
+            )
+          : [],
+        mediaKeys: mediaKeys
+          ? {
+              checked: Number.isFinite(Number(mediaKeys.checked))
+                ? Number(mediaKeys.checked)
+                : null,
+              missing: Array.isArray(mediaKeys.missing)
+                ? mediaKeys.missing.map(String)
+                : [],
+            }
+          : null,
         validationError,
       };
       setPlanogram(feedback);
@@ -229,6 +253,8 @@ export function MachineCellsSection({
         source: null,
         problems: [],
         skipped: [],
+        warnings: [],
+        mediaKeys: null,
         validationError,
       });
       toast({
@@ -555,6 +581,34 @@ export function MachineCellsSection({
                   Container {problem.position ?? "?"}:{" "}
                   {problem.detail || problem.code}
                 </Text>
+              ))}
+            </VStack>
+          </Alert>
+        ) : null}
+        {planogram?.mediaKeys ? (
+          <Alert
+            status={planogram.mediaKeys.missing.length ? "error" : "success"}
+          >
+            <AlertIcon />
+            <VStack align="start" spacing="1">
+              <Text>
+                Machine artwork checked: {planogram.mediaKeys.checked ?? "?"}{" "}
+                key(s).
+              </Text>
+              {planogram.mediaKeys.missing.length ? (
+                <Text>
+                  Missing artwork: {planogram.mediaKeys.missing.join(", ")}
+                </Text>
+              ) : null}
+            </VStack>
+          </Alert>
+        ) : null}
+        {planogram?.warnings.length ? (
+          <Alert status="warning">
+            <AlertIcon />
+            <VStack align="start" spacing="1">
+              {planogram.warnings.map((warning, index) => (
+                <Text key={`${warning}-${index}`}>{warning}</Text>
               ))}
             </VStack>
           </Alert>

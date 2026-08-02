@@ -1,26 +1,25 @@
 import {
   Box,
   Button,
-  Divider,
+  Grid,
   HStack,
   IconButton,
-  Image,
-  Switch,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
   Text,
   useDisclosure,
-  VStack,
 } from "@chakra-ui/react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { type KeyboardEvent, useState } from "react";
-import { RxCross2 } from "react-icons/rx";
+import { useState } from "react";
+import { FiMoreVertical, FiPower, FiTrash2 } from "react-icons/fi";
 import { capitalizeName } from "../../../lib/formatName";
-import { getSmallestMediaUrl } from "../../../lib/portal/media";
 import type { PortalProductLine } from "../../../types/portal";
-import { IoAddOutline } from "react-icons/io5";
+import { FiPlus } from "react-icons/fi";
 import { DeleteProductLineDialog } from "./DeleteProductLineDialog";
 import { ProductCard } from "./ProductCard";
-import { Box3D } from "../../../styles/theme/custom";
 type ProductLineCardProps = {
   productLine: PortalProductLine;
 };
@@ -31,7 +30,6 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isActive, setIsActive] = useState(productLine.isActive !== false);
   const [isUpdatingActive, setIsUpdatingActive] = useState(false);
-  const cupImage = getSmallestMediaUrl(productLine.cup?.image);
   const productLineName = capitalizeName(productLine.name);
   const productCount = productLine.products?.length || 0;
   const brandCount = new Set(
@@ -101,96 +99,39 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
 
   return (
     <>
-      <Box3D
+      <Box
         overflow="hidden"
+        bg="rgba(255,255,255,0.025)"
+        border="1px solid"
+        borderColor="rgba(255,255,255,0.12)"
+        borderRadius="12px"
         opacity={isActive ? 1 : 0.8}
-        p="5"
         position="relative"
-        cursor="pointer"
-        role="link"
-        tabIndex={0}
-        onClick={() =>
-          void router.push(`/product-lines/${productLine.id}/edit`)
-        }
-        onKeyDown={(event: KeyboardEvent<HTMLElement>) => {
-          if (
-            event.currentTarget === event.target &&
-            (event.key === "Enter" || event.key === " ")
-          ) {
-            event.preventDefault();
-            void router.push(`/product-lines/${productLine.id}/edit`);
-          }
-        }}
         transition="opacity 0.2s ease"
       >
-        <HStack
-          spacing="2"
-          position="absolute"
-          top="2"
-          right="2"
-          zIndex="2"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <Switch
-            aria-label={`${isActive ? "Turn off" : "Turn on"} ${productLineName}`}
-            colorScheme="green"
-            isChecked={isActive}
-            isDisabled={isUpdatingActive}
-            onChange={(event) => void updateActiveState(event.target.checked)}
-          />
-          <IconButton
-            aria-label={`Delete ${productLineName}`}
-            title="Delete"
-            icon={<RxCross2 />}
-            color="red.300"
-            variant="ghost"
-            size="sm"
-            isLoading={isDeleting}
-            _hover={{ bg: "red.900", color: "red.200" }}
-            onClick={() => deleteDialog.onOpen()}
-          />
+        <HStack minH="48px" px={{ base: "4", md: "5" }} justify="space-between" borderBottom="1px solid" borderColor="rgba(255,255,255,0.09)">
+          <HStack spacing="3">
+            <Box boxSize="10px" borderRadius="full" bg={isActive ? "#62e85b" : "whiteAlpha.300"} boxShadow={isActive ? "0 0 10px rgba(98,232,91,.5)" : "none"} />
+            <Text color="white" fontWeight="700" fontSize="md">{`${productLineName} (${productCount})`}</Text>
+            <Text color={isActive ? "#6ce864" : "whiteAlpha.500"} fontSize="xs">•&nbsp; {isActive ? "Active" : "Inactive"}</Text>
+          </HStack>
+          <HStack spacing="4">
+            <Text color="whiteAlpha.600" fontSize="xs">{brandCount} {brandCount === 1 ? "brand" : "brands"}</Text>
+            <Menu>
+              <MenuButton as={IconButton} aria-label={`Actions for ${productLineName}`} icon={<FiMoreVertical />} variant="ghost" size="sm" color="whiteAlpha.800" />
+              <MenuList bg="#171b1c" borderColor="whiteAlpha.200" minW="190px">
+                <MenuItem icon={<FiPower />} bg="transparent" _hover={{ bg: "whiteAlpha.100" }} isDisabled={isUpdatingActive} onClick={() => void updateActiveState(!isActive)}>{isActive ? "Set inactive" : "Set active"}</MenuItem>
+                <MenuItem icon={<FiTrash2 />} bg="transparent" color="red.300" _hover={{ bg: "whiteAlpha.100" }} onClick={deleteDialog.onOpen}>Delete product line</MenuItem>
+              </MenuList>
+            </Menu>
+          </HStack>
         </HStack>
-        <HStack spacing="4" align="center" pr="20">
-          <Box
-            boxSize="120px"
-            flex="0 0 auto"
-            p="4"
-            borderRadius="lg"
-            bg="bg.800"
-          >
-            {cupImage ? (
-              <Image
-                src={cupImage}
-                alt={capitalizeName(productLine.cup?.name) || "Cup"}
-                w="full"
-                h="full"
-                objectFit="contain"
-              />
-            ) : null}
-          </Box>
-          <VStack spacing="0" minW="0" flex="1" align="stretch" mt="1">
-            <HStack justify="space-between" align="center" spacing="2">
-              <Box>
-                <Text
-                  color="bg.200"
-                  fontWeight="700"
-                  fontSize="md"
-                  noOfLines={2}
-                >
-                  {`${productLineName} (${productCount})`}
-                </Text>
-                <Text color="bg.400" fontSize="sm" noOfLines={2}>
-                  {brandCount
-                    ? `${brandCount} ${brandCount === 1 ? "brand" : "brands"}`
-                    : "No brands yet"}
-                </Text>
-              </Box>
-            </HStack>
-          </VStack>
-        </HStack>
-        <Divider my="4" />
+        <Box overflowX="auto">
+          <Grid templateColumns="minmax(210px,1.45fr) minmax(180px,1.25fr) minmax(90px,.7fr) 90px" minW="680px" px="5" h="37px" alignItems="center" borderBottom="1px solid" borderColor="rgba(255,255,255,0.08)">
+            {['PRODUCT', 'BRAND', 'STATUS', 'ACTIONS'].map((label) => <Text key={label} color="whiteAlpha.500" fontSize="10px">{label}</Text>)}
+          </Grid>
         {productLine.products?.length ? (
-          <VStack spacing="3" mt="5" align="stretch" w="full">
+          <Box minW="680px">
             {productLine.products.map((product) => (
               <ProductCard
                 key={product.id}
@@ -198,25 +139,11 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
                 productLineId={productLine.id}
               />
             ))}
-          </VStack>
+          </Box>
         ) : null}
-        <Button
-          as={Link}
-          href={`/product-lines/${productLine.id}/products/new`}
-          variant="outline"
-          w="full"
-          mt="4"
-          border="3px dashed"
-          borderColor="whiteAlpha.200"
-          borderRadius="md"
-          h="50px"
-          colorScheme="gray"
-          leftIcon={<IoAddOutline size="1rem" />}
-          onClick={(event) => event.stopPropagation()}
-        >
-          Add product
-        </Button>
-      </Box3D>
+          <Button as={Link} href={`/product-lines/${productLine.id}/products/new`} variant="ghost" justifyContent="flex-start" minW="680px" w="full" h="46px" px="5" borderRadius="0" color="#65df5c" fontSize="sm" fontWeight="500" leftIcon={<FiPlus />} _hover={{ bg: "whiteAlpha.50" }}>Add product</Button>
+        </Box>
+      </Box>
       <DeleteProductLineDialog
         isDeleting={isDeleting}
         isOpen={deleteDialog.isOpen}

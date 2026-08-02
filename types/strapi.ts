@@ -16,6 +16,13 @@ export type Machine = {
   ssd_version?: string;
   bootstrap_version?: string;
   last_seen_at?: string;
+  fleet_status?: {
+    media_keys?: {
+      checked?: number;
+      missing?: string[];
+    } | null;
+    [key: string]: unknown;
+  } | null;
   country?: string;
   state_region?: string;
   city?: string;

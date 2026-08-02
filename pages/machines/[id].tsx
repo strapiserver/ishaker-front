@@ -1,4 +1,6 @@
 import {
+  Alert,
+  AlertIcon,
   Box,
   SimpleGrid,
   VStack,
@@ -119,6 +121,35 @@ export default function MachineDetailPage({
       clientName={session.client.company}
     >
       <SimpleGrid columns={{ base: 1, xl: 2 }} spacing="6">
+        {machine.fleet_status?.media_keys ? (
+          <Alert
+            status={
+              machine.fleet_status.media_keys.missing?.length
+                ? "error"
+                : "success"
+            }
+            gridColumn={{ xl: "1 / -1" }}
+            borderRadius="xl"
+            alignItems="flex-start"
+          >
+            <AlertIcon mt="1" />
+            <Box>
+              <Text fontWeight="800">Machine artwork check</Text>
+              <Text>
+                Checked {machine.fleet_status.media_keys.checked ?? 0} media
+                key(s).
+              </Text>
+              {machine.fleet_status.media_keys.missing?.length ? (
+                <Text mt="1">
+                  Missing:{" "}
+                  {machine.fleet_status.media_keys.missing.join(", ")}
+                </Text>
+              ) : (
+                <Text mt="1">No missing artwork was reported.</Text>
+              )}
+            </Box>
+          </Alert>
+        ) : null}
         <Box gridColumn={{ xl: "1 / -1" }}>
           <MachineRegistrationEditor
             machine={machine}
