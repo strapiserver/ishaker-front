@@ -5,6 +5,7 @@ import type {
 } from "next";
 import type { Client, Machine } from "../../types/strapi";
 import type { PortalSession, PortalUser } from "../../types/portal";
+import { readAdminImpersonationUserId } from "../admin/auth";
 import {
   requestStrapiRestAsService,
   requestStrapiRestWithJwt,
@@ -63,6 +64,11 @@ export const fetchPortalUser = async (jwt: string) => {
     return requestUser();
   }
 };
+
+const fetchPortalUserAsService = (userId: string | number) =>
+  requestStrapiRestAsService<PortalUser>(
+    `/api/users/${userId}?populate[0]=client&populate[1]=role`,
+  );
 
 const normalizeRoleKey = (value?: string) =>
   (value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -133,10 +139,13 @@ export const fetchMachineBySerialAsService = async (serialNumber: string) => {
 export const resolvePortalSession = async (
   cookieHeader?: string,
 ): Promise<PortalSession | null> => {
-  const jwt = readPortalJwt(cookieHeader);
-  if (!jwt) return null;
+  const credential = readPortalJwt(cookieHeader);
+  if (!credential) return null;
 
-  const user = await fetchPortalUser(jwt);
+  const impersonatedUserId = readAdminImpersonationUserId(credential);
+  const user = impersonatedUserId
+    ? await fetchPortalUserAsService(impersonatedUserId)
+    : await fetchPortalUser(credential);
   if (!user?.id) return null;
 
   if (!user.client?.id) {

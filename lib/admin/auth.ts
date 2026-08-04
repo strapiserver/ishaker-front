@@ -7,6 +7,7 @@ import type {
 
 const COOKIE_NAME = "ishaker_admin_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
+const IMPERSONATION_TOKEN_PREFIX = "admin-impersonation";
 
 const getAdminPassword = () => {
   const password = process.env.ADMIN_PASSWORD;
@@ -15,6 +16,9 @@ const getAdminPassword = () => {
   }
   return password;
 };
+
+export const isAdminPasswordConfigured = () =>
+  Boolean(process.env.ADMIN_PASSWORD);
 
 const sign = (value: string) =>
   crypto.createHmac("sha256", getAdminPassword()).update(value).digest("hex");
@@ -27,6 +31,34 @@ const safeEqual = (a: string, b: string) => {
 
 export const verifyAdminPassword = (password: string) =>
   safeEqual(password, getAdminPassword());
+
+export const createAdminImpersonationToken = (userId: string | number) => {
+  const normalizedUserId = String(userId);
+  if (!/^\d+$/.test(normalizedUserId)) {
+    throw new Error("A numeric portal user id is required for impersonation.");
+  }
+
+  const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;
+  const payload = `${IMPERSONATION_TOKEN_PREFIX}.${normalizedUserId}.${expiresAt}`;
+  return `${payload}.${sign(payload)}`;
+};
+
+export const readAdminImpersonationUserId = (token: string) => {
+  const parts = token.split(".");
+  if (parts.length !== 4) return null;
+
+  const [prefix, userId, expiresAtRaw, signature] = parts;
+  const expiresAt = Number(expiresAtRaw);
+  if (prefix !== IMPERSONATION_TOKEN_PREFIX || !/^\d+$/.test(userId)) {
+    return null;
+  }
+  if (!Number.isFinite(expiresAt) || expiresAt < Math.floor(Date.now() / 1000)) {
+    return null;
+  }
+
+  const payload = `${prefix}.${userId}.${expiresAtRaw}`;
+  return safeEqual(signature, sign(payload)) ? Number(userId) : null;
+};
 
 export const createAdminSessionCookie = () => {
   const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;
