@@ -22,7 +22,10 @@ import {
 } from "../../../services/server/telemetryClient";
 import type { Client, Currency, Machine } from "../../../types/strapi";
 import { updateMachineRegistrationData } from "../../../services/server/machineRegistration";
-import { MachineSerialIssueError } from "../../../lib/portal/machineSerial";
+import {
+  getMachineSerialBase,
+  MachineSerialIssueError,
+} from "../../../lib/portal/machineSerial";
 import { WHATSAPP_SUPPORT_URL } from "../../../lib/portal/support";
 
 const asString = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -341,7 +344,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const session = await getPortalSessionFromApiRequest(req).catch(() => null);
   const isExistingAccount = session?.access === "client";
-  const serialNumber = asString(req.body?.serialNumber);
+  // Strapi serials may have an internal suffix (for example, 25081725-rfaa8).
+  // Registration and ownership lookup are based only on the numeric prefix.
+  const serialNumber = getMachineSerialBase(asString(req.body?.serialNumber));
   const requestedNickname = normalizeNickname(
     req.body?.nickname || req.body?.company,
   );

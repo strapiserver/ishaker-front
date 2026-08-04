@@ -3,7 +3,10 @@ import {
   assertMachineBelongsToSessionClient,
   getPortalSessionFromApiRequest,
 } from "../../../../../lib/portal/auth";
-import { fetchStrapiCatalogEndpoint } from "../../../../../services/server/strapiClient";
+import {
+  fetchStrapiCatalogEndpoint,
+  hasStrapiCatalogToken,
+} from "../../../../../services/server/strapiClient";
 
 const asId = (value: string | string[] | undefined) => {
   const id = Array.isArray(value) ? value[0] : value;
@@ -29,6 +32,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(409).json({
       error: "machine_has_no_serial",
       message: "Planogram validation requires a machine serial number.",
+    });
+  }
+  if (!hasStrapiCatalogToken()) {
+    return res.status(200).json({
+      skipped: true,
+      reason: "catalog_token_not_configured",
+      problems: [],
+      warnings: [],
     });
   }
 

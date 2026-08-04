@@ -267,3 +267,6 @@ export const fetchStrapiCatalogEndpoint = async (
     },
   });
 };
+
+export const hasStrapiCatalogToken = () =>
+  Boolean(process.env.CATALOG_TOKEN || localStrapiEnv.CATALOG_TOKEN);

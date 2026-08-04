@@ -11,7 +11,23 @@ export const getMachineCells = async (
 ): Promise<PortalMachineCell[]> => {
   const params = new URLSearchParams();
   params.set("filters[machine][id][$eq]", String(machineId));
-  params.set("populate[product][populate][taste]", "*");
+  params.set("populate[product][populate][taste][fields][0]", "name");
+  params.set(
+    "populate[product][populate][taste][populate][main][fields][0]",
+    "name",
+  );
+  params.set(
+    "populate[product][populate][taste][populate][main][fields][1]",
+    "url",
+  );
+  params.set(
+    "populate[product][populate][taste][populate][default_circle][fields][0]",
+    "color",
+  );
+  params.set(
+    "populate[product][populate][custom_circle][fields][0]",
+    "color",
+  );
   params.set("populate[product][populate][dosage]", "*");
   params.set("sort[0]", "position:asc");
   params.set("pagination[pageSize]", "2000");
@@ -39,6 +55,11 @@ export const getMachineCatalogProducts = async (
   params.set("populate[taste][fields][0]", "name");
   params.set("populate[taste][populate][main][fields][0]", "name");
   params.set("populate[taste][populate][main][fields][1]", "url");
+  params.set(
+    "populate[taste][populate][default_circle][fields][0]",
+    "color",
+  );
+  params.set("populate[custom_circle][fields][0]", "color");
   params.set("populate[dosage]", "*");
   params.set("sort[0]", "name:asc");
   params.set("pagination[pageSize]", PAGE_SIZE);
@@ -59,6 +80,7 @@ export const updateMachineCell = async (
   isActive: boolean,
   price: number | null,
   cellCategory: "powder" | "concentrate",
+  amountKg: number,
 ) =>
   requestStrapiRestAsService(`/api/machine-cells/${cellId}`, {
     method: "PUT",
@@ -69,6 +91,7 @@ export const updateMachineCell = async (
         isActive,
         price,
         cell_category: cellCategory,
+        amount_kg: amountKg,
       },
     }),
   });
@@ -80,6 +103,7 @@ export const createMachineCell = async (data: {
   isActive: boolean;
   price: number | null;
   cellCategory: "powder" | "concentrate";
+  amountKg: number;
 }) =>
   requestStrapiRestAsService("/api/machine-cells", {
     method: "POST",
@@ -91,6 +115,7 @@ export const createMachineCell = async (data: {
         isActive: data.isActive,
         price: data.price,
         cell_category: data.cellCategory,
+        amount_kg: data.amountKg,
       },
     }),
   });

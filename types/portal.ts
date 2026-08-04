@@ -60,10 +60,8 @@ export type PortalCatalogProduct = {
   product_line?: Pick<PortalProductLine, "id" | "name"> | null;
   brand?: PortalBrand | null;
   custom_main?: PortalMedia | null;
-  taste?: {
-    name?: string | null;
-    main?: PortalMedia | null;
-  } | null;
+  taste?: PortalTaste | null;
+  custom_circle?: PortalCircle | null;
   dosage?: PortalProductDosage | null;
 };
 
@@ -74,6 +72,7 @@ export type PortalMachineCell = {
   cell_category: "powder" | "concentrate" | null;
   product: PortalCatalogProduct | null;
   price?: number | string | null;
+  amount_kg?: number | string | null;
 };
 
 export type PortalCurrency = Currency;

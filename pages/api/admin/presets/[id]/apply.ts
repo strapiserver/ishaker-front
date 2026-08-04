@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdminApiSession } from "../../../../../lib/admin/auth";
 import {
   fetchStrapiCatalogEndpoint,
+  hasStrapiCatalogToken,
   requestStrapiRestAsService,
 } from "../../../../../services/server/strapiClient";
 import {
@@ -83,6 +84,9 @@ export default async function handler(
     const presetPositions: number[] = presetCells.map((cell: Cell) =>
       Number(cell.position),
     );
+    const machinePositions: number[] = machineCells.map((cell: Cell) =>
+      Number(cell.position),
+    );
     if (
       containerCount === null ||
       presetPositions.some(
@@ -97,6 +101,20 @@ export default async function handler(
           containerCount === null
             ? "The preset machine model has no powder container count configured."
             : `The preset must use unique physical container slots from 1 to ${containerCount}.`,
+      });
+    }
+    if (
+      machinePositions.length > containerCount ||
+      machinePositions.some(
+        (position: number) =>
+          !isValidContainerSlot(position, containerCount),
+      ) ||
+      getDuplicateContainerSlots(machinePositions).size > 0
+    ) {
+      return res.status(409).json({
+        error: "invalid_machine_container_slots",
+        message:
+          "The machine has duplicate or invalid container assignments. Repair them before applying a preset.",
       });
     }
     if (!preset.currency?.id || !preset.language?.id) {
@@ -240,7 +258,7 @@ export default async function handler(
     let planogram = null;
     let planogramStatus = null;
     let planogramSource = null;
-    if (machine.serial_number) {
+    if (machine.serial_number && hasStrapiCatalogToken()) {
       const validationResponse = await fetchStrapiCatalogEndpoint(
         `/api/machines/${encodeURIComponent(machine.serial_number)}/planogram`,
       );

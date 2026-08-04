@@ -29,6 +29,7 @@ import {
 import CustomTitle from "../home/CutsomTitle";
 import Loader from "../shared/Loader";
 import { WHATSAPP_SUPPORT_URL } from "../../lib/portal/support";
+import { getMachineSerialBase } from "../../lib/portal/machineSerial";
 
 const SERIAL_DEBOUNCE_MS = 3000;
 
@@ -125,7 +126,9 @@ export function SerialNumberSection({
     if (!canContinue) return;
     mergeRegistrationDraft({
       machineId: selectedMachine?.id,
-      serialNumber: selectedMachine?.serial_number || trimmedSerial,
+      serialNumber: getMachineSerialBase(
+        selectedMachine?.serial_number || trimmedSerial,
+      ),
       machineTitle: selectedMachine?.title,
       machineTypeName: selectedMachine?.machine_type?.name,
       ...(existingAccount

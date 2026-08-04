@@ -33,6 +33,7 @@ import type {
   PortalMachineCell,
 } from "../../../types/portal";
 import type { Currency } from "../../../types/strapi";
+import { ContainersPreview } from "../product-lines/ContainersPreview";
 
 type MachineCellsSectionProps = {
   machineId: string | number;
@@ -42,6 +43,7 @@ type MachineCellsSectionProps = {
   loadError?: string | null;
   currency?: Currency | null;
   containerCount: number | null;
+  onCellsSaved?: (cells: PortalMachineCell[]) => void;
 };
 
 type CellDraft = Omit<PortalMachineCell, "id"> & {
@@ -93,17 +95,17 @@ const buildDrafts = (
 ) => {
   const existing = initialCells.map(hydrateCell);
   if (!containerCount) return existing;
-  const occupied = new Set(
-    existing
-      .map((cell) => cell.position)
-      .filter((position) => isValidContainerSlot(position, containerCount)),
-  );
-  return [
-    ...existing,
-    ...Array.from({ length: containerCount }, (_, index) => index + 1)
-      .filter((position) => !occupied.has(position))
-      .map(emptySlot),
-  ];
+
+  return Array.from({ length: containerCount }, (_, index) => {
+    const position = index + 1;
+    const savedAtPosition = existing
+      .filter((cell) => cell.position === position)
+      .sort((left, right) => Number(right.id) - Number(left.id));
+
+    // If legacy data contains duplicates, keep the newest saved assignment as
+    // the visible value for this one physical slot. Saving removes the extras.
+    return savedAtPosition[0] || emptySlot(position);
+  });
 };
 
 const productLabel = (product: PortalCatalogProduct) => {
@@ -120,12 +122,14 @@ export function MachineCellsSection({
   loadError,
   currency,
   containerCount,
+  onCellsSaved,
 }: MachineCellsSectionProps) {
   const toast = useToast();
   const [cells, setCells] = useState(() =>
     buildDrafts(initialCells, containerCount),
   );
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingCellId, setDeletingCellId] = useState<number | null>(null);
   const [saveError, setSaveError] = useState("");
   const [planogram, setPlanogram] = useState<PlanogramFeedback | null>(null);
   const productsById = useMemo(
@@ -173,7 +177,10 @@ export function MachineCellsSection({
   const updateCell = (
     target: CellDraft,
     patch: Partial<
-      Pick<CellDraft, "position" | "productId" | "isActive" | "cellCategory">
+      Pick<
+        CellDraft,
+        "position" | "productId" | "isActive" | "cellCategory" | "amount_kg"
+      >
     >,
   ) => {
     setCells((current) => {
@@ -191,7 +198,16 @@ export function MachineCellsSection({
                 ),
             );
       return withoutEmptyDestination.map((cell) =>
-        cell === target ? { ...cell, ...patch } : cell,
+        cell === target
+          ? {
+              ...cell,
+              ...patch,
+              ...(patch.productId !== undefined &&
+              patch.productId !== cell.productId
+                ? { amount_kg: 0 }
+                : {}),
+            }
+          : cell,
       );
     });
     setSaveError("");
@@ -283,6 +299,7 @@ export function MachineCellsSection({
             productId: cell.productId ? Number(cell.productId) : null,
             isActive: cell.isActive,
             cellCategory: cell.cellCategory,
+            amountKg: Number(cell.amount_kg) || 0,
           })),
         }),
       });
@@ -296,6 +313,7 @@ export function MachineCellsSection({
         Array.isArray(payload) ? payload : payload?.cells || []
       ) as PortalMachineCell[];
       setCells(buildDrafts(refreshed, containerCount));
+      onCellsSaved?.(refreshed);
       toast({
         title: "Container assignments saved",
         status: "success",
@@ -312,6 +330,51 @@ export function MachineCellsSection({
       toast({ title: "Save failed", description: message, status: "error" });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const deleteInvalidCell = async (cell: CellDraft) => {
+    if (cell.id === null) return;
+    if (
+      !window.confirm(
+        `Delete the duplicate assignment for container ${cell.position}? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    setDeletingCellId(cell.id);
+    setSaveError("");
+    try {
+      const response = await fetch(`/api/portal/machines/${machineId}/cells`, {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ cellId: cell.id }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          payload?.message || "The duplicate assignment could not be deleted.",
+        );
+      }
+      const refreshed = (payload?.cells || []) as PortalMachineCell[];
+      setCells(buildDrafts(refreshed, containerCount));
+      onCellsSaved?.(refreshed);
+      toast({
+        title: "Duplicate assignment deleted",
+        status: "success",
+        duration: 4000,
+        isClosable: true,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "The duplicate assignment could not be deleted.";
+      setSaveError(message);
+      toast({ title: "Delete failed", description: message, status: "error" });
+    } finally {
+      setDeletingCellId(null);
     }
   };
 
@@ -489,6 +552,18 @@ export function MachineCellsSection({
               {formatMoney(selectedProduct?.dosage?.full_drink_price, currency)}
             </Text>
           </HStack>
+          {isLegacy ? (
+            <Button
+              colorScheme="red"
+              variant="outline"
+              size="sm"
+              alignSelf="start"
+              isLoading={deletingCellId === cell.id}
+              onClick={() => void deleteInvalidCell(cell)}
+            >
+              Delete duplicate assignment
+            </Button>
+          ) : null}
         </VStack>
       </Box>
     );
@@ -505,6 +580,15 @@ export function MachineCellsSection({
     );
     return matches[0] || emptySlot(position);
   });
+  const previewCells: PortalMachineCell[] = primaryCells.map((cell) => ({
+    id: cell.id || -cell.position,
+    position: cell.position,
+    isActive: cell.isActive,
+    cell_category: cell.cellCategory,
+    product: productsById.get(cell.productId) || null,
+    price: cell.price,
+    amount_kg: cell.amount_kg,
+  }));
 
   return (
     <Box
@@ -624,6 +708,18 @@ export function MachineCellsSection({
               ))}
             </VStack>
           </Alert>
+        ) : null}
+        {containerCount !== null ? (
+          <ContainersPreview
+            containerCount={containerCount}
+            cells={previewCells}
+            onAmountChange={(position, amountKg) => {
+              const cell = primaryCells.find(
+                (candidate) => candidate.position === position,
+              );
+              if (cell) updateCell(cell, { amount_kg: amountKg });
+            }}
+          />
         ) : null}
         <SimpleGrid columns={{ base: 1, xl: 2 }} spacing="4">
           {primaryCells.map((cell) => renderSlot(cell))}

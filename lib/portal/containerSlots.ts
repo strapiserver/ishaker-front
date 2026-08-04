@@ -11,6 +11,7 @@ export const getMachineContainerCount = (
     return configuredCount;
   }
 
+  // Preserve support for existing machine types that predate container_count.
   const model = String(machineType?.name || "")
     .trim()
     .toLocaleLowerCase()

@@ -3,6 +3,7 @@ import { capitalizeName } from "../../../../../lib/formatName";
 import { getPortalSessionFromApiRequest } from "../../../../../lib/portal/auth";
 import {
   fetchStrapiCatalogEndpoint,
+  hasStrapiCatalogToken,
   requestStrapiRestAsService,
 } from "../../../../../services/server/strapiClient";
 import type { PortalProductLine } from "../../../../../types/portal";
@@ -60,6 +61,9 @@ type TargetMachine = {
 const componentUnits = new Set(["mg", "g", "mcg", "kJ", "kcal"]);
 
 const validateTargetMachines = async (machines: TargetMachine[] = []) =>
+  !hasStrapiCatalogToken()
+    ? []
+    :
   Promise.all(
     machines
       .filter((machine) => Boolean(machine.serial_number))

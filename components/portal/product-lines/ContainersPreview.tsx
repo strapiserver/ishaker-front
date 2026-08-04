@@ -1,0 +1,90 @@
+import { Box, Flex, Text } from "@chakra-ui/react";
+import { useEffect, useMemo, useState } from "react";
+import type { PortalMachineCell } from "../../../types/portal";
+import { MAX_POWDER_HEIGHT, PowderContainer } from "./PowderContainer";
+
+export type ContainersPreviewProps = {
+  containerCount: number;
+  cells: PortalMachineCell[];
+  onAmountChange: (position: number, amountKg: number) => void;
+};
+
+const EMPTY_CONTAINER_COLOR = "#737373";
+
+const productColor = (cell?: PortalMachineCell) =>
+  cell?.product?.custom_circle?.color ||
+  cell?.product?.taste?.default_circle?.color ||
+  EMPTY_CONTAINER_COLOR;
+
+export function ContainersPreview({
+  containerCount,
+  cells,
+  onAmountChange,
+}: ContainersPreviewProps) {
+  const maxWeightKg = containerCount === 8 ? 2 : 1;
+  const cellsByPosition = useMemo(
+    () => new Map(cells.map((cell) => [cell.position, cell])),
+    [cells],
+  );
+  const [powderHeights, setPowderHeights] = useState<number[]>([]);
+
+  useEffect(() => {
+    setPowderHeights(
+      Array.from({ length: containerCount }, (_, index) => {
+        const amountKg = Math.min(
+          maxWeightKg,
+          Math.max(
+            0,
+            Number(cellsByPosition.get(index + 1)?.amount_kg) || 0,
+          ),
+        );
+        return (amountKg / maxWeightKg) * MAX_POWDER_HEIGHT;
+      }),
+    );
+  }, [cellsByPosition, containerCount, maxWeightKg]);
+
+  const setPowderHeight = (index: number, height: number) => {
+    setPowderHeights((current) => {
+      const next = [...current];
+      next[index] = height;
+      return next;
+    });
+  };
+
+  return (
+    <Box>
+      <Text color="whiteAlpha.700" fontSize="sm" fontWeight="700" mb="3">
+        Set container powder amounts
+      </Text>
+      <Box w="full" pb="2">
+        <Flex align="flex-start" gap={{ base: "2", md: "3" }} w="full">
+          {Array.from({ length: containerCount }, (_, index) => {
+            const position = index + 1;
+            const cell = cellsByPosition.get(position);
+            const hasProduct = Boolean(cell?.product);
+
+            return (
+              <PowderContainer
+                key={position}
+                color={productColor(cell)}
+                height={powderHeights[index] ?? 0}
+                maxWeightKg={maxWeightKg}
+                productName={cell?.product?.name}
+                isDisabled={!hasProduct}
+                onHeightChange={(height) => setPowderHeight(index, height)}
+                onHeightChangeEnd={(height) =>
+                  onAmountChange(
+                    position,
+                    Number(
+                      ((height / MAX_POWDER_HEIGHT) * maxWeightKg).toFixed(2),
+                    ),
+                  )
+                }
+              />
+            );
+          })}
+        </Flex>
+      </Box>
+    </Box>
+  );
+}

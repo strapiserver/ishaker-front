@@ -50,10 +50,32 @@ export function ProductLinesPage({
   const [selectedMachineId, setSelectedMachineId] = useState(
     machineAssignments[0] ? String(machineAssignments[0].machine.id) : "",
   );
+  const [machineCells, setMachineCells] = useState<Record<string, PortalMachineCell[]>>(
+    () =>
+      Object.fromEntries(
+        machineAssignments.map(({ machine, cells }) => [String(machine.id), cells]),
+      ),
+  );
   const selectedAssignment =
     machineAssignments.find(
       ({ machine }) => String(machine.id) === selectedMachineId,
     ) || machineAssignments[0];
+  const selectedCells = selectedAssignment
+    ? machineCells[String(selectedAssignment.machine.id)] || selectedAssignment.cells
+    : [];
+  const selectedContainerCount = selectedAssignment
+    ? getMachineContainerCount(selectedAssignment.machine.machine_type)
+    : null;
+
+  const replaceMachineCells = (
+    machineId: string | number,
+    cells: PortalMachineCell[],
+  ) => {
+    setMachineCells((current) => ({
+      ...current,
+      [String(machineId)]: cells,
+    }));
+  };
 
   return (
     <PortalShell
@@ -118,15 +140,16 @@ export function ProductLinesPage({
               key={selectedAssignment.machine.id}
               machineId={selectedAssignment.machine.id}
               machineSerial={selectedAssignment.machine.serial_number || null}
-              initialCells={selectedAssignment.cells}
+              initialCells={selectedCells}
               catalogProducts={catalogProducts}
               loadError={selectedAssignment.loadError}
               currency={
                 selectedAssignment.machine.currency || session.client.currency
               }
-              containerCount={getMachineContainerCount(
-                selectedAssignment.machine.machine_type,
-              )}
+              containerCount={selectedContainerCount}
+              onCellsSaved={(cells) =>
+                replaceMachineCells(selectedAssignment.machine.id, cells)
+              }
             />
           </>
         ) : (
@@ -162,6 +185,8 @@ export function ProductLinesPage({
 }
 
 export { CupPreview } from "./CupPreview";
+export { ContainersPreview } from "./ContainersPreview";
+export type { ContainersPreviewProps } from "./ContainersPreview";
 export { DeleteProductDialog } from "./DeleteProductDialog";
 export { DeleteProductLineDialog } from "./DeleteProductLineDialog";
 export { NewProductPage } from "./new-product";
@@ -170,6 +195,8 @@ export { NewProductLinePage } from "./NewProductLinePage";
 export type { NewProductLinePageProps } from "./NewProductLinePage";
 export { ProductLineCard } from "./ProductLineCard";
 export { ProductCard } from "./ProductCard";
+export { PowderContainer } from "./PowderContainer";
+export type { PowderContainerProps } from "./PowderContainer";
 export { OrphanProductCard } from "./OrphanProductCard";
 export { ProductLineForm } from "./ProductLineForm";
 export { SearchableImageSelect } from "./SearchableImageSelect";

@@ -10,7 +10,10 @@ import {
   getMachineCells,
   updateMachineCell,
 } from "../../../../../services/server/machineCells";
-import { getMachineContainerCount } from "../../../../../lib/portal/containerSlots";
+import {
+  getMachineContainerCount,
+  isValidContainerSlot,
+} from "../../../../../lib/portal/containerSlots";
 import {
   getProductAssignmentProblems,
 } from "../../../../../lib/portal/productAssignment";
@@ -21,6 +24,7 @@ type Assignment = {
   productId: number | null;
   isActive: boolean;
   cellCategory: "powder" | "concentrate";
+  amountKg: number;
 };
 
 const asId = (value: string | string[] | undefined) => {
@@ -43,7 +47,8 @@ const parseAssignments = (value: unknown): Assignment[] | null => {
     const productId = rawProductId === null ? null : Number(rawProductId);
     const isActive = (row as { isActive?: unknown }).isActive;
     const cellCategory = (row as { cellCategory?: unknown }).cellCategory;
-    return { cellId, position, productId, isActive, cellCategory };
+    const amountKg = Number((row as { amountKg?: unknown }).amountKg ?? 0);
+    return { cellId, position, productId, isActive, cellCategory, amountKg };
   });
 
   if (
@@ -56,6 +61,8 @@ const parseAssignments = (value: unknown): Assignment[] | null => {
         (assignment.productId !== null &&
           (!Number.isInteger(assignment.productId) || assignment.productId <= 0)) ||
         typeof assignment.isActive !== "boolean" ||
+        !Number.isFinite(assignment.amountKg) ||
+        assignment.amountKg < 0 ||
         (typeof assignment.cellCategory !== "string" ||
           !["powder", "concentrate"].includes(assignment.cellCategory)),
     )
@@ -100,7 +107,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: "machine_cell_not_found" });
       }
       await deleteMachineCell(cell.id);
-      return res.status(200).json({ deleted: true, cellId: cell.id });
+      return res.status(200).json({
+        deleted: true,
+        cellId: cell.id,
+        cells: await getMachineCells(machineId),
+      });
     }
 
     const containerCount = getMachineContainerCount(machine.machine_type);
@@ -109,6 +120,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         error: "container_count_not_configured",
         message:
           "This machine model has no powder container count configured.",
+      });
+    }
+    const maxAmountKg = containerCount === 8 ? 2 : 1;
+    if (
+      ["POST", "PUT"].includes(req.method || "") &&
+      cells.some((cell) => cell.amount_kg === undefined)
+    ) {
+      return res.status(503).json({
+        error: "powder_amount_storage_unavailable",
+        message:
+          "Powder amount storage is not active yet. Deploy and restart Strapi before saving assignments.",
       });
     }
 
@@ -125,6 +147,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({
           error: "invalid_container_slot",
           message: `Choose a physical container slot from 1 to ${containerCount}.`,
+        });
+      }
+      if (assignment.amountKg > maxAmountKg) {
+        return res.status(400).json({
+          error: "invalid_powder_amount",
+          message: `Powder amount must be between 0 and ${maxAmountKg} kg.`,
         });
       }
       if (cells.length >= containerCount) {
@@ -188,12 +216,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     if (
       assignments.some(
-        (assignment) => assignment.position > containerCount,
+        (assignment) =>
+          assignment.position > containerCount ||
+          assignment.amountKg > maxAmountKg,
       )
     ) {
       return res.status(400).json({
-        error: "invalid_container_slot",
-        message: `Every container must use a physical slot from 1 to ${containerCount}.`,
+        error: "invalid_container_assignment",
+        message: `Every container must use slots 1 through ${containerCount} and an amount from 0 to ${maxAmountKg} kg.`,
       });
     }
 
@@ -204,6 +234,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({
         error: "invalid_machine_cells",
         message: "Each saved container must have a unique cell ID.",
+      });
+    }
+
+    const positionCounts = new Map<number, number>();
+    cells.forEach((cell) =>
+      positionCounts.set(
+        cell.position,
+        (positionCounts.get(cell.position) || 0) + 1,
+      ),
+    );
+    const omittedCells = cells.filter(
+      (cell) => !persistedIds.includes(Number(cell.id)),
+    );
+    const staleOmittedCell = omittedCells.find(
+      (cell) =>
+        isValidContainerSlot(cell.position, containerCount) &&
+        (positionCounts.get(cell.position) || 0) === 1,
+    );
+    if (staleOmittedCell) {
+      return res.status(409).json({
+        error: "stale_machine_cells",
+        message:
+          "Container assignments changed after this page loaded. Reload and try again.",
       });
     }
 
@@ -250,6 +303,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    // Remove hidden legacy duplicates/out-of-range rows before updating the
+    // selected physical slots, so the model-level uniqueness guard can pass.
+    await Promise.all(omittedCells.map((cell) => deleteMachineCell(cell.id)));
+
     await Promise.all(
       assignments.map((assignment) => {
         if (assignment.cellId !== null) {
@@ -262,6 +319,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             assignment.isActive,
             null,
             assignment.cellCategory,
+            assignment.amountKg,
           );
         }
         if (assignment.productId === null) return Promise.resolve();
