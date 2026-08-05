@@ -345,15 +345,12 @@ export function ProductComponentsTable({
                 <ComponentNameSelect
                   components={components}
                   value={row.name}
-                  onNameChange={(name) =>
+                  onCreateCustom={(name) =>
                     updateRow(row.id, {
                       componentId: "",
-                      isCustom: false,
+                      isCustom: true,
                       name,
                     })
-                  }
-                  onCreateCustom={() =>
-                    updateRow(row.id, { componentId: "", isCustom: true })
                   }
                   onSelect={(component) =>
                     updateRow(row.id, {

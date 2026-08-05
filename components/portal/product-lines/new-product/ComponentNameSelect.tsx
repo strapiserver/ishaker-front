@@ -14,8 +14,7 @@ import type { PortalComponent } from "../../../../types/portal";
 
 type ComponentNameSelectProps = {
   components: PortalComponent[];
-  onCreateCustom: () => void;
-  onNameChange: (name: string) => void;
+  onCreateCustom: (name: string) => void;
   onSelect: (component: PortalComponent) => void;
   value: string;
 };
@@ -23,7 +22,6 @@ type ComponentNameSelectProps = {
 export function ComponentNameSelect({
   components,
   onCreateCustom,
-  onNameChange,
   onSelect,
   value,
 }: ComponentNameSelectProps) {
@@ -68,8 +66,7 @@ export function ComponentNameSelect({
 
   const createCustom = () => {
     if (!customNameIsValid) return;
-    onNameChange(customName.trim());
-    onCreateCustom();
+    onCreateCustom(customName.trim());
     closeAndBlur();
   };
 
