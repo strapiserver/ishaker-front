@@ -592,7 +592,7 @@ export function MachineCellsSection({
 
   return (
     <Box
-      bg="bg.900"
+      bg="bg.1000"
       border="1px solid"
       borderColor="whiteAlpha.100"
       borderRadius="2xl"

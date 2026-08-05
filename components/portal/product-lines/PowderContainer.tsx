@@ -132,6 +132,8 @@ export function PowderContainer({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onKeyDown={handleKeyDown}
+        bg={isDisabled ? "bg.900" : "bg.700"}
+        opacity={isDisabled ? 0.5 : 1}
         _active={{ cursor: isDisabled ? "not-allowed" : "grabbing" }}
         _focusVisible={{ outline: "2px solid", outlineColor: "blue.300" }}
       >
@@ -178,7 +180,7 @@ export function PowderContainer({
           bgRepeat="no-repeat"
           bgSize="100% 100%"
           opacity="1"
-          filter={isEmpty ? "grayscale(1) brightness(0.55)" : "none"}
+          filter={"grayscale(1) brightness(0.55)"}
           transition="filter 150ms ease"
           pointerEvents="none"
           userSelect="none"

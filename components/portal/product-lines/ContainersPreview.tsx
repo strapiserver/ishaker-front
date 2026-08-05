@@ -33,10 +33,7 @@ export function ContainersPreview({
       Array.from({ length: containerCount }, (_, index) => {
         const amountKg = Math.min(
           maxWeightKg,
-          Math.max(
-            0,
-            Number(cellsByPosition.get(index + 1)?.amount_kg) || 0,
-          ),
+          Math.max(0, Number(cellsByPosition.get(index + 1)?.amount_kg) || 0),
         );
         return (amountKg / maxWeightKg) * MAX_POWDER_HEIGHT;
       }),

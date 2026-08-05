@@ -3,6 +3,7 @@ export type Machine = {
   type?: "small" | "big";
   status?: "new" | "ready" | "shipped" | "working" | "error" | "offline";
   title?: string;
+  nickname?: string | null;
   hostname?: string;
   description?: string;
   context?: string;
@@ -16,6 +17,42 @@ export type Machine = {
   ssd_version?: string;
   bootstrap_version?: string;
   last_seen_at?: string;
+  health?: {
+    at?: string | null;
+    app?: {
+      uptime_s?: number | null;
+      frames_ok?: boolean | null;
+    } | null;
+    terminal?: {
+      card?: boolean | null;
+      at?: string | null;
+    } | null;
+    water?: {
+      current?: number | null;
+      max?: number | null;
+      low?: boolean | null;
+      counter_reset_at?: string | null;
+    } | null;
+    cups?: {
+      current?: number | null;
+      low?: boolean | null;
+      tracked?: boolean | null;
+      counter_reset_at?: string | null;
+    } | null;
+    containers?: Array<{
+      position?: number | null;
+      current?: number | null;
+      max?: number | null;
+      servings_left?: number | null;
+      runs_out?: boolean | null;
+      product?: string | null;
+      counter_reset_at?: string | null;
+    }> | null;
+    errors?: Array<{
+      code?: number | null;
+      at?: string | null;
+    }> | null;
+  } | null;
   fleet_status?: {
     media_keys?: {
       checked?: number;

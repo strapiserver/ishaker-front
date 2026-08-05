@@ -13,11 +13,14 @@ import {
 } from "@chakra-ui/react";
 import Link from "next/link";
 import type { GetServerSideProps } from "next";
+import { useEffect, useMemo, useState } from "react";
 import { PortalShell } from "../../components/portal/PortalShell";
+import { MachineHealthStrip } from "../../components/portal/machines/MachineHealthStrip";
 import { requirePortalSession } from "../../lib/portal/auth";
 import { getSmallestMediaUrl } from "../../lib/portal/media";
 import type { PortalMachineSummary, PortalSession } from "../../types/portal";
 import type { Machine } from "../../types/strapi";
+import type { MachineHealthRow } from "../../types/machineHealth";
 import { FaArrowRight, FaPlus, FaWrench } from "react-icons/fa";
 
 type MachinesPageProps = {
@@ -52,6 +55,40 @@ const deriveStatusLabel = (machine: Machine) => {
 };
 
 export default function MachinesPage({ session, machines }: MachinesPageProps) {
+  const [healthRows, setHealthRows] = useState<MachineHealthRow[]>([]);
+  const [isHealthLoading, setIsHealthLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHealth = async () => {
+      try {
+        const response = await fetch("/api/portal/machines/health", {
+          cache: "no-store",
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) throw new Error("Machine health could not be loaded.");
+        if (!cancelled) {
+          setHealthRows(Array.isArray(payload?.machines) ? payload.machines : []);
+        }
+      } catch (error) {
+        console.error("[machines] health loading failed:", error);
+      } finally {
+        if (!cancelled) setIsHealthLoading(false);
+      }
+    };
+
+    void loadHealth();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const healthByMachineId = useMemo(
+    () => new Map(healthRows.map((row) => [String(row.id), row])),
+    [healthRows],
+  );
+
   return (
     <PortalShell
       title="Machines"
@@ -148,11 +185,9 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                       </Text>
                       <Badge
                         flexShrink={0}
-                        colorScheme={
-                          machine.status === "working" ? "green" : "gray"
-                        }
+                        colorScheme="gray"
                       >
-                        {machine.statusLabel}
+                        Record: {machine.statusLabel}
                       </Badge>
                     </HStack>
 
@@ -184,6 +219,11 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                     ) : null}
                   </VStack>
                 </HStack>
+
+                <MachineHealthStrip
+                  health={healthByMachineId.get(String(machine.id))}
+                  isLoading={isHealthLoading}
+                />
 
                 <HStack
                   spacing="2"
