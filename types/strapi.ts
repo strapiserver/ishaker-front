@@ -1,3 +1,23 @@
+export type MachineReadinessVerdict = "SHIP" | "REVIEW" | "DO_NOT_SHIP";
+
+export type MachineReadiness = {
+  at?: string | null;
+  verdict: MachineReadinessVerdict;
+  counts?: {
+    ok?: number;
+    warn?: number;
+    fail?: number;
+  } | null;
+  failed?: string[] | null;
+  warned?: string[] | null;
+  detail?: Record<string, string> | null;
+};
+
+export type Patch = {
+  id: string | number;
+  slug?: string | null;
+};
+
 export type Machine = {
   id: string | number;
   type?: "small" | "big";
@@ -54,12 +74,15 @@ export type Machine = {
     }> | null;
   } | null;
   fleet_status?: {
+    patch_id?: string | number | null;
     media_keys?: {
       checked?: number;
       missing?: string[];
     } | null;
     [key: string]: unknown;
   } | null;
+  patch?: Patch | null;
+  readiness?: MachineReadiness | null;
   country?: string;
   state_region?: string;
   city?: string;

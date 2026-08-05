@@ -1,4 +1,4 @@
-import { Box, Tooltip } from "@chakra-ui/react";
+import { Box, Image, Text, Tooltip } from "@chakra-ui/react";
 import type { KeyboardEvent, PointerEvent } from "react";
 
 export type PowderContainerProps = {
@@ -7,7 +7,9 @@ export type PowderContainerProps = {
   maxWeightKg: number;
   onHeightChange: (height: number) => void;
   onHeightChangeEnd?: (height: number) => void;
+  containerNumber: number;
   productName?: string;
+  productImageUrl?: string;
   isDisabled?: boolean;
 };
 
@@ -25,7 +27,9 @@ export function PowderContainer({
   maxWeightKg,
   onHeightChange,
   onHeightChangeEnd,
+  containerNumber,
   productName,
+  productImageUrl,
   isDisabled = false,
 }: PowderContainerProps) {
   const powderHeight = Math.min(
@@ -185,6 +189,41 @@ export function PowderContainer({
           pointerEvents="none"
           userSelect="none"
         />
+
+        <Text
+          aria-hidden="true"
+          position="absolute"
+          top="5%"
+          left="50%"
+          zIndex="2"
+          transform="translateX(-50%)"
+          color="white"
+          fontSize="clamp(10px, 1.2vw, 15px)"
+          fontWeight="800"
+          lineHeight="1"
+          textShadow="0 1px 4px rgba(0, 0, 0, 0.9)"
+          pointerEvents="none"
+          userSelect="none"
+        >
+          {containerNumber}
+        </Text>
+
+        {productImageUrl ? (
+          <Image
+            src={productImageUrl}
+            alt=""
+            aria-hidden="true"
+            position="absolute"
+            top="13%"
+            left="16%"
+            zIndex="2"
+            w="68%"
+            h="31%"
+            objectFit="contain"
+            pointerEvents="none"
+            userSelect="none"
+          />
+        ) : null}
       </Box>
     </Tooltip>
   );

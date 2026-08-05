@@ -74,6 +74,16 @@ export const AdminClientsQuery = `
                 anydesk_id
                 serial_number
                 tailscale_ip
+                readiness
+                fleet_status
+                patch {
+                  data {
+                    id
+                    attributes {
+                      slug
+                    }
+                  }
+                }
                 machine_type {
                   data {
                     id
@@ -82,6 +92,44 @@ export const AdminClientsQuery = `
                     }
                   }
                 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+export const AdminMachinesQuery = `
+  query AdminMachines {
+    machines(
+      pagination: { pageSize: 2000 }
+      sort: ["id:ASC"]
+    ) {
+      data {
+        id
+        attributes {
+          title
+          nickname
+          anydesk_id
+          serial_number
+          readiness
+          fleet_status
+          patch {
+            data {
+              id
+              attributes {
+                slug
+              }
+            }
+          }
+          client {
+            data {
+              id
+              attributes {
+                company
+                status
               }
             }
           }

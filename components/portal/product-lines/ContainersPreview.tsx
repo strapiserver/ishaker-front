@@ -1,5 +1,6 @@
 import { Box, Flex, Text } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
+import { getSmallestMediaUrl } from "../../../lib/portal/media";
 import type { PortalMachineCell } from "../../../types/portal";
 import { MAX_POWDER_HEIGHT, PowderContainer } from "./PowderContainer";
 
@@ -66,7 +67,11 @@ export function ContainersPreview({
                 color={productColor(cell)}
                 height={powderHeights[index] ?? 0}
                 maxWeightKg={maxWeightKg}
+                containerNumber={position}
                 productName={cell?.product?.name}
+                productImageUrl={getSmallestMediaUrl(
+                  cell?.product?.custom_main || cell?.product?.taste?.main,
+                )}
                 isDisabled={!hasProduct}
                 onHeightChange={(height) => setPowderHeight(index, height)}
                 onHeightChangeEnd={(height) =>

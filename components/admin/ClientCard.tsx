@@ -7,9 +7,10 @@ import { getClientContacts, getClientLocation } from "./utils";
 
 type ClientCardProps = {
   client: Client;
+  readinessNow: number;
 };
 
-export function ClientCard({ client }: ClientCardProps) {
+export function ClientCard({ client, readinessNow }: ClientCardProps) {
   const contacts = getClientContacts(client);
   const location = getClientLocation(client);
 
@@ -50,7 +51,11 @@ export function ClientCard({ client }: ClientCardProps) {
         {client.machines?.length ? (
           <Grid templateColumns={{ base: "1fr", xl: "repeat(2, minmax(0, 1fr))" }} gap={4}>
             {client.machines.map((machine) => (
-              <MachineCard key={machine.id} machine={machine} />
+              <MachineCard
+                key={machine.id}
+                machine={machine}
+                readinessNow={readinessNow}
+              />
             ))}
           </Grid>
         ) : (

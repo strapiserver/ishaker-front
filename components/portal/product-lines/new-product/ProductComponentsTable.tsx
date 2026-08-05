@@ -288,7 +288,8 @@ export function ProductComponentsTable({
         spacing="4"
         align="stretch"
         bgColor="bg.1000"
-        p="4"
+        px={{ base: "1", sm: "2", md: "4" }}
+        py={{ base: "3", md: "4" }}
         borderRadius="md"
       >
         {rows.map((row, index) => {
@@ -296,18 +297,19 @@ export function ProductComponentsTable({
             <Grid
               key={row.id}
               templateColumns={{
-                base: "40px minmax(0, 1fr) 80px",
+                base: "40px minmax(0, 1fr) 96px 40px",
                 md: "40px minmax(0, 1fr) 96px 92px 40px",
               }}
               templateRows={{ base: "40px 40px", md: "40px" }}
-              columnGap="3"
+              columnGap={{ base: "2", md: "3" }}
               rowGap="2"
               alignItems="center"
               bg="whiteAlpha.50"
               border="1px solid"
               borderColor="whiteAlpha.100"
               borderRadius="lg"
-              p="2"
+              px={{ base: "1", md: "2" }}
+              py="2"
               onDragOver={(event) => handleDragOver(event, index)}
             >
               <IconButton
@@ -335,7 +337,11 @@ export function ProductComponentsTable({
                   }
                 }}
               />
-              <Box minW="0" gridColumn="2" gridRow="1">
+              <Box
+                minW="0"
+                gridColumn={{ base: "2 / 4", md: "2" }}
+                gridRow="1"
+              >
                 <ComponentNameSelect
                   components={components}
                   value={row.name}
@@ -386,7 +392,7 @@ export function ProductComponentsTable({
                 onChange={(event) =>
                   updateRow(row.id, { unit: event.target.value })
                 }
-                gridColumn={{ base: "3", md: "4" }}
+                gridColumn={{ base: "3 / 5", md: "4" }}
                 gridRow={{ base: "2", md: "1" }}
                 w="full"
                 h="40px"
@@ -405,7 +411,7 @@ export function ProductComponentsTable({
                 variant="ghost"
                 maxW="40px "
                 ml="auto"
-                gridColumn={{ base: "3", md: "5" }}
+                gridColumn={{ base: "4", md: "5" }}
                 gridRow="1"
                 onClick={() =>
                   onChange(rows.filter((item) => item.id !== row.id))

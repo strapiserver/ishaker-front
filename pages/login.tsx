@@ -54,9 +54,22 @@ export default function LoginPage() {
   return (
     <>
       <NextSeo title="Client Login" noindex nofollow />
-      <Flex minH="100vh" bg="bg.1000" color="bg.100" align="center" justify="center" px="5">
+      <Flex
+        minH="100vh"
+        bg="bg.1000"
+        color="bg.100"
+        align="center"
+        justify="center"
+        px="5"
+      >
         <Box w="100%" maxW="460px">
-          <Text color="acid.300" fontSize="sm" fontWeight="700" textTransform="uppercase" mb="3">
+          <Text
+            color="acid.300"
+            fontSize="sm"
+            fontWeight="700"
+            textTransform="uppercase"
+            mb="3"
+          >
             iShaker Client Portal
           </Text>
           <Heading color="bg.50" fontSize={{ base: "36px", md: "44px" }} mb="3">
@@ -112,11 +125,17 @@ export default function LoginPage() {
               </Text>
             ) : null}
 
-            <Button mt="6" type="submit" variant="primary" w="full" isLoading={isLoading}>
+            <Button
+              mt="6"
+              type="submit"
+              variant="primary"
+              w="full"
+              isLoading={isLoading}
+            >
               Continue
             </Button>
 
-            <Button
+            {/* <Button
               as={Link}
               href="/api/portal/google/start"
               mt="3"
@@ -124,7 +143,7 @@ export default function LoginPage() {
               variant="contrast"
             >
               Continue with Google
-            </Button>
+            </Button> */}
           </Box>
         </Box>
       </Flex>

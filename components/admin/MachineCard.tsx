@@ -1,15 +1,20 @@
-import { Box, Flex, HStack, SimpleGrid, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, HStack, SimpleGrid, Text } from "@chakra-ui/react";
+import Link from "next/link";
+import { getMachinePatchVersion } from "../../lib/admin/machinePatch";
 import type { Machine } from "../../types/strapi";
 import { MachineField } from "./MachineField";
 import { MachineTypeIcon } from "./MachineTypeIcon";
 import { displayValue } from "./utils";
+import { ReadinessBadge } from "./ReadinessBadge";
 
 type MachineCardProps = {
   machine: Machine;
+  readinessNow: number;
 };
 
-export function MachineCard({ machine }: MachineCardProps) {
+export function MachineCard({ machine, readinessNow }: MachineCardProps) {
   const machineType = machine.machine_type?.name || machine.type;
+  const patchVersion = getMachinePatchVersion(machine);
 
   return (
     <Box border="1px solid" borderColor="whiteAlpha.100" borderRadius="8px" p={4} bg="bg.800">
@@ -46,8 +51,28 @@ export function MachineCard({ machine }: MachineCardProps) {
         />
         <MachineField label="Serial" value={machine.serial_number} />
         <MachineField label="Tailscale IP" value={machine.tailscale_ip} />
+        <MachineField label="Patch version" value={patchVersion} />
         <MachineField label="Machine type" value={machineType} icon={<MachineTypeIcon type={machineType} />} />
       </SimpleGrid>
+
+      <Box
+        mt="4"
+        pt="4"
+        borderTop="1px solid"
+        borderColor="whiteAlpha.100"
+      >
+        <ReadinessBadge readiness={machine.readiness} now={readinessNow} />
+        <Button
+          as={Link}
+          href={`/admin/machines/${machine.id}`}
+          size="sm"
+          variant="outline"
+          borderColor="whiteAlpha.200"
+          mt="3"
+        >
+          Open readiness details
+        </Button>
+      </Box>
     </Box>
   );
 }

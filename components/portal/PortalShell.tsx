@@ -67,13 +67,18 @@ export function PortalShell({
       <NextSeo title={title} noindex nofollow />
       <VStack
         align="center"
+        w="full"
         minH="100vh"
         bgGradient="linear(to-br, #101315 0%, #0b0e0f 52%, #121719 100%)"
         color="bg.100"
       >
-        <Box minH="100vh" overflow="hidden" w="80%">
+        <Box minH="100vh" overflow="hidden" w="full">
           <Box borderBottom="1px solid" borderColor="rgba(255,255,255,0.09)">
-            <Container maxW="none" px={{ base: "4", md: "8", xl: "12" }}>
+            <Container
+              maxW="none"
+              w="full"
+              px={{ base: "2", sm: "4", md: "8", xl: "12" }}
+            >
               <Flex
                 minH={{ base: "auto", md: "73px" }}
                 align="center"
@@ -221,7 +226,7 @@ export function PortalShell({
           <Container
             maxW="none"
             w="full"
-            px={{ base: "4", md: "8", xl: "12" }}
+            px={{ base: "2", sm: "4", md: "8", xl: "12" }}
             py={{ base: "7", md: "7" }}
             display="flex"
             flexDirection="column"

@@ -67,9 +67,12 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
           cache: "no-store",
         });
         const payload = await response.json().catch(() => null);
-        if (!response.ok) throw new Error("Machine health could not be loaded.");
+        if (!response.ok)
+          throw new Error("Machine health could not be loaded.");
         if (!cancelled) {
-          setHealthRows(Array.isArray(payload?.machines) ? payload.machines : []);
+          setHealthRows(
+            Array.isArray(payload?.machines) ? payload.machines : [],
+          );
         }
       } catch (error) {
         console.error("[machines] health loading failed:", error);
@@ -98,11 +101,7 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
       <HStack spacing="3" mb="6" flexWrap="wrap">
         <Button
           as={Link}
-          href={
-            machines[0]
-              ? `/product-lines/new?machineId=${machines[0].id}`
-              : "/product-lines/new"
-          }
+          href={"/product-lines"}
           variant="primary"
           fontSize={{ base: "md", md: "lg" }}
           leftIcon={<Icon as={FaPlus} boxSize={{ base: "4", md: "5" }} />}
@@ -183,10 +182,7 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                       >
                         {machine.title || `Machine #${machine.id}`}
                       </Text>
-                      <Badge
-                        flexShrink={0}
-                        colorScheme="gray"
-                      >
+                      <Badge flexShrink={0} colorScheme="gray">
                         Record: {machine.statusLabel}
                       </Badge>
                     </HStack>

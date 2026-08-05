@@ -1,30 +1,333 @@
-import { Box, SimpleGrid, Text, VStack } from "@chakra-ui/react";
+import {
+  Badge,
+  Box,
+  Button,
+  FormControl,
+  FormLabel,
+  HStack,
+  Input,
+  Link as ChakraLink,
+  Select,
+  SimpleGrid,
+  Table,
+  TableContainer,
+  Tbody,
+  Td,
+  Text,
+  Th,
+  Thead,
+  Tooltip,
+  Tr,
+  VStack,
+} from "@chakra-ui/react";
 import { NextSeo } from "next-seo";
-import type { Client } from "../../types/strapi";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { getMachinePatchVersion } from "../../lib/admin/machinePatch";
+import { isReadinessVerdict } from "../../lib/admin/readiness";
+import type {
+  Client,
+  Machine,
+  MachineReadinessVerdict,
+} from "../../types/strapi";
 import { AdminHeader } from "./AdminHeader";
-import { ClientCard } from "./ClientCard";
 import { Metric } from "./Metric";
+import { ReadinessBadge } from "./ReadinessBadge";
 
 export type AdminDashboardProps = {
   clients: Client[];
+  machines: Machine[];
   loadError?: string;
+  readinessReferenceTime: number;
 };
 
-export function AdminDashboard({ clients, loadError }: AdminDashboardProps) {
-  const machineCount = clients.reduce((sum, client) => sum + (client.machines?.length || 0), 0);
+const summaryMeta: Array<{
+  verdict: MachineReadinessVerdict;
+  label: string;
+  color: string;
+}> = [
+  { verdict: "SHIP", label: "Ready to ship", color: "green" },
+  { verdict: "REVIEW", label: "Review", color: "yellow" },
+  { verdict: "DO_NOT_SHIP", label: "Do not ship", color: "red" },
+];
+
+type FailureOccurrence = {
+  machineId: string | number;
+  machineName: string;
+  clientName: string;
+  detail: string;
+};
+
+const machineName = (machine: Machine) =>
+  machine.title || machine.nickname || `Machine #${machine.id}`;
+
+const groupFailureOccurrences = (occurrences: FailureOccurrence[]) => {
+  const groups = new Map<string, FailureOccurrence[]>();
+  occurrences.forEach((occurrence) => {
+    groups.set(occurrence.detail, [
+      ...(groups.get(occurrence.detail) || []),
+      occurrence,
+    ]);
+  });
+  return Array.from(groups.entries());
+};
+
+export function AdminDashboard({
+  clients,
+  machines,
+  loadError,
+  readinessReferenceTime,
+}: AdminDashboardProps) {
+  const [search, setSearch] = useState("");
+  const [verdictFilter, setVerdictFilter] = useState("");
+  const [failedCheckFilter, setFailedCheckFilter] = useState("");
+  const [readinessNow, setReadinessNow] = useState(readinessReferenceTime);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setReadinessNow(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const readinessSummary = useMemo(() => {
+    const verdictCounts: Record<MachineReadinessVerdict, number> = {
+      SHIP: 0,
+      REVIEW: 0,
+      DO_NOT_SHIP: 0,
+    };
+    const failureOccurrences = new Map<string, FailureOccurrence[]>();
+
+    machines.forEach((machine) => {
+      if (isReadinessVerdict(machine.readiness?.verdict)) {
+        verdictCounts[machine.readiness.verdict] += 1;
+      }
+      const failures = Array.isArray(machine.readiness?.failed)
+        ? machine.readiness.failed
+        : [];
+      new Set(failures).forEach((checkId) => {
+        const occurrences = failureOccurrences.get(checkId) || [];
+        occurrences.push({
+          machineId: machine.id,
+          machineName: machineName(machine),
+          clientName: machine.client?.company || "Unassigned",
+          detail:
+            machine.readiness?.detail?.[checkId] ||
+            "No remediation detail was included in this report.",
+        });
+        failureOccurrences.set(checkId, occurrences);
+      });
+    });
+
+    return {
+      verdictCounts,
+      unchecked: machines.filter(
+        (machine) => !isReadinessVerdict(machine.readiness?.verdict),
+      ).length,
+      frequentFailures: Array.from(failureOccurrences.entries()).sort(
+        ([leftId, leftOccurrences], [rightId, rightOccurrences]) =>
+          rightOccurrences.length - leftOccurrences.length ||
+          leftId.localeCompare(rightId),
+      ),
+    };
+  }, [machines]);
+
+  const filteredMachines = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    return machines.filter((machine) => {
+      if (
+        verdictFilter &&
+        machine.readiness?.verdict !== verdictFilter
+      ) {
+        return false;
+      }
+      if (
+        failedCheckFilter &&
+        !machine.readiness?.failed?.includes(failedCheckFilter)
+      ) {
+        return false;
+      }
+      if (!normalizedSearch) return true;
+
+      return [
+        machine.id,
+        machine.title,
+        machine.nickname,
+        machine.serial_number,
+        machine.anydesk_id,
+        machine.client?.company,
+        getMachinePatchVersion(machine),
+      ].some((value) =>
+        String(value || "")
+          .toLowerCase()
+          .includes(normalizedSearch),
+      );
+    });
+  }, [failedCheckFilter, machines, search, verdictFilter]);
 
   return (
     <>
-      <NextSeo title="Admin Dashboard" noindex nofollow />
+      <NextSeo title="Admin Fleet" noindex nofollow />
       <Box minH="100vh" bg="bg.1000" color="bg.100">
-        <AdminHeader />
+        <AdminHeader title="Machine fleet" />
 
-        <Box maxW="1280px" mx="auto" px={{ base: 4, md: 8 }} py={{ base: 6, md: 8 }}>
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} mb={6}>
+        <Box
+          maxW="1600px"
+          mx="auto"
+          px={{ base: 3, md: 6 }}
+          py={{ base: 5, md: 6 }}
+        >
+          <SimpleGrid columns={{ base: 1, sm: 3 }} spacing="3" mb="4">
             <Metric label="Clients" value={clients.length} />
-            <Metric label="Machines" value={machineCount} />
-            <Metric label="Visible status" value="client" />
+            <Metric label="All machines" value={machines.length} />
+            <Metric label="Not checked" value={readinessSummary.unchecked} />
           </SimpleGrid>
+
+          <Box
+            bg="bg.900"
+            border="1px solid"
+            borderColor="whiteAlpha.100"
+            borderRadius="8px"
+            p={{ base: 3, md: 4 }}
+            mb="4"
+          >
+            <SimpleGrid columns={{ base: 1, sm: 3 }} spacing="3" mb="4">
+              {summaryMeta.map(({ verdict, label, color }) => (
+                <HStack
+                  key={verdict}
+                  bg="whiteAlpha.50"
+                  borderLeft="3px solid"
+                  borderColor={`${color}.400`}
+                  borderRadius="6px"
+                  px="3"
+                  py="2"
+                >
+                  <Text color={`${color}.200`} fontSize="xl" fontWeight="900">
+                    {readinessSummary.verdictCounts[verdict]}
+                  </Text>
+                  <Text color="bg.300" fontSize="sm" fontWeight="700">
+                    {label}
+                  </Text>
+                </HStack>
+              ))}
+            </SimpleGrid>
+
+            <Box mb="4">
+              <Text color="bg.300" fontSize="xs" fontWeight="800" mb="2">
+                MOST FREQUENT FAILED CHECKS
+              </Text>
+              {readinessSummary.frequentFailures.length ? (
+                <HStack spacing="2" flexWrap="wrap">
+                  {readinessSummary.frequentFailures.slice(0, 5).map(
+                    ([checkId, occurrences]) => (
+                      <Tooltip
+                        key={checkId}
+                        hasArrow
+                        placement="top"
+                        maxW="560px"
+                        p="4"
+                        openDelay={100}
+                        label={
+                          <Box>
+                            <Text
+                              color="red.200"
+                              fontFamily="mono"
+                              fontWeight="900"
+                              mb="2"
+                            >
+                              {checkId}
+                            </Text>
+                            <VStack align="stretch" spacing="3">
+                              {groupFailureOccurrences(occurrences).map(
+                                ([detail, affectedMachines]) => (
+                                  <Box key={detail}>
+                                    <Text fontWeight="900">
+                                      {affectedMachines
+                                        .map(
+                                          (occurrence) =>
+                                            `${occurrence.machineName} · ${occurrence.clientName}`,
+                                        )
+                                        .join(", ")}
+                                    </Text>
+                                    <Text whiteSpace="pre-wrap">{detail}</Text>
+                                  </Box>
+                                ),
+                              )}
+                            </VStack>
+                          </Box>
+                        }
+                      >
+                        <Badge
+                          colorScheme="red"
+                          textTransform="none"
+                          fontFamily="mono"
+                          px="2"
+                          py="1"
+                          cursor="help"
+                        >
+                          {checkId} · {occurrences.length}{" "}
+                          {occurrences.length === 1 ? "machine" : "machines"}
+                        </Badge>
+                      </Tooltip>
+                    ),
+                  )}
+                </HStack>
+              ) : (
+                <Text color="bg.500" fontSize="sm">
+                  No failed checks have been reported.
+                </Text>
+              )}
+            </Box>
+
+            <SimpleGrid columns={{ base: 1, md: 3 }} spacing="3">
+              <FormControl>
+                <FormLabel color="bg.400" fontSize="xs" mb="1">
+                  Search machines
+                </FormLabel>
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Name, ID, serial, client, patch…"
+                  bg="bg.800"
+                  size="sm"
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel color="bg.400" fontSize="xs" mb="1">
+                  Verdict
+                </FormLabel>
+                <Select
+                  value={verdictFilter}
+                  onChange={(event) => setVerdictFilter(event.target.value)}
+                  bg="bg.800"
+                  size="sm"
+                >
+                  <option value="">All verdicts</option>
+                  <option value="SHIP">Ready to ship</option>
+                  <option value="REVIEW">Review</option>
+                  <option value="DO_NOT_SHIP">Do not ship</option>
+                </Select>
+              </FormControl>
+              <FormControl>
+                <FormLabel color="bg.400" fontSize="xs" mb="1">
+                  Failed check
+                </FormLabel>
+                <Select
+                  value={failedCheckFilter}
+                  onChange={(event) => setFailedCheckFilter(event.target.value)}
+                  bg="bg.800"
+                  size="sm"
+                >
+                  <option value="">All failed checks</option>
+                  {readinessSummary.frequentFailures.map(
+                    ([checkId, occurrences]) => (
+                      <option key={checkId} value={checkId}>
+                        {checkId} ({occurrences.length})
+                      </option>
+                    ),
+                  )}
+                </Select>
+              </FormControl>
+            </SimpleGrid>
+          </Box>
 
           {loadError ? (
             <Box
@@ -32,8 +335,8 @@ export function AdminDashboard({ clients, loadError }: AdminDashboardProps) {
               border="1px solid"
               borderColor="orange.700"
               borderRadius="8px"
-              p={4}
-              mb={5}
+              p="4"
+              mb="4"
             >
               <Text color="orange.200" fontWeight="800">
                 Data loading failed
@@ -42,11 +345,116 @@ export function AdminDashboard({ clients, loadError }: AdminDashboardProps) {
             </Box>
           ) : null}
 
-          <VStack spacing={5} align="stretch">
-            {clients.map((client) => (
-              <ClientCard key={client.id} client={client} />
-            ))}
-          </VStack>
+          <Box
+            bg="bg.900"
+            border="1px solid"
+            borderColor="whiteAlpha.100"
+            borderRadius="8px"
+            overflow="hidden"
+          >
+            <HStack
+              justify="space-between"
+              px="4"
+              py="3"
+              borderBottom="1px solid"
+              borderColor="whiteAlpha.100"
+            >
+              <Text color="bg.50" fontWeight="900">
+                Machines
+              </Text>
+              <Text color="bg.400" fontSize="sm">
+                Showing {filteredMachines.length} of {machines.length}
+              </Text>
+            </HStack>
+
+            <TableContainer>
+              <Table size="sm" variant="simple">
+                <Thead bg="whiteAlpha.50">
+                  <Tr>
+                    <Th>Machine</Th>
+                    <Th>Client</Th>
+                    <Th>Serial</Th>
+                    <Th>AnyDesk</Th>
+                    <Th>Patch</Th>
+                    <Th>Readiness</Th>
+                    <Th textAlign="right">Action</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {filteredMachines.map((machine) => {
+                    const patchVersion = getMachinePatchVersion(machine);
+                    return (
+                      <Tr
+                        key={machine.id}
+                        _hover={{ bg: "whiteAlpha.50" }}
+                      >
+                        <Td py="2.5">
+                          <Text color="bg.50" fontWeight="800" noOfLines={1}>
+                            {machineName(machine)}
+                          </Text>
+                          <Text color="bg.500" fontSize="xs">
+                            ID {machine.id}
+                          </Text>
+                        </Td>
+                        <Td color="bg.300" py="2.5">
+                          {machine.client?.company || "Unassigned"}
+                        </Td>
+                        <Td color="bg.200" fontFamily="mono" py="2.5">
+                          {machine.serial_number || "—"}
+                        </Td>
+                        <Td py="2.5">
+                          {machine.anydesk_id ? (
+                            <ChakraLink
+                              href={`anydesk:${machine.anydesk_id}`}
+                              color="acid.300"
+                              fontFamily="mono"
+                              fontWeight="700"
+                            >
+                              {machine.anydesk_id}
+                            </ChakraLink>
+                          ) : (
+                            <Text color="bg.500">—</Text>
+                          )}
+                        </Td>
+                        <Td py="2.5">
+                          {patchVersion ? (
+                            <Badge colorScheme="purple">{patchVersion}</Badge>
+                          ) : (
+                            <Text color="bg.500" fontSize="sm">
+                              Not reported
+                            </Text>
+                          )}
+                        </Td>
+                        <Td py="2.5" minW="240px">
+                          <ReadinessBadge
+                            readiness={machine.readiness}
+                            now={readinessNow}
+                          />
+                        </Td>
+                        <Td py="2.5" textAlign="right">
+                          <Button
+                            as={Link}
+                            href={`/admin/machines/${machine.id}`}
+                            size="xs"
+                            variant="outline"
+                            borderColor="whiteAlpha.200"
+                          >
+                            Details
+                          </Button>
+                        </Td>
+                      </Tr>
+                    );
+                  })}
+                </Tbody>
+              </Table>
+            </TableContainer>
+
+            {!filteredMachines.length ? (
+              <Text color="bg.300" textAlign="center" p="6">
+                No machines match the selected filters.
+              </Text>
+            ) : null}
+          </Box>
         </Box>
       </Box>
     </>

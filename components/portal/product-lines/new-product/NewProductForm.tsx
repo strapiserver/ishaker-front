@@ -128,7 +128,8 @@ export function NewProductForm({
       border="1px solid"
       borderColor="whiteAlpha.100"
       borderRadius="2xl"
-      p={{ base: "5", md: "7" }}
+      px={{ base: "2", sm: "4", md: "7" }}
+      py={{ base: "5", md: "7" }}
     >
       <VStack spacing="5" align="stretch">
         <Box>
