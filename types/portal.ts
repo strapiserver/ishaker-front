@@ -16,6 +16,7 @@ export type RegistrationDraft = {
   contactName?: string;
   email?: string;
   messengerType?: "whatsapp";
+  messengerCountryIso?: string;
   messengerCountryCode?: string;
   messengerValue?: string;
   notes?: string;

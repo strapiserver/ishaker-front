@@ -8,6 +8,7 @@ import {
   Icon,
   Input,
   InputGroup,
+  InputLeftElement,
   InputRightElement,
   Select,
   VStack,
@@ -20,6 +21,11 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FaEye, FaEyeSlash, FaWhatsapp } from "react-icons/fa";
+import {
+  getCountries,
+  getCountryCallingCode,
+  type CountryCode,
+} from "libphonenumber-js";
 import { Header } from "../../components/home/Header";
 import CustomTitle from "../../components/home/CutsomTitle";
 import {
@@ -27,13 +33,33 @@ import {
   mergeRegistrationDraft,
 } from "../../lib/portal/registration";
 
-const WHATSAPP_COUNTRY_CODES = [
-  { value: "+1", label: "US/CA +1" },
-  { value: "+44", label: "UK +44" },
-  { value: "+49", label: "DE +49" },
-  { value: "+61", label: "AU +61" },
-  { value: "+971", label: "UAE +971" },
-];
+const formatWhatsappCountryCode = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+  return digits ? `+${digits}` : "";
+};
+
+const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
+const countryCodes = getCountries();
+const countryCodeSet = new Set<string>(countryCodes);
+
+const countryFlag = (country: CountryCode) =>
+  String.fromCodePoint(
+    ...country
+      .toUpperCase()
+      .split("")
+      .map((character) => 127397 + character.charCodeAt(0)),
+  );
+
+const countryOptions = countryCodes
+  .map((country) => ({
+    country,
+    name: countryNames.of(country) || country,
+    callingCode: `+${getCountryCallingCode(country)}`,
+  }))
+  .sort((left, right) => left.name.localeCompare(right.name));
+
+const countryForCallingCode = (callingCode: string) =>
+  countryOptions.find((option) => option.callingCode === callingCode)?.country;
 
 const formatWhatsappLocalNumber = (value: string) => {
   const digits = value.replace(/\D/g, "").slice(0, 14);
@@ -53,6 +79,8 @@ export default function Step3Page() {
   const muted = useColorModeValue("bg.600", "bg.300");
   const [contactName, setContactName] = useState("");
   const [email, setEmail] = useState("");
+  const [messengerCountry, setMessengerCountry] =
+    useState<CountryCode>("US");
   const [messengerCountryCode, setMessengerCountryCode] = useState("+1");
   const [messengerValue, setMessengerValue] = useState("");
   const [password, setPassword] = useState("");
@@ -76,11 +104,31 @@ export default function Step3Page() {
 
     setContactName(draft.contactName || "");
     setEmail(draft.email || "");
-    setMessengerCountryCode(draft.messengerCountryCode || "+1");
+    const savedCallingCode = draft.messengerCountryCode || "+1";
+    const savedCountry = countryCodeSet.has(draft.messengerCountryIso || "")
+      ? (draft.messengerCountryIso as CountryCode)
+      : countryForCallingCode(savedCallingCode) || "US";
+    setMessengerCountry(savedCountry);
+    setMessengerCountryCode(savedCallingCode);
     setMessengerValue(draft.messengerValue || "");
     setPassword(draft.password || "");
     setPasswordConfirmation(draft.passwordConfirmation || "");
   }, [router]);
+
+  const handleCountryChange = (country: CountryCode) => {
+    setMessengerCountry(country);
+    setMessengerCountryCode(`+${getCountryCallingCode(country)}`);
+  };
+
+  const handleCountryCodeChange = (value: string) => {
+    const callingCode = formatWhatsappCountryCode(value);
+    setMessengerCountryCode(callingCode);
+
+    if (`+${getCountryCallingCode(messengerCountry)}` !== callingCode) {
+      const matchingCountry = countryForCallingCode(callingCode);
+      if (matchingCountry) setMessengerCountry(matchingCountry);
+    }
+  };
 
   const handleNext = () => {
     if (!messengerValue) {
@@ -99,7 +147,7 @@ export default function Step3Page() {
     }
 
     const digits = messengerValue.replace(/\D/g, "");
-    if (!/^\+\d{1,4}$/.test(messengerCountryCode) || digits.length < 6) {
+    if (!/^\+[1-9]\d{0,3}$/.test(messengerCountryCode) || digits.length < 6) {
       setError("Enter a valid WhatsApp number with country code.");
       return;
     }
@@ -109,6 +157,7 @@ export default function Step3Page() {
       contactName,
       email,
       messengerType: "whatsapp",
+      messengerCountryIso: messengerCountry,
       messengerCountryCode,
       messengerValue: formatWhatsappLocalNumber(messengerValue),
       password,
@@ -183,19 +232,53 @@ export default function Step3Page() {
                 </HStack>
 
                 <HStack align="start" spacing="3">
-                  <Select
-                    maxW="160px"
-                    value={messengerCountryCode}
-                    onChange={(event) =>
-                      setMessengerCountryCode(event.target.value)
-                    }
-                  >
-                    {WHATSAPP_COUNTRY_CODES.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
+                  <InputGroup maxW="200px">
+                    <InputLeftElement
+                      w="84px"
+                      pointerEvents="auto"
+                      display="flex"
+                    >
+                      <Text fontSize="xl" aria-hidden="true">
+                        {countryFlag(messengerCountry)}
+                      </Text>
+                      <Select
+                        position="absolute"
+                        inset="0"
+                        w="84px"
+                        h="100%"
+                        rootProps={{ h: "100%" }}
+                        opacity="0"
+                        cursor="pointer"
+                        value={messengerCountry}
+                        onChange={(event) =>
+                          handleCountryChange(event.target.value as CountryCode)
+                        }
+                        aria-label="Select WhatsApp country"
+                      >
+                        {countryOptions.map((option) => (
+                          <option
+                            key={option.country}
+                            value={option.country}
+                          >
+                            {countryFlag(option.country)} {option.name}{" "}
+                            {option.callingCode}
+                          </option>
+                        ))}
+                      </Select>
+                    </InputLeftElement>
+                    <Input
+                      value={messengerCountryCode}
+                      onChange={(event) =>
+                        handleCountryCodeChange(event.target.value)
+                      }
+                      placeholder="+1"
+                      inputMode="numeric"
+                      maxLength={5}
+                      pl="84px"
+                      textAlign="right"
+                      aria-label="WhatsApp country calling code"
+                    />
+                  </InputGroup>
 
                   <Input
                     value={messengerValue}

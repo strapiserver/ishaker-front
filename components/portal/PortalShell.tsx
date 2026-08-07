@@ -72,7 +72,12 @@ export function PortalShell({
         bgGradient="linear(to-br, #101315 0%, #0b0e0f 52%, #121719 100%)"
         color="bg.100"
       >
-        <Box minH="100vh" overflow="hidden" w="full">
+        <Box
+          minH="100vh"
+          overflow="hidden"
+          w="full"
+          px={{ base: "0", lg: "10%" }}
+        >
           <Box borderBottom="1px solid" borderColor="rgba(255,255,255,0.09)">
             <Container
               maxW="none"
