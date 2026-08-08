@@ -27,6 +27,10 @@ import {
   MachineSerialIssueError,
 } from "../../../lib/portal/machineSerial";
 import { WHATSAPP_SUPPORT_URL } from "../../../lib/portal/support";
+import {
+  getIsoCodeFromVirtualId,
+  getIsoCurrency,
+} from "../../../lib/portal/isoCurrencies";
 
 const asString = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 const WHATSAPP_COUNTRY_CODE_REGEX = /^\+[1-9]\d{0,3}$/;
@@ -164,6 +168,51 @@ const fetchClientByCompany = async (company: string) => {
   );
 
   return clients[0] || null;
+};
+
+const fetchCurrencyByCode = async (code: string) => {
+  const params = new URLSearchParams();
+  params.set("filters[code][$eqi]", code);
+  params.set("pagination[pageSize]", "1");
+  const currencies = await requestStrapiRestAsService<Currency[]>(
+    `/api/currencies?${params.toString()}`,
+  );
+  return currencies[0] || null;
+};
+
+const resolveRegistrationCurrency = async (currencyId: string) => {
+  const isoCode = getIsoCodeFromVirtualId(currencyId);
+  if (!isoCode) {
+    return requestStrapiRestAsService<Currency>(
+      `/api/currencies/${currencyId}`,
+    ).catch(() => null);
+  }
+
+  const definition = getIsoCurrency(isoCode);
+  if (!definition) return null;
+
+  const existing = await fetchCurrencyByCode(isoCode);
+  if (existing?.isActive === false) {
+    return requestStrapiRestAsService<Currency>(
+      `/api/currencies/${existing.id}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ data: { isActive: true } }),
+      },
+    );
+  }
+  if (existing) return existing;
+
+  const { id: _virtualId, ...data } = definition;
+  try {
+    return await requestStrapiRestAsService<Currency>("/api/currencies", {
+      method: "POST",
+      body: JSON.stringify({ data }),
+    });
+  } catch {
+    // A concurrent registration may have created the unique currency first.
+    return fetchCurrencyByCode(isoCode).catch(() => null);
+  }
 };
 
 const createClient = async (params: {
@@ -473,9 +522,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  const currency = await requestStrapiRestAsService<Currency>(
-    `/api/currencies/${currencyId}`,
-  ).catch(() => null);
+  const currency = await resolveRegistrationCurrency(currencyId);
   if (!currency?.id || currency.isActive === false) {
     return res.status(400).json({
       error: "invalid_currency",

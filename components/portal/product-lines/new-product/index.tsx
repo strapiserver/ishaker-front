@@ -239,6 +239,7 @@ export function NewProductPage({
   );
   const initialProduct = editingProduct || undefined;
   const isEditing = Boolean(initialProduct);
+  const editingProductId = initialProduct ? String(initialProduct.id) : "";
   const [brandId, setBrandId] = useState(
     initialProduct?.brand?.id ? String(initialProduct.brand.id) : "",
   );
@@ -246,7 +247,7 @@ export function NewProductPage({
     initialProduct ? capitalizeName(initialProduct.name) : "",
   );
   const [existingProductId, setExistingProductId] = useState(
-    initialProduct ? String(initialProduct.id) : "",
+    editingProductId,
   );
   const [splashId, setSplashId] = useState(
     initialProduct?.custom_splash?.id
@@ -602,7 +603,9 @@ export function NewProductPage({
           body: JSON.stringify({
             name: capitalizeName(name),
             brandId,
-            existingProductId,
+            existingProductId: isEditing
+              ? editingProductId
+              : existingProductId,
             splashId,
             circleId,
             mainImageId,
@@ -724,7 +727,9 @@ export function NewProductPage({
             }
           }}
           onComponentRowsChange={setComponentRows}
-          onCreateCustomProduct={resetProductVisuals}
+          onCreateCustomProduct={() => {
+            if (!isEditing) resetProductVisuals();
+          }}
           onDescriptionChange={setDescription}
           onDosageChange={setDosage}
           onNameChange={(value) => {

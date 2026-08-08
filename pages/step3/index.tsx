@@ -39,7 +39,65 @@ const formatWhatsappCountryCode = (value: string) => {
 };
 
 const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
-const countryCodes = getCountries();
+const excludedPhoneTerritories = new Set<string>([
+  "AC",
+  "AI",
+  "AQ",
+  "AS",
+  "AW",
+  "AX",
+  "BL",
+  "BM",
+  "BQ",
+  "BV",
+  "CC",
+  "CK",
+  "CW",
+  "CX",
+  "FK",
+  "FO",
+  "GF",
+  "GG",
+  "GI",
+  "GL",
+  "GP",
+  "GS",
+  "GU",
+  "HK",
+  "HM",
+  "IM",
+  "IO",
+  "JE",
+  "KY",
+  "MF",
+  "MO",
+  "MP",
+  "MQ",
+  "MS",
+  "NC",
+  "NF",
+  "NU",
+  "PF",
+  "PM",
+  "PN",
+  "PR",
+  "RE",
+  "SH",
+  "SJ",
+  "SX",
+  "TA",
+  "TC",
+  "TF",
+  "TK",
+  "UM",
+  "VG",
+  "VI",
+  "WF",
+  "YT",
+]);
+const countryCodes = getCountries().filter(
+  (country) => !excludedPhoneTerritories.has(country),
+);
 const countryCodeSet = new Set<string>(countryCodes);
 
 const countryFlag = (country: CountryCode) =>
@@ -58,7 +116,14 @@ const countryOptions = countryCodes
   }))
   .sort((left, right) => left.name.localeCompare(right.name));
 
+const primaryCountryByCallingCode: Partial<Record<string, CountryCode>> = {
+  "+1": "US",
+  "+7": "RU",
+  "+44": "GB",
+};
+
 const countryForCallingCode = (callingCode: string) =>
+  primaryCountryByCallingCode[callingCode] ||
   countryOptions.find((option) => option.callingCode === callingCode)?.country;
 
 const formatWhatsappLocalNumber = (value: string) => {

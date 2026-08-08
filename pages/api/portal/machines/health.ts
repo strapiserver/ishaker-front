@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getPortalSessionFromApiRequest } from "../../../../lib/portal/auth";
 import { buildMachineHealthRow } from "../../../../lib/portal/machineHealth";
 import { applyMachineHealthFixture } from "../../../../lib/portal/machineHealthFixture";
+import { matchTelemetryMachineBySerial } from "../../../../lib/portal/telemetrySerial";
 import {
   getTelemetryMachineStatus,
   getTelemetryMachineStorage,
@@ -33,19 +34,25 @@ export default async function handler(
       const organizationId = await resolveTelemetryOrganizationId(session.client);
       if (organizationId) {
         const telemetryMachines = await listTelemetryMachineSerials(organizationId);
-        const ownedSerials = new Set(
-          machines.map((machine) => String(machine.serial_number || "").trim()),
-        );
-        const matches = telemetryMachines.filter((machine) =>
-          ownedSerials.has(String(machine.serialNumber || "").trim()),
-        );
 
         await Promise.all(
-          matches.map(async (machine) => {
-            const serial = String(machine.serialNumber || "").trim();
+          machines.map(async (machine) => {
+            const serial = String(machine.serial_number || "").trim();
+            const match = matchTelemetryMachineBySerial(telemetryMachines, serial);
+
+            if (!match.machine) {
+              if (match.reason === "ambiguous") {
+                console.warn(
+                  `[portal/machines/health] serial ${serial} matches several cabinet machines, skipped:`,
+                  match.candidates,
+                );
+              }
+              return;
+            }
+
             const [status, storage] = await Promise.all([
-              getTelemetryMachineStatus(machine.id).catch(() => null),
-              getTelemetryMachineStorage(machine.id).catch(() => null),
+              getTelemetryMachineStatus(match.machine.id).catch(() => null),
+              getTelemetryMachineStorage(match.machine.id).catch(() => null),
             ]);
             telemetryBySerial.set(serial, { status, storage });
           }),

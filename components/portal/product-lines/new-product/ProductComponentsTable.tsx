@@ -235,7 +235,10 @@ export function ProductComponentsTable({
           <FormControl isRequired flex="1" minW="0">
             <HStack h="24px" mb="2" align="center">
               <Text as="span">Serving quantity</Text>
-              <Help text="The reference amount (e.g. 100g) that the nutrition facts below are calculated for — matches what's printed on the product's packaging label." />
+              <Help
+                text="The reference amount of powder. It's not the amount customer gets in a cup. Might be per 100g or per scoop ~20g or whatever is written on the package.
+               Fill up nutrition facts as written on the package below. Then it will automatically recalculated to the amount of powder you give per real cup."
+              />
             </HStack>
 
             <NumberInput min={0.01} precision={2} value={servingQuantity}>
@@ -252,7 +255,7 @@ export function ProductComponentsTable({
           <FormControl isRequired flex="1" minW="0">
             <HStack h="24px" mb="2" align="center">
               <FormLabel mb="0">Unit</FormLabel>
-              <Help text="The reference amount (e.g. 100g) that the nutrition facts below are calculated for — matches what's printed on the product's packaging label." />
+              <Help text="Depends on if it's powder or liquid." />
             </HStack>
             <Select
               value={servingUnit}
@@ -337,11 +340,7 @@ export function ProductComponentsTable({
                   }
                 }}
               />
-              <Box
-                minW="0"
-                gridColumn={{ base: "2 / 4", md: "2" }}
-                gridRow="1"
-              >
+              <Box minW="0" gridColumn={{ base: "2 / 4", md: "2" }} gridRow="1">
                 <ComponentNameSelect
                   components={components}
                   value={row.name}
@@ -505,7 +504,7 @@ export function ProductComponentsTable({
                 bg="bg.800"
                 pr="24"
               />
-                {currencyMenu("Full drink price currency")}
+              {currencyMenu("Full drink price currency")}
             </NumberInput>
             <FormHelperText>
               This is the library default. A container can override the price.

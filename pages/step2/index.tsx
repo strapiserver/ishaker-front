@@ -18,6 +18,7 @@ import { Header } from "../../components/home/Header";
 import CustomTitle from "../../components/home/CutsomTitle";
 import { loadRegistrationDraft, mergeRegistrationDraft } from "../../lib/portal/registration";
 import { NICKNAME_HELP } from "../../lib/portal/nickname";
+import { getIsoCurrencies } from "../../lib/portal/isoCurrencies";
 import type { GetServerSideProps } from "next";
 import { requestStrapiRestAsService } from "../../services/server/strapiClient";
 import type { Currency } from "../../types/strapi";
@@ -192,8 +193,22 @@ export const getServerSideProps: GetServerSideProps<Step2PageProps> = async () =
   params.set("filters[isActive][$ne]", "false");
   params.set("sort[0]", "code:ASC");
   params.set("pagination[pageSize]", "2000");
-  const currencies = await requestStrapiRestAsService<Currency[]>(
+  const storedCurrencies = await requestStrapiRestAsService<Currency[]>(
     `/api/currencies?${params.toString()}`,
   ).catch(() => []);
+  const storedByCode = new Map(
+    storedCurrencies.map((currency) => [currency.code.toUpperCase(), currency]),
+  );
+  const isoCodes = new Set<string>();
+  const currencies = getIsoCurrencies().map((currency) => {
+    isoCodes.add(currency.code);
+    return storedByCode.get(currency.code) || currency;
+  });
+
+  for (const currency of storedCurrencies) {
+    if (!isoCodes.has(currency.code.toUpperCase())) currencies.push(currency);
+  }
+
+  currencies.sort((left, right) => left.code.localeCompare(right.code));
   return { props: { currencies } };
 };

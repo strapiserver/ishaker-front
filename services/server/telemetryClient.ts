@@ -1,3 +1,5 @@
+import { matchTelemetryMachineBySerial } from "../../lib/portal/telemetrySerial";
+
 type TelemetryToken = {
   accessToken: string;
   refreshToken?: string;
@@ -290,6 +292,7 @@ export const resolveTelemetryMachine = async (params: {
     return {
       organizationId: null,
       machineId: null,
+      matchedBy: null,
       reason: "missing_serial_number",
     };
   }
@@ -299,26 +302,30 @@ export const resolveTelemetryMachine = async (params: {
     return {
       organizationId: null,
       machineId: null,
+      matchedBy: null,
       reason: "telemetry_organization_not_resolved",
     };
   }
 
   const machines = await listTelemetryMachineSerials(organizationId);
-  const match = machines.find(
-    (machine) => String(machine.serialNumber || "").trim() === String(params.serialNumber).trim(),
-  );
+  const match = matchTelemetryMachineBySerial(machines, params.serialNumber);
 
-  if (!match?.id) {
+  if (!match.machine?.id) {
     return {
       organizationId,
       machineId: null,
-      reason: "telemetry_machine_not_found_by_serial",
+      matchedBy: null,
+      reason:
+        match.reason === "ambiguous"
+          ? "telemetry_machine_serial_ambiguous"
+          : "telemetry_machine_not_found_by_serial",
     };
   }
 
   return {
     organizationId,
-    machineId: match.id,
+    machineId: match.machine.id,
+    matchedBy: match.reason,
     reason: null,
   };
 };

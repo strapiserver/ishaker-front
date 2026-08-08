@@ -218,8 +218,6 @@ export const buildMachineHealthRow = (
   now = Date.now(),
 ): MachineHealthRow => {
   const own = ownHealth(machine, now);
-  if (own) return own;
-
   const fallback = telemetryIndicators(telemetry);
   const fleet = machine.fleet_status as Record<string, unknown> | null | undefined;
   const fleetAt = typeof fleet?.at === "string" ? fleet.at : null;
@@ -235,6 +233,17 @@ export const buildMachineHealthRow = (
         }
       : { state: "unknown", label: "Stale", source: "ops", at: fleetAt }
     : fallback.online;
+
+  if (own) {
+    // Levels stay on the own reading even once it ages — "this is what we last saw" is
+    // still the most accurate thing anyone has, and the row labels it Stale. The online
+    // badge is the exception: a stale reading must not go on claiming the machine is up,
+    // so it is handed back to whichever source is still reporting. While the reading is
+    // fresh the own badge wins outright, because it is the stronger evidence — we were
+    // inside the machine seconds ago, not asking a third party about it.
+    const ownFresh = !isStale(machine.health?.at, now);
+    return { ...own, online: ownFresh ? own.online : online };
+  }
 
   return {
     id: machine.id,
