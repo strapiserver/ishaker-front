@@ -768,7 +768,7 @@ export function NewProductPage({
         <NewProductVisualPreview
           brand={selectedBrand}
           circle={selectedCircle}
-          cup={productLine.cup || undefined}
+          cup={productLine.cups?.[0]}
           isSplashLoading={Boolean(
             (existingProductId && isSelectedProductLoading) ||
             (splashId && isSelectedSplashLoading),

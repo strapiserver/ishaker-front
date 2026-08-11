@@ -8,7 +8,7 @@ import {
   FormLabel,
   VStack,
 } from "@chakra-ui/react";
-import type { FormEventHandler } from "react";
+import type { FormEventHandler, ReactNode } from "react";
 import {
   SearchableImageSelect,
   type SearchableImageOption,
@@ -19,6 +19,7 @@ type ProductLineFormProps = {
   baseProductLineId: string;
   canSubmit: boolean;
   customSplashId: string;
+  cupSelector?: ReactNode;
   error?: string;
   isSubmitting: boolean;
   onBaseProductLineChange: (value: string) => void;
@@ -33,6 +34,7 @@ export function ProductLineForm({
   baseProductLineId,
   canSubmit,
   customSplashId,
+  cupSelector,
   error,
   isSubmitting,
   onBaseProductLineChange,
@@ -70,7 +72,7 @@ export function ProductLineForm({
           <FormLabel>Custom splash</FormLabel>
           <SearchableImageSelect
             ariaLabel="Select a custom splash"
-            emptyLabel="No empty splashes found"
+            emptyLabel="No splashes found"
             options={splashOptions}
             value={customSplashId}
             placeholder={
@@ -81,11 +83,11 @@ export function ProductLineForm({
             onChange={onCustomSplashChange}
             clearLabel="Clear selected splash"
             isDisabled={!baseProductLineId}
-            isSearchable={false}
+            isSearchable
           />
           <FormHelperText>
             {baseProductLineId
-              ? "Only splashes marked as empty are available."
+              ? "Solid color splashes are suggested first; all splashes are available."
               : "Custom splash becomes available after selecting a product line."}
           </FormHelperText>
         </FormControl>
@@ -96,6 +98,8 @@ export function ProductLineForm({
             {error}
           </Alert>
         ) : null}
+
+        {cupSelector}
 
         <Button
           type="submit"

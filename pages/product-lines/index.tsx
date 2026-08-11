@@ -31,7 +31,7 @@ const createProductLineParams = (session: PortalSession) => {
     params.set("filters[author][id][$eq]", String(session.user.id));
   }
   params.set("populate[0]", "author");
-  params.set("populate[1]", "cup.image");
+  params.set("populate[1]", "cups.image");
   params.set("populate[2]", "base_product_line");
   params.set("sort[0]", "name:ASC");
   params.set("pagination[pageSize]", "2000");

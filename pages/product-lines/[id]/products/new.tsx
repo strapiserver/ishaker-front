@@ -48,8 +48,8 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
     params.set("filters[author][id][$eq]", String(result.session.user.id));
   }
   params.set("fields[0]", "name");
-  params.set("populate[cup][populate][image][fields][0]", "url");
-  params.set("populate[cup][populate][image][fields][1]", "formats");
+  params.set("populate[cups][populate][image][fields][0]", "url");
+  params.set("populate[cups][populate][image][fields][1]", "formats");
   params.set("populate[base_product_line][fields][0]", "name");
   params.set("pagination[pageSize]", "2000");
 

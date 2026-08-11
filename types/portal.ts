@@ -183,6 +183,7 @@ export type PortalSplash = {
 export type PortalCup = {
   id: string | number;
   name: string;
+  color?: string | null;
   image?: PortalMedia | null;
   default_splash?: PortalSplash | null;
 };
@@ -202,7 +203,7 @@ export type PortalProductLine = {
   client?: Pick<Client, "id" | "company"> | null;
   machines?: Machine[];
   base_product_line?: Pick<PortalProductLine, "id" | "name"> | null;
-  cup?: PortalCup | null;
+  cups?: PortalCup[];
   brands?: PortalBrand[];
   custom_splash?: PortalSplash | null;
   products?: PortalProduct[];

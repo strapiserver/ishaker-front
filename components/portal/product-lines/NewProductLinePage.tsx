@@ -1,12 +1,13 @@
-import { Alert, AlertIcon, SimpleGrid, useToast } from "@chakra-ui/react";
+import { Alert, AlertIcon, Box, Grid, useToast } from "@chakra-ui/react";
 import { useRouter } from "next/router";
 import { FormEvent, useMemo, useState } from "react";
 import useSWR from "swr";
 import { CupPreview } from "./CupPreview";
+import { CupSelector } from "./CupSelector";
 import { ProductLineForm } from "./ProductLineForm";
 import { type SearchableImageOption } from "./SearchableImageSelect";
 import { PortalShell } from "../PortalShell";
-import { getMediaUrl, getSmallestMediaUrl } from "../../../lib/portal/media";
+import { getMediaUrl } from "../../../lib/portal/media";
 import { capitalizeName } from "../../../lib/formatName";
 import type {
   PortalProductLine,
@@ -40,6 +41,9 @@ const sortFramesByNumericName = <T extends { name?: string; url?: string }>(
     ),
   );
 
+const isSolidColorSplash = (splash: PortalSplash) =>
+  /^color\b/i.test(splash.name.trim());
+
 export function NewProductLinePage({
   session,
   rootProductLines,
@@ -51,7 +55,7 @@ export function NewProductLinePage({
   const toast = useToast();
   const isEditing = Boolean(productLine?.id);
   const [name, setName] = useState(
-    productLine?.cup?.name || productLine?.name || "",
+    capitalizeName(productLine?.base_product_line?.name || productLine?.name),
   );
   const [baseProductLineId, setBaseProductLineId] = useState(
     productLine?.base_product_line?.id
@@ -59,7 +63,7 @@ export function NewProductLinePage({
       : "",
   );
   const [cupId, setCupId] = useState(
-    productLine?.cup?.id ? String(productLine.cup.id) : "",
+    productLine?.cups?.[0]?.id ? String(productLine.cups[0].id) : "",
   );
   const [customSplashId, setCustomSplashId] = useState(
     productLine?.custom_splash?.id ? String(productLine.custom_splash.id) : "",
@@ -74,18 +78,13 @@ export function NewProductLinePage({
           (left, right) =>
             Number(Boolean(right.isPopular)) -
               Number(Boolean(left.isPopular)) ||
-            (left.cup?.name || left.name).localeCompare(
-              right.cup?.name || right.name,
-              undefined,
-              {
-                sensitivity: "base",
-              },
-            ),
+            left.name.localeCompare(right.name, undefined, {
+              sensitivity: "base",
+            }),
         )
         .map((line) => ({
           id: String(line.id),
-          name: capitalizeName(line.cup?.name || line.name),
-          imageUrl: getSmallestMediaUrl(line.cup?.image),
+          name: capitalizeName(line.name),
           ...(line.isPopular
             ? { subtitle: "Popular", subtitleColor: "green.300" }
             : {}),
@@ -94,16 +93,37 @@ export function NewProductLinePage({
   );
   const splashOptions = useMemo(
     () =>
-      splashes.map((splash) => ({
-        id: String(splash.id),
-        name: capitalizeName(splash.name),
-        color: splash.color || "transparent",
-      })),
+      [...splashes]
+        .sort(
+          (left, right) =>
+            Number(isSolidColorSplash(right)) -
+              Number(isSolidColorSplash(left)) ||
+            left.name.localeCompare(right.name, undefined, {
+              sensitivity: "base",
+            }),
+        )
+        .map((splash) => ({
+          id: String(splash.id),
+          name: capitalizeName(splash.name),
+          color: splash.color || "transparent",
+          ...(isSolidColorSplash(splash)
+            ? { badge: "Solid color", badgeColorScheme: "green" }
+            : {}),
+        })),
     [splashes],
   );
   const selectedBaseLine = rootProductLines.find(
     (line) => String(line.id) === baseProductLineId,
   );
+  const availableCups = selectedBaseLine?.cups || productLine?.cups || [];
+  const selectedCup = availableCups.find((cup) => String(cup.id) === cupId);
+  const selectCup = (value: string) => {
+    setCupId(value);
+    const cup = availableCups.find((option) => String(option.id) === value);
+    setCustomSplashId(
+      cup?.default_splash?.id ? String(cup.default_splash.id) : "",
+    );
+  };
   const {
     data: customSplashResponse,
     error: customSplashError,
@@ -215,7 +235,7 @@ export function NewProductLinePage({
   return (
     <PortalShell
       title={isEditing ? "Edit product line" : "New product line"}
-      description={`${isEditing ? "Update" : "Choose"} the product line. Its name and cup always match.`}
+      description={`${isEditing ? "Update" : "Choose"} a product line and one of its available cups.`}
       clientName={session.client.company}
       access={session.access}
     >
@@ -226,48 +246,64 @@ export function NewProductLinePage({
         </Alert>
       ) : null}
 
-      <SimpleGrid
-        columns={{ base: 1, lg: 2 }}
-        spacing={{ base: "6", lg: "8" }}
+      <Grid
+        templateAreas={{
+          base: '"form" "preview"',
+          lg: '"form preview"',
+        }}
+        templateColumns={{ base: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }}
+        gap={{ base: "6", lg: "8" }}
         alignItems="stretch"
       >
-        <ProductLineForm
-          baseOptions={baseOptions}
-          baseProductLineId={baseProductLineId}
-          canSubmit={canSubmit}
-          customSplashId={customSplashId}
-          error={error}
-          isSubmitting={isSubmitting}
-          onBaseProductLineChange={(value) => {
-            setBaseProductLineId(value);
-            const rootLine = rootProductLines.find(
-              (line) => String(line.id) === value,
-            );
-            if (rootLine) {
-              setName(capitalizeName(rootLine.cup?.name || rootLine.name));
-              setCupId(rootLine.cup?.id ? String(rootLine.cup.id) : "");
+        <Box gridArea="form">
+          <ProductLineForm
+            baseOptions={baseOptions}
+            baseProductLineId={baseProductLineId}
+            canSubmit={canSubmit}
+            customSplashId={customSplashId}
+            cupSelector={
+              <CupSelector
+                cups={availableCups}
+                value={cupId}
+                onChange={selectCup}
+              />
+            }
+            error={error}
+            isSubmitting={isSubmitting}
+            onBaseProductLineChange={(value) => {
+              setBaseProductLineId(value);
+              const rootLine = rootProductLines.find(
+                (line) => String(line.id) === value,
+              );
+              const firstCup = rootLine?.cups?.[0];
+              setName(rootLine ? capitalizeName(rootLine.name) : "");
+              setCupId(firstCup?.id ? String(firstCup.id) : "");
               setCustomSplashId(
-                rootLine.custom_splash?.id
+                firstCup?.default_splash?.id
+                  ? String(firstCup.default_splash.id)
+                  : rootLine?.custom_splash?.id
                   ? String(rootLine.custom_splash.id)
                   : "",
               );
-            }
-          }}
-          onCustomSplashChange={setCustomSplashId}
-          onSubmit={onSubmit}
-          splashOptions={splashOptions}
-          submitLabel={isEditing ? "Save changes" : "Create product line"}
-        />
+            }}
+            onCustomSplashChange={setCustomSplashId}
+            onSubmit={onSubmit}
+            splashOptions={splashOptions}
+            submitLabel={isEditing ? "Save changes" : "Create product line"}
+          />
+        </Box>
 
-        <CupPreview
-          cup={selectedBaseLine?.cup || productLine?.cup || undefined}
-          isSplashLoading={Boolean(customSplashId && isCustomSplashLoading)}
-          productLineName={name || selectedBaseLine?.name}
-          splashError={Boolean(customSplashId && customSplashError)}
-          splashFrames={splashFrames}
-          splashIsEmpty={splashIsEmpty}
-        />
-      </SimpleGrid>
+        <Box gridArea="preview">
+          <CupPreview
+            cup={selectedCup}
+            isSplashLoading={Boolean(customSplashId && isCustomSplashLoading)}
+            productLineName={name || selectedBaseLine?.name}
+            splashError={Boolean(customSplashId && customSplashError)}
+            splashFrames={splashFrames}
+            splashIsEmpty={splashIsEmpty}
+          />
+        </Box>
+      </Grid>
     </PortalShell>
   );
 }

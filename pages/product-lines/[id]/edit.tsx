@@ -37,20 +37,21 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
     ownParams.set("filters[author][id][$eq]", String(result.session.user.id));
   }
   ownParams.set("populate[0]", "base_product_line");
-  ownParams.set("populate[1]", "cup.image");
-  ownParams.set("populate[2]", "custom_splash");
+  ownParams.set("populate[1]", "cups.image");
+  ownParams.set("populate[2]", "cups.default_splash");
+  ownParams.set("populate[3]", "custom_splash");
   ownParams.set("pagination[pageSize]", "2000");
 
   const rootParams = new URLSearchParams();
   rootParams.set("filters[author][username][$eq]", "root");
-  rootParams.set("populate[0]", "cup.image");
-  rootParams.set("populate[1]", "custom_splash");
+  rootParams.set("populate[0]", "cups.image");
+  rootParams.set("populate[1]", "cups.default_splash");
+  rootParams.set("populate[2]", "custom_splash");
   rootParams.set("sort[0]", "isPopular:DESC");
   rootParams.set("sort[1]", "name:ASC");
   rootParams.set("pagination[pageSize]", "2000");
 
   const splashParams = new URLSearchParams();
-  splashParams.set("filters[isEmpty][$eq]", "true");
   splashParams.set("fields[0]", "name");
   splashParams.set("fields[1]", "color");
   splashParams.set("fields[2]", "isEmpty");

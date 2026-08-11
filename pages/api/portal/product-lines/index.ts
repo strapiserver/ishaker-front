@@ -25,18 +25,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getPortalSessionFromApiRequest(req);
   if (!session) return res.status(401).json({ error: "unauthorized" });
 
-  const name = capitalizeName(asString(req.body?.name));
   const baseProductLineId = asId(req.body?.baseProductLineId);
   const cupId = asId(req.body?.cupId);
   const customSplashId = asId(req.body?.customSplashId);
   const confirmDuplicate = req.body?.confirmDuplicate === true;
-  if (name.length < 2 || name.length > 100) {
-    return res.status(400).json({
-      error: "invalid_name",
-      message: "Name must contain between 2 and 100 characters.",
-    });
-  }
-
   if (!baseProductLineId || !cupId) {
     return res.status(400).json({
       error: "missing_selection",
@@ -48,22 +40,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const baseProductLineParams = new URLSearchParams();
     baseProductLineParams.set("filters[id][$eq]", baseProductLineId);
     baseProductLineParams.set("filters[author][username][$eq]", "root");
-    baseProductLineParams.set("populate[cup][fields][0]", "name");
+    baseProductLineParams.set("populate[cups][fields][0]", "id");
     baseProductLineParams.set("pagination[pageSize]", "2000");
 
-    const duplicateParams = new URLSearchParams();
-    duplicateParams.set("filters[name][$eqi]", name);
-    if (session.access === "client") {
-      duplicateParams.set(
-        "filters[author][client][id][$eq]",
-        String(session.client.id),
-      );
-    } else {
-      duplicateParams.set("filters[author][id][$eq]", String(session.user.id));
-    }
-    duplicateParams.set("pagination[pageSize]", "1");
-
-    const [baseProductLines, cup, customSplash, duplicateProductLines] =
+    const [baseProductLines, cup, customSplash] =
       await Promise.all([
         requestStrapiRestAsService<PortalProductLine[]>(
           `/api/product-lines?${baseProductLineParams.toString()}`,
@@ -74,19 +54,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               `/api/splashes/${customSplashId}`,
             )
           : Promise.resolve(null),
-        requestStrapiRestAsService<PortalProductLine[]>(
-          `/api/product-lines?${duplicateParams.toString()}`,
-        ),
       ]);
     const baseProductLine = baseProductLines[0];
-
-    if (duplicateProductLines.length && !confirmDuplicate) {
-      return res.status(409).json({
-        error: "duplicate_name",
-        message: "A product line with this name already exists. Are you sure?",
-        requiresConfirmation: true,
-      });
-    }
 
     if (!baseProductLine?.id) {
       return res.status(400).json({
@@ -103,19 +72,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (
-      String(baseProductLine.cup?.id) !== String(cup.id) ||
-      name !== capitalizeName(cup.name)
+      !baseProductLine.cups?.some(
+        (assignedCup) => String(assignedCup.id) === String(cup.id),
+      )
     ) {
       return res.status(400).json({
         error: "product_line_cup_mismatch",
-        message: "Product line name and cup must match the selected root product line.",
+        message: "The selected cup does not belong to the selected root product line.",
       });
     }
 
-    if (customSplash && customSplash.isEmpty !== true) {
+    const name = capitalizeName(baseProductLine.name);
+    if (name.length < 2 || name.length > 100) {
       return res.status(400).json({
-        error: "invalid_custom_splash",
-        message: "The selected custom splash is not available.",
+        error: "invalid_name",
+        message: "The selected root product line has an invalid name.",
+      });
+    }
+
+    const duplicateParams = new URLSearchParams();
+    duplicateParams.set("filters[name][$eqi]", name);
+    if (session.access === "client") {
+      duplicateParams.set(
+        "filters[author][client][id][$eq]",
+        String(session.client.id),
+      );
+    } else {
+      duplicateParams.set("filters[author][id][$eq]", String(session.user.id));
+    }
+    duplicateParams.set("pagination[pageSize]", "1");
+    const duplicateProductLines =
+      await requestStrapiRestAsService<PortalProductLine[]>(
+        `/api/product-lines?${duplicateParams.toString()}`,
+      );
+
+    if (duplicateProductLines.length && !confirmDuplicate) {
+      return res.status(409).json({
+        error: "duplicate_name",
+        message: "A product line with this name already exists. Are you sure?",
+        requiresConfirmation: true,
       });
     }
 
@@ -127,7 +122,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           data: {
             name,
             base_product_line: baseProductLine.id,
-            cup: cup.id,
+            cups: [cup.id],
             author: session.user.id,
             ...(session.access === "client" ? { client: session.client.id } : {}),
             ...(customSplash ? { custom_splash: customSplash.id } : {}),

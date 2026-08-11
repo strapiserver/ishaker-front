@@ -140,13 +140,7 @@ export function CupPreview({
       ) : null}
 
       <Box
-        aria-label={
-          cup
-            ? `${capitalizeName(cup.name)} with ${
-                splashIsEmpty ? "empty" : "flavor"
-              } animated splash`
-            : "Cup preview"
-        }
+        aria-label={cup ? "Selected cup preview" : "Cup preview"}
         role="img"
         position="absolute"
         data-splash-is-empty={
@@ -185,7 +179,7 @@ export function CupPreview({
             <Box
               as="img"
               src={cupImage}
-              alt={capitalizeName(cup?.name) || "Selected cup"}
+              alt="Selected cup"
               draggable={false}
               position="absolute"
               inset="0"
@@ -204,7 +198,7 @@ export function CupPreview({
               textAlign="center"
             >
               <Text fontSize="6xl">+</Text>
-              <Text>Select a product line to start the animation</Text>
+              <Text>Select a product line and cup to start the animation</Text>
             </VStack>
           )}
         </Box>

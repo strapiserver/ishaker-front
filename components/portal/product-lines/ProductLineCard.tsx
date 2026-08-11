@@ -14,10 +14,15 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
-import { FiMoreVertical, FiPower, FiTrash2 } from "react-icons/fi";
+import {
+  FiEdit2,
+  FiMoreVertical,
+  FiPlus,
+  FiPower,
+  FiTrash2,
+} from "react-icons/fi";
 import { capitalizeName } from "../../../lib/formatName";
 import type { PortalProductLine } from "../../../types/portal";
-import { FiPlus } from "react-icons/fi";
 import { DeleteProductLineDialog } from "./DeleteProductLineDialog";
 import { ProductCard } from "./ProductCard";
 type ProductLineCardProps = {
@@ -120,6 +125,7 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
             <Menu>
               <MenuButton as={IconButton} aria-label={`Actions for ${productLineName}`} icon={<FiMoreVertical />} variant="ghost" size="sm" color="whiteAlpha.800" />
               <MenuList bg="#171b1c" borderColor="whiteAlpha.200" minW="190px">
+                <MenuItem as={Link} href={`/product-lines/${productLine.id}/edit`} icon={<FiEdit2 />} bg="transparent" _hover={{ bg: "whiteAlpha.100" }}>Edit product line</MenuItem>
                 <MenuItem icon={<FiPower />} bg="transparent" _hover={{ bg: "whiteAlpha.100" }} isDisabled={isUpdatingActive} onClick={() => void updateActiveState(!isActive)}>{isActive ? "Set inactive" : "Set active"}</MenuItem>
                 <MenuItem icon={<FiTrash2 />} bg="transparent" color="red.300" _hover={{ bg: "whiteAlpha.100" }} onClick={deleteDialog.onOpen}>Delete product line</MenuItem>
               </MenuList>

@@ -10,12 +10,12 @@ export type ContainersPreviewProps = {
   onAmountChange: (position: number, amountKg: number) => void;
 };
 
-const EMPTY_CONTAINER_COLOR = "#737373";
+const DEFAULT_CONTAINER_COLOR = "#ffffff";
 
 const productColor = (cell?: PortalMachineCell) =>
   cell?.product?.custom_circle?.color ||
   cell?.product?.taste?.default_circle?.color ||
-  EMPTY_CONTAINER_COLOR;
+  DEFAULT_CONTAINER_COLOR;
 
 export function ContainersPreview({
   containerCount,
