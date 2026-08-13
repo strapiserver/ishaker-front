@@ -10,6 +10,8 @@ export type PowderContainerProps = {
   containerNumber: number;
   productName?: string;
   productImageUrl?: string;
+  cupImageUrl?: string;
+  cupCount?: number;
   isDisabled?: boolean;
 };
 
@@ -30,6 +32,8 @@ export function PowderContainer({
   containerNumber,
   productName,
   productImageUrl,
+  cupImageUrl,
+  cupCount = 0,
   isDisabled = false,
 }: PowderContainerProps) {
   const powderHeight = Math.min(
@@ -109,7 +113,9 @@ export function PowderContainer({
       label={
         isDisabled
           ? "Empty container"
-          : `${productName ? `${productName} · ` : ""}${weight.toFixed(2)} kg`
+          : `${productName ? `${productName} · ` : ""}${weight.toFixed(2)} kg${
+              cupCount > 1 ? ` · ${cupCount} screen cups, one physical cup` : ""
+            }`
       }
       hasArrow
       placement="top"
@@ -223,6 +229,46 @@ export function PowderContainer({
             pointerEvents="none"
             userSelect="none"
           />
+        ) : null}
+
+        {cupImageUrl ? (
+          <Box
+            position="absolute"
+            top="43%"
+            left="50%"
+            zIndex="2"
+            transform="translateX(-50%)"
+            w="68%"
+            textAlign="center"
+            pointerEvents="none"
+          >
+            <Image
+              src={cupImageUrl}
+              alt=""
+              aria-hidden="true"
+              mx="auto"
+              w="68%"
+              aspectRatio="1"
+              objectFit="contain"
+              filter="drop-shadow(0 2px 4px rgba(0,0,0,.65))"
+            />
+            {cupCount > 1 ? (
+              <Text
+                mt="-1"
+                px="1"
+                py="0.5"
+                borderRadius="full"
+                bg="blackAlpha.700"
+                color="white"
+                fontSize="clamp(7px, .75vw, 10px)"
+                fontWeight="800"
+                lineHeight="shorter"
+                whiteSpace="nowrap"
+              >
+                1st cup +{cupCount - 1}
+              </Text>
+            ) : null}
+          </Box>
         ) : null}
       </Box>
     </Tooltip>

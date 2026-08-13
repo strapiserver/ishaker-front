@@ -16,6 +16,7 @@ import {
   useToast,
   VStack,
 } from "@chakra-ui/react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { GiPowder } from "react-icons/gi";
 import { IoWaterSharp } from "react-icons/io5";
@@ -552,6 +553,32 @@ export function MachineCellsSection({
               {formatMoney(selectedProduct?.dosage?.full_drink_price, currency)}
             </Text>
           </HStack>
+          {selectedProduct?.product_line?.id ? (
+            <HStack
+              justify="space-between"
+              borderTop="1px solid"
+              borderColor="whiteAlpha.100"
+              pt="3"
+            >
+              <Box minW="0">
+                <Text color="bg.300" fontSize="xs">
+                  Display cup
+                </Text>
+                <Text fontSize="sm" fontWeight="700" noOfLines={1}>
+                  {selectedProduct.cup?.name || "Product-line default"}
+                </Text>
+              </Box>
+              <Button
+                as={Link}
+                href={`/product-lines/${selectedProduct.product_line.id}/products/new?productId=${selectedProduct.id}`}
+                size="sm"
+                variant="outline"
+                flexShrink={0}
+              >
+                Change cup
+              </Button>
+            </HStack>
+          ) : null}
           {isLegacy ? (
             <Button
               colorScheme="red"

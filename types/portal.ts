@@ -58,8 +58,9 @@ export type PortalCatalogProduct = {
   name: string;
   isActive?: boolean;
   product_type?: "powder" | "concentrate" | null;
-  product_line?: Pick<PortalProductLine, "id" | "name"> | null;
+  product_line?: Pick<PortalProductLine, "id" | "name" | "cups"> | null;
   brand?: PortalBrand | null;
+  cup?: PortalCup | null;
   custom_main?: PortalMedia | null;
   taste?: PortalTaste | null;
   custom_circle?: PortalCircle | null;
@@ -144,6 +145,7 @@ export type PortalProduct = {
   author?: Pick<PortalUser, "id" | "username" | "email"> | null;
   product_line?: Pick<PortalProductLine, "id" | "name"> | null;
   brand?: PortalBrand | null;
+  cup?: PortalCup | null;
   description?: string | null;
   product_type?: PortalProductType | null;
   product_purpose?: PortalProductPurpose | null;
@@ -202,7 +204,7 @@ export type PortalProductLine = {
   author?: Pick<PortalUser, "id" | "username" | "email"> | null;
   client?: Pick<Client, "id" | "company"> | null;
   machines?: Machine[];
-  base_product_line?: Pick<PortalProductLine, "id" | "name"> | null;
+  base_product_line?: Pick<PortalProductLine, "id" | "name" | "cups"> | null;
   cups?: PortalCup[];
   brands?: PortalBrand[];
   custom_splash?: PortalSplash | null;

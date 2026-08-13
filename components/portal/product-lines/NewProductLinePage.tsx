@@ -1,6 +1,28 @@
 import { Alert, AlertIcon, Box, Grid, useToast } from "@chakra-ui/react";
 import { useRouter } from "next/router";
 import { FormEvent, useMemo, useState } from "react";
+import {
+  FaBalanceScale,
+  FaBolt,
+  FaCapsules,
+  FaDumbbell,
+  FaFilter,
+  FaFire,
+  FaFlask,
+  FaGlassWhiskey,
+  FaHeartbeat,
+  FaLayerGroup,
+  FaLeaf,
+  FaRedoAlt,
+  FaRunning,
+  FaSeedling,
+  FaSpa,
+  FaStar,
+  FaTint,
+  FaWater,
+  FaWeight,
+  FaWeightHanging,
+} from "react-icons/fa";
 import useSWR from "swr";
 import { CupPreview } from "./CupPreview";
 import { CupSelector } from "./CupSelector";
@@ -44,6 +66,37 @@ const sortFramesByNumericName = <T extends { name?: string; url?: string }>(
 const isSolidColorSplash = (splash: PortalSplash) =>
   /^color\b/i.test(splash.name.trim());
 
+const productLineIcons: Record<string, SearchableImageOption["icon"]> = {
+  "amino recover": <FaHeartbeat />,
+  bcaa: <FaCapsules />,
+  "bucked up": <FaBolt />,
+  classic: <FaStar />,
+  collagen: <FaSpa />,
+  creatine: <FaWeightHanging />,
+  "diet protein": <FaBalanceScale />,
+  "energy drink": <FaBolt />,
+  "fat burner": <FaFire />,
+  gainer: <FaWeight />,
+  isolate: <FaFilter />,
+  isotonic: <FaWater />,
+  "l carnitine": <FaRunning />,
+  milkshake: <FaGlassWhiskey />,
+  "multi protein": <FaLayerGroup />,
+  "natural drink": <FaLeaf />,
+  "pre training": <FaBolt />,
+  protein: <FaDumbbell />,
+  pump: <FaDumbbell />,
+  recover: <FaRedoAlt />,
+  soda: <FaGlassWhiskey />,
+  "sport water": <FaTint />,
+  "vegan protein": <FaSeedling />,
+  water: <FaTint />,
+  "whey protein": <FaDumbbell />,
+};
+
+const getProductLineIcon = (name: string) =>
+  productLineIcons[name.trim().toLocaleLowerCase()] || <FaFlask />;
+
 export function NewProductLinePage({
   session,
   rootProductLines,
@@ -85,6 +138,7 @@ export function NewProductLinePage({
         .map((line) => ({
           id: String(line.id),
           name: capitalizeName(line.name),
+          icon: getProductLineIcon(line.name),
           ...(line.isPopular
             ? { subtitle: "Popular", subtitleColor: "green.300" }
             : {}),
@@ -117,19 +171,14 @@ export function NewProductLinePage({
   );
   const availableCups = selectedBaseLine?.cups || productLine?.cups || [];
   const selectedCup = availableCups.find((cup) => String(cup.id) === cupId);
-  const selectCup = (value: string) => {
-    setCupId(value);
-    const cup = availableCups.find((option) => String(option.id) === value);
-    setCustomSplashId(
-      cup?.default_splash?.id ? String(cup.default_splash.id) : "",
-    );
-  };
   const {
     data: customSplashResponse,
     error: customSplashError,
     isLoading: isCustomSplashLoading,
   } = useSWR<{ splash: PortalSplash }>(
-    cupId && customSplashId ? `/api/portal/splashes/${customSplashId}` : null,
+    cupId && customSplashId
+      ? `/api/portal/splashes/${customSplashId}`
+      : null,
     fetcher,
   );
   const customSplashFrames = useMemo(
@@ -235,7 +284,7 @@ export function NewProductLinePage({
   return (
     <PortalShell
       title={isEditing ? "Edit product line" : "New product line"}
-      description={`${isEditing ? "Update" : "Choose"} a product line and one of its available cups.`}
+      description={`${isEditing ? "Update" : "Choose"} a product line and its default cup.`}
       clientName={session.client.company}
       access={session.access}
     >
@@ -265,7 +314,17 @@ export function NewProductLinePage({
               <CupSelector
                 cups={availableCups}
                 value={cupId}
-                onChange={selectCup}
+                onChange={(value) => {
+                  setCupId(value);
+                  const cup = availableCups.find(
+                    (option) => String(option.id) === value,
+                  );
+                  setCustomSplashId(
+                    cup?.default_splash?.id
+                      ? String(cup.default_splash.id)
+                      : "",
+                  );
+                }}
               />
             }
             error={error}

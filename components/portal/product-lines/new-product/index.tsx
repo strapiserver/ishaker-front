@@ -270,6 +270,9 @@ export function NewProductPage({
         ? String(initialProduct.taste.main.id)
         : "",
   );
+  const [cupId, setCupId] = useState(
+    initialProduct?.cup?.id ? String(initialProduct.cup.id) : "",
+  );
   const [componentRows, setComponentRows] = useState<ProductComponentRow[]>(
     toComponentRows(initialProduct),
   );
@@ -404,6 +407,16 @@ export function NewProductPage({
       name: capitalizeName(taste.name),
       imageUrl: getSmallestMediaUrl(taste.main),
     }));
+  const availableCups =
+    productLine.base_product_line?.cups || productLine.cups || [];
+  const defaultCup = productLine.cups?.[0];
+  const cupOptions: SearchableImageOption[] = availableCups.map((cup) => ({
+    id: String(cup.id),
+    name: capitalizeName(cup.name),
+    imageUrl: getSmallestMediaUrl(cup.image),
+  }));
+  const selectedCup =
+    availableCups.find((cup) => String(cup.id) === cupId) || defaultCup;
   const splashFrames = useMemo(() => {
     const selectedFrames = sortFramesByName(
       selectedSplashResponse?.splash.images,
@@ -527,6 +540,7 @@ export function NewProductPage({
     setSplashId("");
     setCircleId("");
     setMainImageId("");
+    setCupId("");
   };
   const selectProduct = (product: ProductNameOption) => {
     setName(product.name);
@@ -576,6 +590,7 @@ export function NewProductPage({
           ? String(selected.taste.main.id)
           : "",
     );
+    setCupId(selected?.cup?.id ? String(selected.cup.id) : "");
   };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -609,6 +624,7 @@ export function NewProductPage({
             splashId,
             circleId,
             mainImageId,
+            cupId,
             components: componentRows.map(
               ({
                 componentId,
@@ -764,11 +780,24 @@ export function NewProductPage({
           splashOptions={splashOptions}
           circleId={circleId}
           circleOptions={circleOptions}
+          cupId={cupId}
+          cupOptions={cupOptions}
+          defaultCup={
+            defaultCup
+              ? {
+                  id: String(defaultCup.id),
+                  name: capitalizeName(defaultCup.name),
+                  imageUrl: getSmallestMediaUrl(defaultCup.image),
+                  subtitle: "Product-line default",
+                }
+              : undefined
+          }
+          onCupChange={setCupId}
         />
         <NewProductVisualPreview
           brand={selectedBrand}
           circle={selectedCircle}
-          cup={productLine.cups?.[0]}
+          cup={selectedCup}
           isSplashLoading={Boolean(
             (existingProductId && isSelectedProductLoading) ||
             (splashId && isSelectedSplashLoading),

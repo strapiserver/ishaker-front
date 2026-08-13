@@ -72,6 +72,11 @@ export function ContainersPreview({
                 productImageUrl={getSmallestMediaUrl(
                   cell?.product?.custom_main || cell?.product?.taste?.main,
                 )}
+                cupImageUrl={getSmallestMediaUrl(
+                  cell?.product?.cup?.image ||
+                    cell?.product?.product_line?.cups?.[0]?.image,
+                )}
+                cupCount={cell?.product ? 1 : 0}
                 isDisabled={!hasProduct}
                 onHeightChange={(height) => setPowderHeight(index, height)}
                 onHeightChangeEnd={(height) =>

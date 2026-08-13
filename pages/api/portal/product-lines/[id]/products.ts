@@ -6,7 +6,10 @@ import {
   hasStrapiCatalogToken,
   requestStrapiRestAsService,
 } from "../../../../../services/server/strapiClient";
-import type { PortalProductLine } from "../../../../../types/portal";
+import type {
+  PortalCup,
+  PortalProductLine,
+} from "../../../../../types/portal";
 
 type CreatedProduct = {
   id: string | number;
@@ -201,6 +204,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const splashId = asId(req.body?.splashId);
   const circleId = asId(req.body?.circleId);
   const mainImageId = asId(req.body?.mainImageId);
+  const cupId = asId(req.body?.cupId);
   const submittedComponents = parseComponents(req.body?.components);
   const submittedDosage = parseDosage(req.body?.dosage);
   const name = capitalizeName(asString(req.body?.name));
@@ -349,6 +353,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     String(session.user.id),
   );
   ownershipParams.set("populate[base_product_line][fields][0]", "name");
+  ownershipParams.set(
+    "populate[base_product_line][populate][cups][fields][0]",
+    "id",
+  );
   ownershipParams.set("populate[machines][fields][0]", "serial_number");
   ownershipParams.set("populate[machines][fields][1]", "title");
   ownershipParams.set("pagination[pageSize]", "2000");
@@ -392,6 +400,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({
         error: "invalid_generic_product_line",
         message: "This product line is not linked to a root generic line.",
+      });
+    }
+    if (
+      cupId &&
+      !productLine.base_product_line?.cups?.some(
+        (cup) => String(cup.id) === cupId,
+      )
+    ) {
+      return res.status(400).json({
+        error: "product_line_cup_mismatch",
+        message: "The custom cup must belong to this product line.",
       });
     }
     const duplicateNameParams = new URLSearchParams();
@@ -477,6 +496,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       catalogComponents,
       duplicateProducts,
       brand,
+      customCup,
     ] = await Promise.all([
       requestStrapiRestAsService<RelatedEntity>(
         `/api/splashes/${resolvedSplashId}`,
@@ -496,12 +516,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         `/api/products?${duplicateNameParams.toString()}`,
       ),
       requestStrapiRestAsService<RelatedEntity>(`/api/brands/${brandId}`),
+      cupId
+        ? requestStrapiRestAsService<PortalCup>(`/api/cups/${cupId}`)
+        : Promise.resolve(null),
     ]);
 
     if (!brand?.id) {
       return res.status(400).json({
         error: "invalid_brand",
         message: "The selected brand no longer exists.",
+      });
+    }
+    if (cupId && !customCup?.id) {
+      return res.status(400).json({
+        error: "invalid_cup",
+        message: "The selected custom cup no longer exists.",
       });
     }
 
@@ -608,6 +637,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             custom_splash: splash.id,
             custom_circle: circle.id,
             custom_main: mainImage.id,
+            cup: customCup?.id || null,
             components: { set: componentIds },
             nutrition,
             dosage: submittedDosage,
@@ -645,6 +675,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           custom_splash: splash.id,
           custom_circle: circle.id,
           custom_main: mainImage.id,
+          ...(customCup?.id ? { cup: customCup.id } : {}),
           ...(componentIds.length ? { components: { connect: componentIds } } : {}),
           nutrition,
           dosage: submittedDosage,

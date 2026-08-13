@@ -73,6 +73,10 @@ type NewProductFormProps = {
   splashOptions: SearchableImageOption[];
   circleId: string;
   circleOptions: SearchableImageOption[];
+  cupId: string;
+  cupOptions: SearchableImageOption[];
+  defaultCup?: SearchableImageOption;
+  onCupChange: (value: string) => void;
 };
 
 export function NewProductForm({
@@ -117,6 +121,10 @@ export function NewProductForm({
   splashOptions,
   circleId,
   circleOptions,
+  cupId,
+  cupOptions,
+  defaultCup,
+  onCupChange,
 }: NewProductFormProps) {
   return (
     <Box
@@ -205,6 +213,25 @@ export function NewProductForm({
             onChange={onVisualChange.mainImage}
             onShowMore={onShowMoreMainImages}
           />
+        </FormControl>
+
+        <FormControl>
+          <FormLabel>Custom cup</FormLabel>
+          <SearchableImageSelect
+            ariaLabel="Select a custom cup"
+            emptyLabel="No cups are available for this product line"
+            options={cupOptions}
+            placeholder="Select a cup"
+            value={cupId}
+            onChange={onCupChange}
+            clearLabel="Use product-line default cup"
+            isSearchable={false}
+            optionLayout="tiles"
+            fallbackOption={defaultCup}
+          />
+          <Text color="bg.400" fontSize="sm" mt="2">
+            Optional. Only cups belonging to this product line are available.
+          </Text>
         </FormControl>
 
         <FormControl>

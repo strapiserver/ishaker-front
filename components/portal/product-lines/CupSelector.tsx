@@ -11,17 +11,21 @@ type CupSelectorProps = {
 export function CupSelector({ cups, value, onChange }: CupSelectorProps) {
   return (
     <Box py={{ base: "4", md: "6" }} w="full">
-      <Text as="h3" color="bg.50" fontWeight="700" mb="4">
-        Select cup
+      <Text as="h3" color="bg.50" fontWeight="700" mb="1">
+        Default cup
+      </Text>
+      <Text color="bg.300" fontSize="sm" mb="4">
+        Select the cup products use unless they have their own custom cup.
       </Text>
       {cups.length ? (
         <SimpleGrid
           columns={{ base: 2, lg: 3 }}
-          spacing={{ base: "2", md: "4" }}
+          columnGap={{ base: "1", md: "2" }}
+          rowGap={{ base: "2", md: "4" }}
         >
           {cups.map((cup, index) => {
             const id = String(cup.id);
-            const isSelected = id === value;
+            const isSelected = value === id;
             return (
               <Button
                 key={id}
@@ -29,13 +33,14 @@ export function CupSelector({ cups, value, onChange }: CupSelectorProps) {
                 aria-label={`Select cup option ${index + 1}`}
                 aria-pressed={isSelected}
                 onClick={() => onChange(id)}
+                position="relative"
                 variant="unstyled"
                 display="flex"
                 alignItems="center"
                 justifyContent="center"
                 h="auto"
-                minH={{ base: "92px", md: "150px" }}
-                p={{ base: "2", md: "3" }}
+                minH={{ base: "132px", md: "196px" }}
+                p={{ base: "1", md: "2" }}
                 border="2px solid"
                 borderColor={isSelected ? "acid.300" : "whiteAlpha.100"}
                 borderRadius="xl"
@@ -55,7 +60,7 @@ export function CupSelector({ cups, value, onChange }: CupSelectorProps) {
                   src={getMediaUrl(cup.image)}
                   alt=""
                   w="full"
-                  h={{ base: "76px", md: "128px" }}
+                  h={{ base: "116px", md: "176px" }}
                   objectFit="contain"
                   draggable={false}
                 />

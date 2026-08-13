@@ -24,6 +24,7 @@ import {
 import { capitalizeName } from "../../../lib/formatName";
 import type { PortalProductLine } from "../../../types/portal";
 import { DeleteProductLineDialog } from "./DeleteProductLineDialog";
+import { CupThumbnailStack } from "./CupThumbnailStack";
 import { ProductCard } from "./ProductCard";
 type ProductLineCardProps = {
   productLine: PortalProductLine;
@@ -121,6 +122,12 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
             <Text color={isActive ? "#6ce864" : "whiteAlpha.500"} fontSize="xs">•&nbsp; {isActive ? "Active" : "Inactive"}</Text>
           </HStack>
           <HStack spacing="4">
+            <HStack spacing="2">
+              <CupThumbnailStack cups={productLine.cups?.slice(0, 1)} />
+              <Text color="whiteAlpha.600" fontSize="xs" whiteSpace="nowrap">
+                {productLine.cups?.length ? "Default cup" : "No default cup"}
+              </Text>
+            </HStack>
             <Text color="whiteAlpha.600" fontSize="xs">{brandCount} {brandCount === 1 ? "brand" : "brands"}</Text>
             <Menu>
               <MenuButton as={IconButton} aria-label={`Actions for ${productLineName}`} icon={<FiMoreVertical />} variant="ghost" size="sm" color="whiteAlpha.800" />

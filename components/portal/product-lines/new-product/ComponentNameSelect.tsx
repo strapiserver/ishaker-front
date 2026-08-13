@@ -7,7 +7,14 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { KeyboardEvent, useId, useMemo, useRef, useState } from "react";
+import {
+  KeyboardEvent,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { FaChevronDown, FaTimes } from "react-icons/fa";
 import { IoAddOutline } from "react-icons/io5";
 import type { PortalComponent } from "../../../../types/portal";
@@ -57,6 +64,23 @@ export function ComponentNameSelect({
       (component) =>
         component.name.toLocaleLowerCase() === normalizedCustomName,
     );
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      const searchInputs = containerRef.current?.querySelectorAll<HTMLInputElement>(
+        'input[aria-label="Create custom ingredient name"]',
+      );
+      const visibleSearchInput = Array.from(searchInputs ?? []).find(
+        (input) => input.getClientRects().length > 0,
+      );
+
+      visibleSearchInput?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [isOpen]);
 
   const closeAndBlur = () => {
     setIsOpen(false);

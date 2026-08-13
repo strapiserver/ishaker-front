@@ -119,6 +119,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   params.set("fields[5]", "product_purpose");
   params.set("populate[custom_main][fields][0]", "url");
   params.set("populate[custom_main][fields][1]", "formats");
+  params.set("populate[cup][populate][image][fields][0]", "url");
+  params.set("populate[cup][populate][image][fields][1]", "formats");
   params.set("populate[custom_splash][fields][0]", "isEmpty");
   params.set("populate[custom_splash][populate][images][fields][0]", "url");
   params.set("populate[custom_splash][populate][images][fields][1]", "name");

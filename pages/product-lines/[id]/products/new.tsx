@@ -51,6 +51,14 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
   params.set("populate[cups][populate][image][fields][0]", "url");
   params.set("populate[cups][populate][image][fields][1]", "formats");
   params.set("populate[base_product_line][fields][0]", "name");
+  params.set(
+    "populate[base_product_line][populate][cups][populate][image][fields][0]",
+    "url",
+  );
+  params.set(
+    "populate[base_product_line][populate][cups][populate][image][fields][1]",
+    "formats",
+  );
   params.set("pagination[pageSize]", "2000");
 
   const productParams = new URLSearchParams();
@@ -63,6 +71,8 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
   productParams.set("fields[5]", "product_purpose");
   productParams.set("populate[custom_main][fields][0]", "url");
   productParams.set("populate[custom_main][fields][1]", "formats");
+  productParams.set("populate[cup][populate][image][fields][0]", "url");
+  productParams.set("populate[cup][populate][image][fields][1]", "formats");
   productParams.set("populate[custom_splash][fields][0]", "name");
   productParams.set("populate[custom_circle][fields][0]", "name");
   productParams.set(

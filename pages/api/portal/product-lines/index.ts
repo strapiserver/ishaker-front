@@ -78,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ) {
       return res.status(400).json({
         error: "product_line_cup_mismatch",
-        message: "The selected cup does not belong to the selected root product line.",
+        message: "A selected cup does not belong to the selected root product line.",
       });
     }
 

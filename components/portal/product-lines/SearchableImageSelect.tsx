@@ -10,10 +10,18 @@ import {
   InputRightElement,
   IconButton,
   Portal,
+  SimpleGrid,
   VStack,
   Text,
 } from "@chakra-ui/react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { FaChevronDown, FaImages, FaTimes } from "react-icons/fa";
 
 export type SearchableImageOption = {
@@ -21,6 +29,7 @@ export type SearchableImageOption = {
   name: string;
   imageUrl?: string;
   color?: string;
+  icon?: ReactNode;
   subtitle?: string;
   subtitleColor?: string;
   badge?: string;
@@ -40,6 +49,8 @@ export type SearchableImageSelectProps = {
   isDisabled?: boolean;
   isSearchable?: boolean;
   onShowMore?: () => void;
+  optionLayout?: "list" | "tiles";
+  fallbackOption?: SearchableImageOption;
 };
 
 export function SearchableImageSelect({
@@ -53,6 +64,8 @@ export function SearchableImageSelect({
   isDisabled = false,
   isSearchable = true,
   onShowMore,
+  optionLayout = "list",
+  fallbackOption,
 }: SearchableImageSelectProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLInputElement | HTMLButtonElement>(null);
@@ -66,6 +79,8 @@ export function SearchableImageSelect({
     maxHeight: number;
   } | null>(null);
   const selected = options.find((option) => option.id === value);
+  const displayedOption = selected || fallbackOption;
+  const effectiveValue = value || fallbackOption?.id || "";
   const listboxId = `${ariaLabel.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}-options`;
   const filteredOptions = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
@@ -92,7 +107,7 @@ export function SearchableImageSelect({
       const rect = trigger.getBoundingClientRect();
       const viewportMargin = 16;
       const menuGap = 8;
-      const preferredHeight = 360;
+      const preferredHeight = optionLayout === "tiles" ? 560 : 360;
       const spaceBelow =
         window.innerHeight - rect.bottom - menuGap - viewportMargin;
       const spaceAbove = rect.top - menuGap - viewportMargin;
@@ -126,7 +141,153 @@ export function SearchableImageSelect({
       window.removeEventListener("resize", updateMenuPosition);
       window.removeEventListener("scroll", updateMenuPosition, true);
     };
-  }, [isOpen]);
+  }, [isOpen, optionLayout]);
+
+  const listOptions = filteredOptions.map((option) => (
+    <Button
+      key={option.id}
+      type="button"
+      role="option"
+      aria-selected={option.id === effectiveValue}
+      variant={option.id === effectiveValue ? "primary" : "default"}
+      isDisabled={option.isDisabled && option.id !== value}
+      h="52px"
+      px="3"
+      justifyContent="flex-start"
+      flex="0 0 auto"
+      onClick={() => {
+        onChange(option.id);
+        closeAndBlur();
+      }}
+    >
+      {option.imageUrl ? (
+        <Image
+          src={option.imageUrl}
+          alt=""
+          boxSize="36px"
+          objectFit="contain"
+          borderRadius="md"
+          bg="whiteAlpha.100"
+          mr="3"
+        />
+      ) : option.color ? (
+        <Box
+          aria-hidden="true"
+          boxSize="36px"
+          borderRadius="md"
+          bg={option.color}
+          border="1px solid"
+          borderColor="whiteAlpha.300"
+          mr="3"
+          flex="0 0 auto"
+        />
+      ) : option.icon ? (
+        <Box
+          aria-hidden="true"
+          boxSize="36px"
+          borderRadius="md"
+          bg="whiteAlpha.100"
+          color="acid.300"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          fontSize="18px"
+          mr="3"
+          flex="0 0 auto"
+        >
+          {option.icon}
+        </Box>
+      ) : (
+        <Box
+          boxSize="36px"
+          borderRadius="md"
+          bg="whiteAlpha.100"
+          mr="3"
+          flex="0 0 auto"
+        />
+      )}
+      <VStack spacing="0" minW="0" textAlign="left" align="stretch">
+        <Box display="flex" alignItems="center" gap="2" minW="0">
+          <Text noOfLines={1}>{option.name}</Text>
+          {option.badge ? (
+            <Badge
+              colorScheme={option.badgeColorScheme || "gray"}
+              flex="0 0 auto"
+            >
+              {option.badge}
+            </Badge>
+          ) : null}
+        </Box>
+        {option.disabledReason || option.subtitle ? (
+          <Text
+            fontSize="xs"
+            color={
+              option.disabledReason
+                ? "orange.200"
+                : option.subtitleColor || "bg.300"
+            }
+          >
+            {option.disabledReason || option.subtitle}
+          </Text>
+        ) : null}
+      </VStack>
+    </Button>
+  ));
+
+  const tileOptions = filteredOptions.map((option) => (
+    <Button
+      key={option.id}
+      type="button"
+      role="option"
+      aria-label={option.name}
+      aria-selected={option.id === effectiveValue}
+      isDisabled={option.isDisabled && option.id !== value}
+      variant="unstyled"
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="center"
+      minW="0"
+      h={{ base: "150px", md: "190px" }}
+      p="2"
+      border="2px solid"
+      borderColor={
+        option.id === effectiveValue ? "acid.300" : "whiteAlpha.200"
+      }
+      borderRadius="xl"
+      bg={option.id === effectiveValue ? "whiteAlpha.100" : "bg.800"}
+      boxShadow={
+        option.id === effectiveValue
+          ? "0 0 0 1px var(--chakra-colors-acid-300)"
+          : "none"
+      }
+      _hover={{
+        borderColor:
+          option.id === effectiveValue ? "acid.300" : "whiteAlpha.400",
+      }}
+      _focusVisible={{ boxShadow: "outline" }}
+      onClick={() => {
+        onChange(option.id);
+        closeAndBlur();
+      }}
+    >
+      {option.imageUrl ? (
+        <Image
+          src={option.imageUrl}
+          alt=""
+          w="full"
+          h={{ base: "112px", md: "150px" }}
+          objectFit="contain"
+          draggable={false}
+        />
+      ) : (
+        <Box flex="1" />
+      )}
+      <Text mt="1" w="full" fontSize="sm" fontWeight="700" noOfLines={1}>
+        {option.name}
+      </Text>
+    </Button>
+  ));
 
   const optionList = (maxHeight: string) => (
     <VStack spacing="1" maxH={maxHeight} overflowY="auto" align="stretch">
@@ -147,76 +308,13 @@ export function SearchableImageSelect({
           {clearLabel}
         </Button>
       ) : null}
-      {filteredOptions.map((option) => (
-        <Button
-          key={option.id}
-          type="button"
-          role="option"
-          aria-selected={option.id === value}
-          variant={option.id === value ? "primary" : "default"}
-          isDisabled={option.isDisabled && option.id !== value}
-          h="52px"
-          px="3"
-          justifyContent="flex-start"
-          flex="0 0 auto"
-          onClick={() => {
-            onChange(option.id);
-            closeAndBlur();
-          }}
-        >
-          {option.imageUrl ? (
-            <Image
-              src={option.imageUrl}
-              alt=""
-              boxSize="36px"
-              objectFit="contain"
-              borderRadius="md"
-              bg="whiteAlpha.100"
-              mr="3"
-            />
-          ) : option.color ? (
-            <Box
-              aria-hidden="true"
-              boxSize="36px"
-              borderRadius="md"
-              bg={option.color}
-              border="1px solid"
-              borderColor="whiteAlpha.300"
-              mr="3"
-              flex="0 0 auto"
-            />
-          ) : (
-            <Box
-              boxSize="36px"
-              borderRadius="md"
-              bg="whiteAlpha.100"
-              mr="3"
-              flex="0 0 auto"
-            />
-          )}
-          <VStack spacing="0" minW="0" textAlign="left" align="stretch">
-            <Box display="flex" alignItems="center" gap="2" minW="0">
-              <Text noOfLines={1}>{option.name}</Text>
-              {option.badge ? (
-                <Badge
-                  colorScheme={option.badgeColorScheme || "gray"}
-                  flex="0 0 auto"
-                >
-                  {option.badge}
-                </Badge>
-              ) : null}
-            </Box>
-            {option.disabledReason || option.subtitle ? (
-              <Text
-                fontSize="xs"
-                color={option.disabledReason ? "orange.200" : option.subtitleColor || "bg.300"}
-              >
-                {option.disabledReason || option.subtitle}
-              </Text>
-            ) : null}
-          </VStack>
-        </Button>
-      ))}
+      {optionLayout === "tiles" ? (
+        <SimpleGrid columns={{ base: 2, md: 3 }} spacing="3">
+          {tileOptions}
+        </SimpleGrid>
+      ) : (
+        listOptions
+      )}
       {!filteredOptions.length ? (
         <Text color="bg.300" py="4" textAlign="center">
           {emptyLabel}
@@ -234,10 +332,10 @@ export function SearchableImageSelect({
     >
       {isSearchable ? (
         <InputGroup size="lg">
-          {selected?.imageUrl ? (
+          {displayedOption?.imageUrl ? (
             <InputLeftElement h="56px" w="52px" pointerEvents="none">
               <Image
-                src={selected.imageUrl}
+                src={displayedOption.imageUrl}
                 alt=""
                 boxSize="34px"
                 objectFit="contain"
@@ -245,16 +343,26 @@ export function SearchableImageSelect({
                 bg="whiteAlpha.100"
               />
             </InputLeftElement>
-          ) : selected?.color ? (
+          ) : displayedOption?.color ? (
             <InputLeftElement h="56px" w="52px" pointerEvents="none">
               <Box
                 aria-hidden="true"
                 boxSize="28px"
                 borderRadius="md"
-                bg={selected.color}
+                bg={displayedOption.color}
                 border="1px solid"
                 borderColor="whiteAlpha.300"
               />
+            </InputLeftElement>
+          ) : displayedOption?.icon ? (
+            <InputLeftElement
+              h="56px"
+              w="52px"
+              pointerEvents="none"
+              color="acid.300"
+              fontSize="18px"
+            >
+              {displayedOption.icon}
             </InputLeftElement>
           ) : null}
           <Input
@@ -270,7 +378,7 @@ export function SearchableImageSelect({
             data-form-type="other"
             data-lpignore="true"
             spellCheck={false}
-            value={isOpen ? query : selected?.name || ""}
+            value={isOpen ? query : displayedOption?.name || ""}
             onChange={(event) => {
               setQuery(event.target.value);
               setIsOpen(true);
@@ -292,7 +400,13 @@ export function SearchableImageSelect({
             placeholder={placeholder}
             isDisabled={isDisabled}
             h="56px"
-            pl={selected?.imageUrl || selected?.color ? "52px" : "4"}
+            pl={
+              displayedOption?.imageUrl ||
+              displayedOption?.color ||
+              displayedOption?.icon
+                ? "52px"
+                : "4"
+            }
             pr="44px"
             bg="bg.800"
             borderColor="whiteAlpha.200"
@@ -327,7 +441,7 @@ export function SearchableImageSelect({
           bg="bg.800"
           border="1px solid"
           borderColor="whiteAlpha.200"
-          color={selected ? "bg.50" : "bg.300"}
+          color={displayedOption ? "bg.50" : "bg.300"}
           justifyContent="space-between"
           fontWeight="normal"
           _hover={{ borderColor: "whiteAlpha.400", bg: "bg.800" }}
@@ -353,26 +467,41 @@ export function SearchableImageSelect({
           }}
         >
           <Box display="flex" alignItems="center" gap="3" minW="0">
-            {selected?.imageUrl ? (
+            {displayedOption?.imageUrl ? (
               <Image
-                src={selected.imageUrl}
+                src={displayedOption.imageUrl}
                 alt=""
                 boxSize="34px"
                 objectFit="contain"
                 borderRadius="md"
                 bg="whiteAlpha.100"
               />
-            ) : selected?.color ? (
+            ) : displayedOption?.color ? (
               <Box
                 aria-hidden="true"
                 boxSize="28px"
                 borderRadius="md"
-                bg={selected.color}
+                bg={displayedOption.color}
                 border="1px solid"
                 borderColor="whiteAlpha.300"
               />
+            ) : displayedOption?.icon ? (
+              <Box
+                aria-hidden="true"
+                boxSize="34px"
+                borderRadius="md"
+                bg="whiteAlpha.100"
+                color="acid.300"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                fontSize="18px"
+                flex="0 0 auto"
+              >
+                {displayedOption.icon}
+              </Box>
             ) : null}
-            <Text noOfLines={1}>{selected?.name || placeholder}</Text>
+            <Text noOfLines={1}>{displayedOption?.name || placeholder}</Text>
           </Box>
           <Box
             as={FaChevronDown}
@@ -383,14 +512,14 @@ export function SearchableImageSelect({
           />
         </Button>
       )}
-      {selected?.subtitle && !isOpen ? (
+      {displayedOption?.subtitle && !isOpen ? (
         <Text
           mt="1"
           ml="1"
           fontSize="xs"
-          color={selected.subtitleColor || "bg.300"}
+          color={displayedOption.subtitleColor || "bg.300"}
         >
-          {selected.subtitle}
+          {displayedOption.subtitle}
         </Text>
       ) : null}
 

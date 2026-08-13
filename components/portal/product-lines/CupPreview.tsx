@@ -26,9 +26,27 @@ export function CupPreview({
   splashFrames = [],
   splashIsEmpty,
 }: CupPreviewProps) {
+  const defaultSplashFrames = useMemo(
+    () =>
+      [...(cup?.default_splash?.images || [])]
+        .sort((left, right) =>
+          (left.name || left.url || "").localeCompare(
+            right.name || right.url || "",
+            undefined,
+            { numeric: true, sensitivity: "base" },
+          ),
+        )
+        .map((image) => getMediaUrl(image))
+        .filter(Boolean),
+    [cup],
+  );
+  const resolvedSplashFrames =
+    splashFrames.length || splashIsEmpty === true
+      ? splashFrames
+      : defaultSplashFrames;
   const splashSets = useMemo(
-    () => (splashFrames.length ? [splashFrames] : []),
-    [splashFrames],
+    () => (resolvedSplashFrames.length ? [resolvedSplashFrames] : []),
+    [resolvedSplashFrames],
   );
   const { activeFrame, isFading } = useSplashAnimation(
     splashSets,
@@ -203,6 +221,7 @@ export function CupPreview({
           )}
         </Box>
       </Box>
+
     </Box>
   );
 }
