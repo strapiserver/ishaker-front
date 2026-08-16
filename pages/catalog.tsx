@@ -15,6 +15,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import type { GetServerSideProps } from "next";
+import { useRouter } from "next/router";
 import { FormEvent, useState } from "react";
 import { PortalShell } from "../components/portal/PortalShell";
 import { requirePortalSession } from "../lib/portal/auth";
@@ -65,10 +66,15 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
+  const router = useRouter();
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!main || !circle) return;
+
+    // Grab the form node before the first await: React nulls
+    // event.currentTarget once the handler returns.
+    const form = event.currentTarget;
 
     setIsSubmitting(true);
     setMessage("");
@@ -97,7 +103,13 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
       setMain(null);
       setCircle(null);
       setElements([]);
-      (event.currentTarget as HTMLFormElement).reset();
+      form.reset();
+      // Re-run getServerSideProps so the new taste shows up in the
+      // grid with its "Pending review" badge. A failed refresh must not
+      // turn a successful submission into an error message.
+      await router
+        .replace(router.asPath, undefined, { scroll: false })
+        .catch(() => undefined);
     } catch (error) {
       setIsError(true);
       setMessage(error instanceof Error ? error.message : "Submission failed.");

@@ -45,6 +45,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // Reject duplicates before uploading anything: a retried submission
+    // must not leave behind another circle, taste and image set.
+    const duplicateParams = new URLSearchParams();
+    duplicateParams.set("filters[name][$eqi]", name);
+    duplicateParams.set("fields[0]", "name");
+    duplicateParams.set("pagination[pageSize]", "1");
+    const existing = await requestStrapiRestAsService<{ id: string | number }[]>(
+      `/api/tastes?${duplicateParams.toString()}`,
+    );
+    if (Array.isArray(existing) && existing.length > 0) {
+      return res.status(409).json({
+        error: "duplicate_name",
+        message: `A taste named "${name}" already exists. Pick another name.`,
+      });
+    }
+
     const main = decodePortalImage(req.body?.main || {}, "Main image");
     const circleImage = decodePortalImage(req.body?.circle || {}, "Circle image");
     const elements = rawElements.map((file: any, index: number) =>
