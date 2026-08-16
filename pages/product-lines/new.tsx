@@ -34,21 +34,47 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
   splashParams.set("sort[0]", "name:ASC");
   splashParams.set("pagination[pageSize]", "2000");
 
-  try {
-    const rootProductLines = await requestStrapiRestAsService<PortalProductLine[]>(
-      `/api/product-lines?${rootParams.toString()}`,
+  const existingParams = new URLSearchParams();
+  if (result.session.access === "client") {
+    existingParams.set(
+      "filters[author][client][id][$eq]",
+      String(result.session.client.id),
     );
-    const splashes = await requestStrapiRestAsService<PortalSplash[]>(
-      `/api/splashes?${splashParams.toString()}`,
-    ).catch((error) => {
-      console.error("[product-lines/new] splash option loading failed:", error);
-      return [];
-    });
+  } else {
+    existingParams.set(
+      "filters[author][id][$eq]",
+      String(result.session.user.id),
+    );
+  }
+  existingParams.set("fields[0]", "name");
+  existingParams.set("populate[base_product_line][fields][0]", "name");
+  existingParams.set("pagination[pageSize]", "2000");
+
+  try {
+    const [rootProductLines, splashes, existingProductLines] =
+      await Promise.all([
+        requestStrapiRestAsService<PortalProductLine[]>(
+          `/api/product-lines?${rootParams.toString()}`,
+        ),
+        requestStrapiRestAsService<PortalSplash[]>(
+          `/api/splashes?${splashParams.toString()}`,
+        ).catch((error) => {
+          console.error(
+            "[product-lines/new] splash option loading failed:",
+            error,
+          );
+          return [];
+        }),
+        requestStrapiRestAsService<PortalProductLine[]>(
+          `/api/product-lines?${existingParams.toString()}`,
+        ),
+      ]);
 
     return {
       props: {
         session: result.session,
         rootProductLines,
+        existingProductLines,
         splashes,
       },
     };
@@ -58,6 +84,7 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
       props: {
         session: result.session,
         rootProductLines: [],
+        existingProductLines: [],
         splashes: [],
         loadError: "Product line options could not be loaded.",
       },

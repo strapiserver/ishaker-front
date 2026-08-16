@@ -107,6 +107,7 @@ export function ProductComponentsTable({
   servingUnit,
 }: ProductComponentsTableProps) {
   const [draggedRowId, setDraggedRowId] = useState("");
+  const [focusedRowId, setFocusedRowId] = useState("");
   const [isSmallDrinkEnabled, setIsSmallDrinkEnabled] = useState(() =>
     Boolean(dosage.smallDrinkVolume.trim() || dosage.smallDrinkPrice.trim()),
   );
@@ -152,10 +153,12 @@ export function ProductComponentsTable({
 
   const addRow = () => {
     if (rows.length >= MAX_COMPONENTS) return;
+    const rowId = `component-${Date.now()}-${rows.length}`;
+    setFocusedRowId(rowId);
     onChange([
       ...rows,
       {
-        id: `component-${Date.now()}-${rows.length}`,
+        id: rowId,
         componentId: "",
         isCustom: false,
         name: "",
@@ -342,6 +345,7 @@ export function ProductComponentsTable({
               />
               <Box minW="0" gridColumn={{ base: "2 / 4", md: "2" }} gridRow="1">
                 <ComponentNameSelect
+                  autoFocusCustomName={row.id === focusedRowId}
                   components={components}
                   value={row.name}
                   onCreateCustom={(name) =>

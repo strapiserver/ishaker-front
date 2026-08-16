@@ -1,4 +1,14 @@
-import { Alert, AlertIcon, Box, Grid, useToast } from "@chakra-ui/react";
+import {
+  Alert,
+  AlertIcon,
+  Box,
+  Button,
+  Grid,
+  HStack,
+  Text,
+  useToast,
+} from "@chakra-ui/react";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { FormEvent, useMemo, useState } from "react";
 import {
@@ -40,6 +50,7 @@ import type {
 export type NewProductLinePageProps = {
   session: PortalSession;
   rootProductLines: PortalProductLine[];
+  existingProductLines?: PortalProductLine[];
   splashes: PortalSplash[];
   productLine?: PortalProductLine;
   loadError?: string;
@@ -100,6 +111,7 @@ const getProductLineIcon = (name: string) =>
 export function NewProductLinePage({
   session,
   rootProductLines,
+  existingProductLines = [],
   splashes,
   productLine,
   loadError,
@@ -123,6 +135,8 @@ export function NewProductLinePage({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [serverDuplicate, setServerDuplicate] =
+    useState<PortalProductLine | null>(null);
 
   const baseOptions = useMemo(
     () =>
@@ -169,6 +183,21 @@ export function NewProductLinePage({
   const selectedBaseLine = rootProductLines.find(
     (line) => String(line.id) === baseProductLineId,
   );
+  const selectedExistingLine = useMemo(() => {
+    if (isEditing || !selectedBaseLine) return null;
+    const normalizedName = selectedBaseLine.name.trim().toLocaleLowerCase();
+    return (
+      existingProductLines.find(
+        (line) =>
+          String(line.base_product_line?.id) === String(selectedBaseLine.id),
+      ) ||
+      existingProductLines.find(
+        (line) => line.name.trim().toLocaleLowerCase() === normalizedName,
+      ) ||
+      null
+    );
+  }, [existingProductLines, isEditing, selectedBaseLine]);
+  const duplicateProductLine = selectedExistingLine || serverDuplicate;
   const availableCups = selectedBaseLine?.cups || productLine?.cups || [];
   const selectedCup = availableCups.find((cup) => String(cup.id) === cupId);
   const {
@@ -196,6 +225,7 @@ export function NewProductLinePage({
     name.trim().length >= 2 &&
     baseProductLineId &&
     cupId &&
+    !duplicateProductLine &&
     !loadError,
   );
 
@@ -206,9 +236,7 @@ export function NewProductLinePage({
     setIsSubmitting(true);
     setError("");
     try {
-      const saveProductLine = async (
-        confirmDuplicate = false,
-      ): Promise<boolean> => {
+      const saveProductLine = async (): Promise<boolean> => {
         const response = await fetch(
           isEditing
             ? `/api/portal/product-lines/${productLine?.id}`
@@ -221,9 +249,6 @@ export function NewProductLinePage({
               baseProductLineId,
               cupId,
               customSplashId,
-              ...(!isEditing && confirmDuplicate
-                ? { confirmDuplicate: true }
-                : {}),
             }),
           },
         );
@@ -233,12 +258,10 @@ export function NewProductLinePage({
           !isEditing &&
           response.status === 409 &&
           payload?.error === "duplicate_name" &&
-          payload?.requiresConfirmation === true
+          payload?.existingProductLine?.id
         ) {
-          const confirmed = window.confirm(
-            "A product line with this name already exists. Are you sure you want to create another one?",
-          );
-          return confirmed ? saveProductLine(true) : false;
+          setServerDuplicate(payload.existingProductLine);
+          return false;
         }
 
         if (!response.ok) {
@@ -310,6 +333,32 @@ export function NewProductLinePage({
             baseProductLineId={baseProductLineId}
             canSubmit={canSubmit}
             customSplashId={customSplashId}
+            duplicateSuggestion={
+              duplicateProductLine ? (
+                <Alert status="info" borderRadius="xl" alignItems="center">
+                  <AlertIcon />
+                  <Box flex="1" minW="0">
+                    <Text fontWeight="700">
+                      This product line already exists
+                    </Text>
+                    <Text fontSize="sm" color="bg.200">
+                      Add a product to {capitalizeName(duplicateProductLine.name)}
+                      instead of creating a duplicate line.
+                    </Text>
+                  </Box>
+                  <HStack ml="3" flexShrink={0}>
+                    <Button
+                      as={Link}
+                      href={`/product-lines/${duplicateProductLine.id}/products/new`}
+                      size="sm"
+                      variant="primary"
+                    >
+                      Add product
+                    </Button>
+                  </HStack>
+                </Alert>
+              ) : null
+            }
             cupSelector={
               <CupSelector
                 cups={availableCups}
@@ -330,6 +379,7 @@ export function NewProductLinePage({
             error={error}
             isSubmitting={isSubmitting}
             onBaseProductLineChange={(value) => {
+              setServerDuplicate(null);
               setBaseProductLineId(value);
               const rootLine = rootProductLines.find(
                 (line) => String(line.id) === value,

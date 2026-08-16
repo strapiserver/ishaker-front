@@ -28,7 +28,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const baseProductLineId = asId(req.body?.baseProductLineId);
   const cupId = asId(req.body?.cupId);
   const customSplashId = asId(req.body?.customSplashId);
-  const confirmDuplicate = req.body?.confirmDuplicate === true;
   if (!baseProductLineId || !cupId) {
     return res.status(400).json({
       error: "missing_selection",
@@ -106,11 +105,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         `/api/product-lines?${duplicateParams.toString()}`,
       );
 
-    if (duplicateProductLines.length && !confirmDuplicate) {
+    if (duplicateProductLines.length) {
       return res.status(409).json({
         error: "duplicate_name",
-        message: "A product line with this name already exists. Are you sure?",
-        requiresConfirmation: true,
+        message: "A product line with this name already exists.",
+        existingProductLine: {
+          id: duplicateProductLines[0].id,
+          name: duplicateProductLines[0].name,
+        },
       });
     }
 

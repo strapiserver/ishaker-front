@@ -20,13 +20,18 @@ import { IoAddOutline } from "react-icons/io5";
 import type { PortalComponent } from "../../../../types/portal";
 
 type ComponentNameSelectProps = {
+  autoFocusCustomName?: boolean;
   components: PortalComponent[];
   onCreateCustom: (name: string) => void;
   onSelect: (component: PortalComponent) => void;
   value: string;
 };
 
+const normalizeComponentName = (name: string) =>
+  name.trim().toLocaleLowerCase();
+
 export function ComponentNameSelect({
+  autoFocusCustomName = false,
   components,
   onCreateCustom,
   onSelect,
@@ -35,35 +40,49 @@ export function ComponentNameSelect({
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listboxId = `component-name-${useId().replace(/:/g, "")}`;
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(autoFocusCustomName);
   const [customName, setCustomName] = useState("");
-  const normalizedCustomName = customName.trim().toLocaleLowerCase();
+  const normalizedCustomName = normalizeComponentName(customName);
+  const uniqueComponents = useMemo(() => {
+    const seenNames = new Set<string>();
+
+    return components.filter((component) => {
+      const normalizedName = normalizeComponentName(component.name);
+      if (!normalizedName || seenNames.has(normalizedName)) return false;
+      seenNames.add(normalizedName);
+      return true;
+    });
+  }, [components]);
   const selected = useMemo(
     () =>
-      components.find(
+      uniqueComponents.find(
         (component) =>
-          component.name.toLocaleLowerCase() ===
-          value.trim().toLocaleLowerCase(),
+          normalizeComponentName(component.name) ===
+          normalizeComponentName(value),
       ),
-    [components, value],
+    [uniqueComponents, value],
   );
   const filteredComponents = useMemo(
     () =>
       normalizedCustomName
-        ? components.filter((component) =>
-            component.name
-              .toLocaleLowerCase()
-              .includes(normalizedCustomName),
+        ? uniqueComponents.filter((component) =>
+            normalizeComponentName(component.name).includes(
+              normalizedCustomName,
+            ),
           )
-        : components,
-    [components, normalizedCustomName],
+        : uniqueComponents,
+    [normalizedCustomName, uniqueComponents],
   );
   const customNameIsValid =
     customName.trim().length >= 2 &&
-    !components.some(
+    !uniqueComponents.some(
       (component) =>
-        component.name.toLocaleLowerCase() === normalizedCustomName,
+        normalizeComponentName(component.name) === normalizedCustomName,
     );
+
+  useEffect(() => {
+    if (autoFocusCustomName) setIsOpen(true);
+  }, [autoFocusCustomName]);
 
   useEffect(() => {
     if (!isOpen) return;

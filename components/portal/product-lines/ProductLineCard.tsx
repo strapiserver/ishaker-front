@@ -8,6 +8,7 @@ import {
   MenuButton,
   MenuItem,
   MenuList,
+  Portal,
   Text,
   useDisclosure,
 } from "@chakra-ui/react";
@@ -129,13 +130,15 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
               </Text>
             </HStack>
             <Text color="whiteAlpha.600" fontSize="xs">{brandCount} {brandCount === 1 ? "brand" : "brands"}</Text>
-            <Menu>
+            <Menu placement="bottom-end">
               <MenuButton as={IconButton} aria-label={`Actions for ${productLineName}`} icon={<FiMoreVertical />} variant="ghost" size="sm" color="whiteAlpha.800" />
-              <MenuList bg="#171b1c" borderColor="whiteAlpha.200" minW="190px">
-                <MenuItem as={Link} href={`/product-lines/${productLine.id}/edit`} icon={<FiEdit2 />} bg="transparent" _hover={{ bg: "whiteAlpha.100" }}>Edit product line</MenuItem>
-                <MenuItem icon={<FiPower />} bg="transparent" _hover={{ bg: "whiteAlpha.100" }} isDisabled={isUpdatingActive} onClick={() => void updateActiveState(!isActive)}>{isActive ? "Set inactive" : "Set active"}</MenuItem>
-                <MenuItem icon={<FiTrash2 />} bg="transparent" color="red.300" _hover={{ bg: "whiteAlpha.100" }} onClick={deleteDialog.onOpen}>Delete product line</MenuItem>
-              </MenuList>
+              <Portal>
+                <MenuList bg="#171b1c" borderColor="whiteAlpha.200" minW="190px">
+                  <MenuItem as={Link} href={`/product-lines/${productLine.id}/edit`} icon={<FiEdit2 />} bg="transparent" _hover={{ bg: "whiteAlpha.100" }}>Edit product line</MenuItem>
+                  <MenuItem icon={<FiPower />} bg="transparent" _hover={{ bg: "whiteAlpha.100" }} isDisabled={isUpdatingActive} onClick={() => void updateActiveState(!isActive)}>{isActive ? "Set inactive" : "Set active"}</MenuItem>
+                  <MenuItem icon={<FiTrash2 />} bg="transparent" color="red.300" _hover={{ bg: "whiteAlpha.100" }} onClick={deleteDialog.onOpen}>Delete product line</MenuItem>
+                </MenuList>
+              </Portal>
             </Menu>
           </HStack>
         </HStack>

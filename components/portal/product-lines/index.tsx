@@ -1,15 +1,25 @@
 import {
+  AspectRatio,
   Box,
   Button,
   FormControl,
   FormLabel,
   Heading,
-  Select,
+  HStack,
+  Icon,
+  Image,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
   SimpleGrid,
   Text,
+  VStack,
 } from "@chakra-ui/react";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
+import { FiCheck, FiChevronDown } from "react-icons/fi";
 import type {
   PortalCatalogProduct,
   PortalMachineCell,
@@ -19,6 +29,7 @@ import type {
 } from "../../../types/portal";
 import type { Machine } from "../../../types/strapi";
 import { getMachineContainerCount } from "../../../lib/portal/containerSlots";
+import { getSmallestMediaUrl } from "../../../lib/portal/media";
 import { PortalShell } from "../PortalShell";
 import { MachineCellsSection } from "../machines/MachineCellsSection";
 import { OrphanProductCard } from "./OrphanProductCard";
@@ -36,8 +47,95 @@ export type ProductLinesPageProps = {
   orphanProducts: PortalProduct[];
   catalogProducts: PortalCatalogProduct[];
   machineAssignments: MachineContainerAssignment[];
+  initialMachineId?: string;
   loadError?: string;
 };
+
+type MachineSelectorContentProps = {
+  machine: Machine;
+  accountNickname: string;
+  isSelected?: boolean;
+};
+
+function MachineSelectorContent({
+  machine,
+  accountNickname,
+  isSelected = false,
+}: MachineSelectorContentProps) {
+  const previewUrl = getSmallestMediaUrl(machine.machine_type?.preview);
+  const title = machine.title || `Machine #${machine.id}`;
+  const nickname = machine.nickname || accountNickname;
+  const showNickname =
+    Boolean(nickname) && !title.toLowerCase().includes(nickname.toLowerCase());
+
+  return (
+    <HStack spacing="4" align="center" w="full" minW="0">
+      <AspectRatio
+        ratio={1}
+        boxSize={{ base: "56px", sm: "64px" }}
+        flex="0 0 auto"
+        bg="bg.800"
+        border="1px solid"
+        borderColor="whiteAlpha.100"
+        borderRadius="lg"
+        overflow="hidden"
+      >
+        {previewUrl ? (
+          <Image
+            src={previewUrl}
+            alt={machine.machine_type?.name || machine.title || "Machine"}
+            w="full"
+            h="full"
+            objectFit="contain"
+            p="2"
+          />
+        ) : (
+          <Box />
+        )}
+      </AspectRatio>
+
+      <VStack spacing="1.5" align="stretch" flex="1" minW="0">
+        <Text
+          color="bg.50"
+          fontWeight="800"
+          fontSize={{ base: "md", sm: "lg" }}
+          lineHeight="short"
+          noOfLines={2}
+        >
+          {title}
+          {showNickname ? ` • ${nickname}` : ""}
+        </Text>
+        <HStack
+          spacing="2"
+          color="bg.300"
+          fontSize="sm"
+          flexWrap="wrap"
+          rowGap="0"
+        >
+          <Text noOfLines={1}>
+            Serial: {machine.serial_number || "Not set"}
+          </Text>
+          {machine.machine_type?.name ? (
+            <Text
+              noOfLines={1}
+              _before={{
+                content: '"\u2022"',
+                mr: "2",
+                color: "whiteAlpha.300",
+              }}
+            >
+              Type: {machine.machine_type.name}
+            </Text>
+          ) : null}
+        </HStack>
+      </VStack>
+
+      {isSelected ? (
+        <Icon as={FiCheck} color="acid.300" boxSize="5" flex="0 0 auto" />
+      ) : null}
+    </HStack>
+  );
+}
 
 export function ProductLinesPage({
   session,
@@ -45,10 +143,18 @@ export function ProductLinesPage({
   orphanProducts,
   catalogProducts,
   machineAssignments,
+  initialMachineId,
   loadError,
 }: ProductLinesPageProps) {
+  const router = useRouter();
   const [selectedMachineId, setSelectedMachineId] = useState(
-    machineAssignments[0] ? String(machineAssignments[0].machine.id) : "",
+    machineAssignments.some(
+      ({ machine }) => String(machine.id) === initialMachineId,
+    )
+      ? initialMachineId || ""
+      : machineAssignments[0]
+        ? String(machineAssignments[0].machine.id)
+        : "",
   );
   const [machineCells, setMachineCells] = useState<Record<string, PortalMachineCell[]>>(
     () =>
@@ -75,6 +181,16 @@ export function ProductLinesPage({
       ...current,
       [String(machineId)]: cells,
     }));
+  };
+
+  const selectMachine = (machineId: string | number) => {
+    const nextMachineId = String(machineId);
+    setSelectedMachineId(nextMachineId);
+    void router.replace(
+      `/product-lines/machines/${encodeURIComponent(nextMachineId)}`,
+      undefined,
+      { shallow: true },
+    );
   };
 
   return (
@@ -106,35 +222,67 @@ export function ProductLinesPage({
         </Text>
       ) : null}
 
-      <SimpleGrid columns={1} spacing="4">
-        {productLines.map((productLine) => (
-          <ProductLineCard key={productLine.id} productLine={productLine} />
-        ))}
-      </SimpleGrid>
-
-      {!productLines.length && !loadError ? (
-        <Text color="bg.300">No product lines are available yet.</Text>
-      ) : null}
-
-      <Box mt="10">
+      <Box>
         {machineAssignments.length ? (
           <>
-            <FormControl maxW="420px" mb="5">
+            <FormControl maxW="620px" mb="5">
               <FormLabel>Machine for container assignment</FormLabel>
-              <Select
-                value={String(selectedAssignment.machine.id)}
-                bg="bg.900"
-                onChange={(event) => setSelectedMachineId(event.target.value)}
-              >
-                {machineAssignments.map(({ machine }) => (
-                  <option key={machine.id} value={machine.id}>
-                    {machine.title || `Machine #${machine.id}`}
-                    {machine.serial_number
-                      ? ` — ${machine.serial_number}`
-                      : ""}
-                  </option>
-                ))}
-              </Select>
+              <Menu matchWidth placement="bottom-start">
+                <MenuButton
+                  as={Button}
+                  w="full"
+                  h="auto"
+                  minH={{ base: "80px", sm: "92px" }}
+                  p={{ base: "3", sm: "3.5" }}
+                  bg="bg.900"
+                  border="1px solid"
+                  borderColor="whiteAlpha.100"
+                  borderRadius="lg"
+                  textAlign="left"
+                  whiteSpace="normal"
+                  rightIcon={<FiChevronDown />}
+                  _hover={{ bg: "bg.800", borderColor: "whiteAlpha.300" }}
+                  _active={{ bg: "bg.800", borderColor: "acid.300" }}
+                  _expanded={{ bg: "bg.800", borderColor: "acid.300" }}
+                >
+                  <MachineSelectorContent
+                    machine={selectedAssignment.machine}
+                    accountNickname={session.client.company}
+                  />
+                </MenuButton>
+                <MenuList
+                  bg="bg.900"
+                  borderColor="whiteAlpha.200"
+                  p="1.5"
+                  maxH="360px"
+                  overflowY="auto"
+                  zIndex="dropdown"
+                >
+                  {machineAssignments.map(({ machine }) => {
+                    const isSelected =
+                      String(machine.id) ===
+                      String(selectedAssignment.machine.id);
+
+                    return (
+                      <MenuItem
+                        key={machine.id}
+                        bg={isSelected ? "whiteAlpha.100" : "transparent"}
+                        borderRadius="md"
+                        p="3"
+                        onClick={() => selectMachine(machine.id)}
+                        _hover={{ bg: "whiteAlpha.100" }}
+                        _focus={{ bg: "whiteAlpha.100" }}
+                      >
+                        <MachineSelectorContent
+                          machine={machine}
+                          accountNickname={session.client.company}
+                          isSelected={isSelected}
+                        />
+                      </MenuItem>
+                    );
+                  })}
+                </MenuList>
+              </Menu>
             </FormControl>
             <MachineCellsSection
               key={selectedAssignment.machine.id}
@@ -143,9 +291,6 @@ export function ProductLinesPage({
               initialCells={selectedCells}
               catalogProducts={catalogProducts}
               loadError={selectedAssignment.loadError}
-              currency={
-                selectedAssignment.machine.currency || session.client.currency
-              }
               containerCount={selectedContainerCount}
               onCellsSaved={(cells) =>
                 replaceMachineCells(selectedAssignment.machine.id, cells)
@@ -158,6 +303,18 @@ export function ProductLinesPage({
           </Text>
         )}
       </Box>
+
+      <SimpleGrid columns={1} spacing="4" mt="10">
+        {productLines.map((productLine) => (
+          <ProductLineCard key={productLine.id} productLine={productLine} />
+        ))}
+      </SimpleGrid>
+
+      {!productLines.length && !loadError ? (
+        <Text color="bg.300" mt="10">
+          No product lines are available yet.
+        </Text>
+      ) : null}
 
       {orphanProducts.length ? (
         <Box mt="10">

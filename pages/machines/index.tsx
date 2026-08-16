@@ -240,12 +240,12 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                   </Button>
                   <Button
                     as={Link}
-                    href={`/product-lines`}
+                    href={`/product-lines/machines/${machine.id}`}
                     variant="ghost"
                     size="sm"
                     leftIcon={<Icon as={FaPlus} boxSize="3" />}
                   >
-                    Add product line
+                    Add product
                   </Button>
                 </HStack>
               </VStack>

@@ -63,6 +63,14 @@ export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = asy
 ) => {
   const result = await requirePortalSession(context);
   if ("redirect" in result) return { redirect: result.redirect };
+  const requestedMachineId = Array.isArray(context.query.machineId)
+    ? context.query.machineId[0]
+    : context.query.machineId;
+  const initialMachineId = result.session.machines.some(
+    (machine) => String(machine.id) === requestedMachineId,
+  )
+    ? requestedMachineId
+    : undefined;
 
   let catalogProducts: PortalCatalogProduct[] = [];
   let machineAssignments: MachineContainerAssignment[] = [];
@@ -123,6 +131,7 @@ export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = asy
         orphanProducts: ownProducts.filter((product) => !product.product_line),
         catalogProducts,
         machineAssignments,
+        ...(initialMachineId ? { initialMachineId } : {}),
       },
     };
   } catch (error) {
@@ -134,6 +143,7 @@ export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = asy
         orphanProducts: [],
         catalogProducts,
         machineAssignments,
+        ...(initialMachineId ? { initialMachineId } : {}),
         loadError: "Product lines could not be loaded.",
       },
     };

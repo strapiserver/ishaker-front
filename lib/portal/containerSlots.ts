@@ -17,7 +17,14 @@ export const getMachineContainerCount = (
     .toLocaleLowerCase()
     .replace(/[^a-z0-9]+/g, " ");
   if (model.includes("touch")) return 8;
-  if (model === "shaker s" || model.endsWith(" shaker s")) return 4;
+  if (
+    model === "shaker s" ||
+    model.endsWith(" shaker s") ||
+    model === "milkshaker" ||
+    model.endsWith(" milkshaker")
+  ) {
+    return 4;
+  }
   return null;
 };
 

@@ -20,6 +20,7 @@ type ProductLineFormProps = {
   canSubmit: boolean;
   customSplashId: string;
   cupSelector?: ReactNode;
+  duplicateSuggestion?: ReactNode;
   error?: string;
   isSubmitting: boolean;
   onBaseProductLineChange: (value: string) => void;
@@ -35,6 +36,7 @@ export function ProductLineForm({
   canSubmit,
   customSplashId,
   cupSelector,
+  duplicateSuggestion,
   error,
   isSubmitting,
   onBaseProductLineChange,
@@ -67,6 +69,8 @@ export function ProductLineForm({
             isSearchable={false}
           />
         </FormControl>
+
+        {duplicateSuggestion}
 
         <FormControl>
           <FormLabel>Custom splash</FormLabel>

@@ -8,6 +8,12 @@ import {
   FormErrorMessage,
   HStack,
   IconButton,
+  Image,
+  Menu,
+  MenuButton,
+  MenuDivider,
+  MenuItem,
+  MenuList,
   Select,
   SimpleGrid,
   Switch,
@@ -18,13 +24,14 @@ import {
 } from "@chakra-ui/react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { FiCheck, FiChevronDown, FiPlus } from "react-icons/fi";
 import { GiPowder } from "react-icons/gi";
 import { IoWaterSharp } from "react-icons/io5";
 import {
   getDuplicateContainerSlots,
   isValidContainerSlot,
 } from "../../../lib/portal/containerSlots";
-import { formatMoney } from "../../../lib/portal/currency";
+import { getSmallestMediaUrl } from "../../../lib/portal/media";
 import {
   canAssignProduct,
   getProductAssignmentProblems,
@@ -33,7 +40,6 @@ import type {
   PortalCatalogProduct,
   PortalMachineCell,
 } from "../../../types/portal";
-import type { Currency } from "../../../types/strapi";
 import { ContainersPreview } from "../product-lines/ContainersPreview";
 
 type MachineCellsSectionProps = {
@@ -42,7 +48,6 @@ type MachineCellsSectionProps = {
   initialCells: PortalMachineCell[];
   catalogProducts: PortalCatalogProduct[];
   loadError?: string | null;
-  currency?: Currency | null;
   containerCount: number | null;
   onCellsSaved?: (cells: PortalMachineCell[]) => void;
 };
@@ -115,13 +120,15 @@ const productLabel = (product: PortalCatalogProduct) => {
   return line ? `${line} — ${taste}` : `Orphan — ${taste}`;
 };
 
+const productImageUrl = (product?: PortalCatalogProduct) =>
+  getSmallestMediaUrl(product?.custom_main || product?.taste?.main);
+
 export function MachineCellsSection({
   machineId,
   machineSerial,
   initialCells,
   catalogProducts,
   loadError,
-  currency,
   containerCount,
   onCellsSaved,
 }: MachineCellsSectionProps) {
@@ -512,32 +519,140 @@ export function MachineCellsSection({
               flex="1"
               isInvalid={productProblems.length > 0 || categoryMismatch}
             >
-              <Select
-                value={cell.productId}
-                bg="bg.900"
-                minH="45px"
-                aria-label={`Product for container ${cell.position}`}
-                onChange={(event) =>
-                  updateCell(cell, { productId: event.target.value })
-                }
-              >
-                <option value="">— Empty —</option>
-                {catalogProducts.map((product) => {
-                  const unavailable = !canAssignProduct(product);
-                  return (
-                    <option
-                      key={product.id}
-                      value={product.id}
-                      disabled={
-                        unavailable && String(product.id) !== cell.productId
-                      }
-                    >
-                      {productLabel(product)}
-                      {unavailable ? " — unavailable" : ""}
-                    </option>
-                  );
-                })}
-              </Select>
+              <Menu matchWidth placement="bottom-start">
+                <MenuButton
+                  as={Button}
+                  w="full"
+                  minH="45px"
+                  h="auto"
+                  px="3"
+                  py="1.5"
+                  bg="bg.900"
+                  border="1px solid"
+                  borderColor={
+                    productProblems.length > 0 || categoryMismatch
+                      ? "red.300"
+                      : "whiteAlpha.200"
+                  }
+                  borderRadius="md"
+                  fontWeight="normal"
+                  textAlign="left"
+                  rightIcon={<FiChevronDown />}
+                  aria-label={`Product for container ${cell.position}`}
+                  _hover={{ bg: "bg.900", borderColor: "whiteAlpha.400" }}
+                  _expanded={{ bg: "bg.900", borderColor: "acid.300" }}
+                >
+                  <HStack spacing="3" minW="0">
+                    {productImageUrl(selectedProduct) ? (
+                      <Image
+                        src={productImageUrl(selectedProduct)}
+                        alt=""
+                        boxSize="32px"
+                        objectFit="contain"
+                        borderRadius="md"
+                        bg="whiteAlpha.100"
+                        flexShrink={0}
+                      />
+                    ) : (
+                      <Box
+                        boxSize="32px"
+                        borderRadius="md"
+                        bg="whiteAlpha.100"
+                        flexShrink={0}
+                      />
+                    )}
+                    <Text noOfLines={1}>
+                      {selectedProduct
+                        ? productLabel(selectedProduct)
+                        : "— Empty —"}
+                    </Text>
+                  </HStack>
+                </MenuButton>
+                <MenuList
+                  bg="bg.900"
+                  borderColor="whiteAlpha.200"
+                  p="1.5"
+                  maxH="420px"
+                  overflowY="auto"
+                  zIndex="popover"
+                >
+                  <MenuItem
+                    bg="transparent"
+                    borderRadius="md"
+                    minH="48px"
+                    onClick={() => updateCell(cell, { productId: "" })}
+                    _hover={{ bg: "whiteAlpha.100" }}
+                    _focus={{ bg: "whiteAlpha.100" }}
+                  >
+                    <Box boxSize="36px" mr="3" flexShrink={0} />
+                    <Text flex="1">— Empty —</Text>
+                    {!cell.productId ? <FiCheck /> : null}
+                  </MenuItem>
+                  {catalogProducts.map((product) => {
+                    const unavailable = !canAssignProduct(product);
+                    const isSelected = String(product.id) === cell.productId;
+                    const imageUrl = productImageUrl(product);
+                    return (
+                      <MenuItem
+                        key={product.id}
+                        isDisabled={unavailable && !isSelected}
+                        bg={isSelected ? "whiteAlpha.100" : "transparent"}
+                        borderRadius="md"
+                        minH="56px"
+                        onClick={() =>
+                          updateCell(cell, { productId: String(product.id) })
+                        }
+                        _hover={{ bg: "whiteAlpha.100" }}
+                        _focus={{ bg: "whiteAlpha.100" }}
+                      >
+                        {imageUrl ? (
+                          <Image
+                            src={imageUrl}
+                            alt=""
+                            boxSize="40px"
+                            objectFit="contain"
+                            borderRadius="md"
+                            bg="whiteAlpha.100"
+                            mr="3"
+                            flexShrink={0}
+                          />
+                        ) : (
+                          <Box
+                            boxSize="40px"
+                            borderRadius="md"
+                            bg="whiteAlpha.100"
+                            mr="3"
+                            flexShrink={0}
+                          />
+                        )}
+                        <Box flex="1" minW="0">
+                          <Text noOfLines={1}>{productLabel(product)}</Text>
+                          {unavailable ? (
+                            <Text color="orange.200" fontSize="xs">
+                              Unavailable
+                            </Text>
+                          ) : null}
+                        </Box>
+                        {isSelected ? <FiCheck /> : null}
+                      </MenuItem>
+                    );
+                  })}
+                  <MenuDivider borderColor="whiteAlpha.200" />
+                  <MenuItem
+                    as={Link}
+                    href="/product-lines/new"
+                    bg="transparent"
+                    color="acid.300"
+                    borderRadius="md"
+                    minH="48px"
+                    icon={<FiPlus />}
+                    _hover={{ bg: "whiteAlpha.100" }}
+                    _focus={{ bg: "whiteAlpha.100" }}
+                  >
+                    Add new product line
+                  </MenuItem>
+                </MenuList>
+              </Menu>
               <FormErrorMessage>
                 {categoryMismatch
                   ? `Choose a ${cell.cellCategory} product.`
@@ -545,40 +660,6 @@ export function MachineCellsSection({
               </FormErrorMessage>
             </FormControl>
           </HStack>
-          <HStack justify="space-between">
-            <Text color="bg.300" fontSize="sm">
-              Effective price
-            </Text>
-            <Text fontWeight="700">
-              {formatMoney(selectedProduct?.dosage?.full_drink_price, currency)}
-            </Text>
-          </HStack>
-          {selectedProduct?.product_line?.id ? (
-            <HStack
-              justify="space-between"
-              borderTop="1px solid"
-              borderColor="whiteAlpha.100"
-              pt="3"
-            >
-              <Box minW="0">
-                <Text color="bg.300" fontSize="xs">
-                  Display cup
-                </Text>
-                <Text fontSize="sm" fontWeight="700" noOfLines={1}>
-                  {selectedProduct.cup?.name || "Product-line default"}
-                </Text>
-              </Box>
-              <Button
-                as={Link}
-                href={`/product-lines/${selectedProduct.product_line.id}/products/new?productId=${selectedProduct.id}`}
-                size="sm"
-                variant="outline"
-                flexShrink={0}
-              >
-                Change cup
-              </Button>
-            </HStack>
-          ) : null}
           {isLegacy ? (
             <Button
               colorScheme="red"
