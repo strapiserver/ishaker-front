@@ -3,6 +3,7 @@ import {
   AlertIcon,
   Box,
   SimpleGrid,
+  Stack,
   VStack,
   Table,
   Tbody,
@@ -12,6 +13,8 @@ import {
 } from "@chakra-ui/react";
 import type { GetServerSideProps } from "next";
 import { MachineRegistrationEditor } from "../../components/portal/machines/MachineRegistrationEditor";
+import { MachineDoorUnlock } from "../../components/portal/machines/MachineDoorUnlock";
+import { MachineHealthStrip } from "../../components/portal/machines/MachineHealthStrip";
 import { NayaxSettingsSection } from "../../components/portal/NayaxSettingsSection";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { requirePortalSession } from "../../lib/portal/auth";
@@ -27,6 +30,7 @@ import { requestStrapiRestAsService } from "../../services/server/strapiClient";
 import type { PortalSession } from "../../types/portal";
 import type { Currency, Machine } from "../../types/strapi";
 import { formatMoney } from "../../lib/portal/currency";
+import { buildMachineHealthRow } from "../../lib/portal/machineHealth";
 
 type MachineDetailPageProps = {
   session: PortalSession;
@@ -121,35 +125,22 @@ export default function MachineDetailPage({
       clientName={session.client.company}
     >
       <SimpleGrid columns={{ base: 1, xl: 2 }} spacing="6">
-        {machine.fleet_status?.media_keys ? (
-          <Alert
-            status={
-              machine.fleet_status.media_keys.missing?.length
-                ? "error"
-                : "success"
-            }
-            gridColumn={{ xl: "1 / -1" }}
-            borderRadius="xl"
-            alignItems="flex-start"
-          >
-            <AlertIcon mt="1" />
-            <Box>
-              <Text fontWeight="800">Machine artwork check</Text>
-              <Text>
-                Checked {machine.fleet_status.media_keys.checked ?? 0} media
-                key(s).
-              </Text>
-              {machine.fleet_status.media_keys.missing?.length ? (
-                <Text mt="1">
-                  Missing:{" "}
-                  {machine.fleet_status.media_keys.missing.join(", ")}
-                </Text>
-              ) : (
-                <Text mt="1">No missing artwork was reported.</Text>
-              )}
-            </Box>
-          </Alert>
-        ) : null}
+        <Stack
+          gridColumn={{ xl: "1 / -1" }}
+          direction={{ base: "column", md: "row" }}
+          spacing="4"
+          align={{ base: "stretch", md: "center" }}
+        >
+          <Box flex="1" minW="0">
+            <MachineHealthStrip
+              health={buildMachineHealthRow(machine, {
+                status: telemetryStatus,
+                storage: telemetryStorage,
+              })}
+            />
+          </Box>
+          <MachineDoorUnlock machine={machine} />
+        </Stack>
         <Box gridColumn={{ xl: "1 / -1" }}>
           <MachineRegistrationEditor
             machine={machine}
@@ -265,6 +256,36 @@ export default function MachineDetailPage({
               </Tbody>
             </Table>
           </Box>
+        ) : null}
+
+        {machine.fleet_status?.media_keys ? (
+          <Alert
+            status={
+              machine.fleet_status.media_keys.missing?.length
+                ? "error"
+                : "success"
+            }
+            gridColumn={{ xl: "1 / -1" }}
+            borderRadius="xl"
+            alignItems="flex-start"
+          >
+            <AlertIcon mt="1" />
+            <Box>
+              <Text fontWeight="800">Machine artwork check</Text>
+              <Text>
+                Checked {machine.fleet_status.media_keys.checked ?? 0} media
+                key(s).
+              </Text>
+              {machine.fleet_status.media_keys.missing?.length ? (
+                <Text mt="1">
+                  Missing:{" "}
+                  {machine.fleet_status.media_keys.missing.join(", ")}
+                </Text>
+              ) : (
+                <Text mt="1">No missing artwork was reported.</Text>
+              )}
+            </Box>
+          </Alert>
         ) : null}
       </SimpleGrid>
     </PortalShell>

@@ -89,9 +89,11 @@ const HealthItem = ({
             </Text>
           </Box>
         </HStack>
-        <Badge colorScheme={color} fontSize="8px" lineHeight="14px">
-          {indicator.source}
-        </Badge>
+        {indicator.source !== "ops" && indicator.source !== "own" ? (
+          <Badge colorScheme={color} fontSize="8px" lineHeight="14px">
+            {indicator.source}
+          </Badge>
+        ) : null}
       </VStack>
     </Tooltip>
   );

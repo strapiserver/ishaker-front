@@ -176,6 +176,9 @@ export function MachineCellsSection({
       (problem) => `Container ${cell.position}: ${problem.detail}`,
     );
   });
+  const emptyAssignedContainers = cells.filter(
+    (cell) => cell.productId && (Number(cell.amount_kg) || 0) <= 0,
+  );
   const hasValidationError =
     containerCount === null ||
     invalidLegacyCells.length > 0 ||
@@ -322,12 +325,22 @@ export function MachineCellsSection({
       ) as PortalMachineCell[];
       setCells(buildDrafts(refreshed, containerCount));
       onCellsSaved?.(refreshed);
-      toast({
-        title: "Container assignments saved",
-        status: "success",
-        duration: 5000,
-        isClosable: true,
-      });
+      toast(
+        emptyAssignedContainers.length
+          ? {
+              title: "Assignments saved with empty containers",
+              description: "Click on container to set powder volume",
+              status: "warning",
+              duration: 7000,
+              isClosable: true,
+            }
+          : {
+              title: "Container assignments saved",
+              status: "success",
+              duration: 5000,
+              isClosable: true,
+            },
+      );
       await validatePlanogram();
     } catch (error) {
       const message =
@@ -744,6 +757,21 @@ export function MachineCellsSection({
                 <Text key={`${problem}-${index}`}>{problem}</Text>
               ))}
             </VStack>
+          </Alert>
+        ) : null}
+        {emptyAssignedContainers.length ? (
+          <Alert status="warning" alignItems="flex-start">
+            <AlertIcon mt="1" />
+            <Box>
+              <Text fontWeight="800">
+                {emptyAssignedContainers.length === 1
+                  ? `Container ${emptyAssignedContainers[0].position} has a product but is empty.`
+                  : `Containers ${emptyAssignedContainers
+                      .map((cell) => cell.position)
+                      .join(", ")} have products but are empty.`}
+              </Text>
+              <Text>Click on container to set powder volume</Text>
+            </Box>
           </Alert>
         ) : null}
         {saveError ? (

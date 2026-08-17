@@ -20,6 +20,7 @@ export type Patch = {
 
 export type Machine = {
   id: string | number;
+  has_door_lock?: boolean | null;
   type?: "small" | "big";
   status?: "new" | "ready" | "shipped" | "working" | "error" | "offline";
   title?: string;
@@ -75,6 +76,10 @@ export type Machine = {
   } | null;
   fleet_status?: {
     patch_id?: string | number | null;
+    device_serial?: string | null;
+    identity_at?: string | null;
+    scanner_ok?: boolean | null;
+    scanner_dev?: string | null;
     media_keys?: {
       checked?: number;
       missing?: string[];

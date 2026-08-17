@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminHeader } from "../../../components/admin/AdminHeader";
 import { MachineReadinessPanel } from "../../../components/admin/MachineReadinessPanel";
+import { MachineDoorUnlockPanel } from "../../../components/admin/MachineDoorUnlockPanel";
 import { MachineField } from "../../../components/admin/MachineField";
 import { requireAdminSession } from "../../../lib/admin/auth";
 import { getMachinePatchVersion } from "../../../lib/admin/machinePatch";
@@ -75,6 +76,8 @@ export default function AdminMachineReadinessPage({
               readiness={machine.readiness}
               now={readinessNow}
             />
+
+            <MachineDoorUnlockPanel machine={machine} />
 
             <Box
               bg="bg.900"

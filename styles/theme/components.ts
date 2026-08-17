@@ -32,15 +32,53 @@ const createGradient = (theme: any, tone: ITone, glowing = false) => {
   };
 };
 
-const toastToneMap: Record<string, ITone> = {
-  success: "acid",
-  error: "error",
-  warning: "gray",
-  info: "violet",
+const feedbackColors = {
+  error: {
+    light: { bg: "red.50", border: "red.300", text: "red.900", icon: "red.600" },
+    dark: { bg: "red.900", border: "red.600", text: "red.100", icon: "red.200" },
+  },
+  warning: {
+    light: { bg: "orange.50", border: "orange.300", text: "orange.900", icon: "orange.600" },
+    dark: { bg: "orange.900", border: "orange.500", text: "orange.100", icon: "orange.200" },
+  },
+  success: {
+    light: { bg: "green.50", border: "green.300", text: "green.900", icon: "green.600" },
+    dark: { bg: "green.900", border: "green.600", text: "green.100", icon: "green.200" },
+  },
+  info: {
+    light: { bg: "blue.50", border: "blue.300", text: "blue.900", icon: "blue.600" },
+    dark: { bg: "blue.900", border: "blue.600", text: "blue.100", icon: "blue.200" },
+  },
 };
 
-const getToastTone = (status?: string): ITone => {
-  return toastToneMap[status ?? "info"] || "shaded";
+const feedbackStyle = (props: any) => {
+  const status = (props.status || "info") as keyof typeof feedbackColors;
+  const palette = feedbackColors[status] || feedbackColors.info;
+  const colors = props.colorMode === "light" ? palette.light : palette.dark;
+
+  return {
+    container: {
+      bg: colors.bg,
+      color: colors.text,
+      border: "1px solid",
+      borderColor: colors.border,
+      borderRadius: "xl",
+      boxShadow: "0 8px 24px rgba(0, 0, 0, 0.2)",
+      px: 4,
+      py: 3,
+    },
+    title: {
+      color: "inherit",
+      fontWeight: "700",
+    },
+    description: {
+      color: "inherit",
+    },
+    icon: {
+      color: colors.icon,
+      flexShrink: 0,
+    },
+  };
 };
 
 const greenFieldFocus = {
@@ -89,60 +127,17 @@ const components: Record<string, any> = {
     },
   },
   Alert: {
-    baseStyle: (props: any) => {
-      const gradient = createGradient(
-        props.theme,
-        getToastTone(props.status),
-        true,
-      );
-
-      return {
-        container: {
-          ...gradient,
-          color: mode("bg.900", "bg.50")(props),
-          borderRadius: "xl",
-          px: 4,
-          py: 3,
-        },
-        title: {
-          fontWeight: "600",
-        },
-        description: {
-          color: mode("bg.700", "bg.100")(props),
-        },
-        icon: {
-          color: mode("bg.900", "bg.50")(props),
-        },
-      };
+    baseStyle: feedbackStyle,
+    variants: {
+      // Chakra renders useToast notifications as solid Alerts. Override that
+      // built-in variant as well, otherwise it replaces our readable text and
+      // icon colors with color-scheme defaults.
+      solid: feedbackStyle,
+      subtle: feedbackStyle,
     },
   },
   Toast: {
-    baseStyle: (props: any) => {
-      const gradient = createGradient(
-        props.theme,
-        getToastTone(props.status),
-        true,
-      );
-
-      return {
-        container: {
-          ...gradient,
-          color: mode("bg.900", "bg.50")(props),
-          borderRadius: "xl",
-          px: 4,
-          py: 3,
-        },
-        title: {
-          fontWeight: "600",
-        },
-        description: {
-          color: mode("bg.700", "bg.100")(props),
-        },
-        icon: {
-          color: mode("bg.900", "bg.50")(props),
-        },
-      };
-    },
+    baseStyle: feedbackStyle,
   },
   IconButton: {
     variants: {
