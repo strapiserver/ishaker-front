@@ -6,6 +6,9 @@ import type {
 } from "../../types/machineHealth";
 
 const STALE_AFTER_MS = 10 * 60 * 1000;
+// A kiosk that has just been relaunched has not counted a frame yet. FleetPulse restarts it
+// itself on every media push, so this window comes up routinely and must not read as a fault.
+const STARTUP_GRACE_S = 120;
 
 const unknown = (label = "No data"): MachineHealthIndicator => ({
   state: "unknown",
@@ -37,13 +40,35 @@ const ownHealth = (machine: Machine, now: number): MachineHealthRow | null => {
   if (!health) return null;
 
   const stale = isStale(health.at, now);
+  // "App error" is a red badge in front of the client, so it has to mean the kiosk is
+  // actually broken. It used to fire during the seconds a kiosk spends relaunching after a
+  // media push — the machine was fine and the portal said otherwise (bone, 2026-08-18).
+  // A kiosk inside its startup grace is Starting; only a process that stayed up past its
+  // first heartbeat without moving frames, or one that is gone, is an error.
+  const appState = health.app?.state ?? null;
+  const uptimeSeconds =
+    typeof health.app?.uptime_s === "number" ? health.app.uptime_s : null;
+  const starting =
+    appState === "starting" ||
+    // Readings written before app.state existed: infer it from the uptime.
+    (appState === null &&
+      health.app?.frames_ok === false &&
+      uptimeSeconds !== null &&
+      uptimeSeconds <= STARTUP_GRACE_S);
   const online: MachineHealthIndicator = stale
     ? { state: "unknown", label: "Stale", source: "own", at: health.at }
-    : health.app?.frames_ok === true
-      ? { state: "ok", label: "Online", source: "own", at: health.at }
-      : health.app?.frames_ok === false
-        ? { state: "error", label: "App error", source: "own", at: health.at }
-        : { state: "unknown", label: "No data", source: "own", at: health.at };
+    : starting
+      ? { state: "warning", label: "Starting", source: "own", at: health.at }
+      : health.app?.frames_ok === true
+        ? { state: "ok", label: "Online", source: "own", at: health.at }
+        : health.app?.frames_ok === false
+          ? {
+              state: "error",
+              label: appState === "down" ? "App down" : "App error",
+              source: "own",
+              at: health.at,
+            }
+          : { state: "unknown", label: "No data", source: "own", at: health.at };
 
   const terminalAt = health.terminal?.at || health.at;
   const terminalStale = isStale(terminalAt, now);

@@ -43,6 +43,10 @@ export type Machine = {
     app?: {
       uptime_s?: number | null;
       frames_ok?: boolean | null;
+      // Written by fleetpulse build_health(): "ok" | "starting" | "stalled" | "down".
+      // "starting" is a kiosk inside its first heartbeat — no frames counted yet, which
+      // is not the same thing as broken. Absent on readings taken before 2026-08-18.
+      state?: "ok" | "starting" | "stalled" | "down" | null;
     } | null;
     terminal?: {
       card?: boolean | null;
