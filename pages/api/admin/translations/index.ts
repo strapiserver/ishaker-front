@@ -16,15 +16,10 @@ export default async function handler(
   }
   try {
     if (req.method === "GET") {
-      const [languages, translations] = await Promise.all([
-        requestStrapiRestAsService(
-          "/api/languages?filters[isActive][$ne]=false&sort[0]=sort_order:ASC&sort[1]=name:ASC&pagination[pageSize]=2000",
-        ),
-        requestStrapiRestAsService(
-          "/api/translations?populate[entries][populate][language]=*&sort[0]=namespace:ASC&sort[1]=key:ASC&pagination[pageSize]=2000",
-        ),
-      ]);
-      return res.status(200).json({ languages, translations });
+      const translations = await requestStrapiRestAsService(
+        "/api/translations?sort[0]=sort_order:ASC&sort[1]=key:ASC&pagination[pageSize]=2000",
+      );
+      return res.status(200).json({ translations });
     }
     const key = value(req.body?.key);
     if (!key) return res.status(400).json({ error: "translation_key_required" });

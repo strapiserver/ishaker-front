@@ -12,7 +12,6 @@ export type RegistrationDraft = {
   country?: string;
   state?: string;
   city?: string;
-  location?: string;
   contactName?: string;
   email?: string;
   messengerType?: "whatsapp";

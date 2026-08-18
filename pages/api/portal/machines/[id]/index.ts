@@ -5,7 +5,7 @@ import {
 } from "../../../../../lib/portal/auth";
 import { updateMachineRegistrationData } from "../../../../../services/server/machineRegistration";
 import { requestStrapiRestAsService } from "../../../../../services/server/strapiClient";
-import type { Currency } from "../../../../../types/strapi";
+import type { Currency, Language } from "../../../../../types/strapi";
 
 const asString = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
@@ -14,6 +14,9 @@ const asId = (value: string | string[] | undefined) => {
   const id = Array.isArray(value) ? value[0] : value;
   return id && /^\d+$/.test(id) ? id : "";
 };
+
+const hasOwn = (body: unknown, key: string) =>
+  Boolean(body && Object.prototype.hasOwnProperty.call(body, key));
 
 export default async function handler(
   req: NextApiRequest,
@@ -37,19 +40,43 @@ export default async function handler(
     return res.status(403).json({ error: "machine_access_denied" });
   }
 
-  const country = asString(req.body?.country);
-  const stateRegion = asString(req.body?.state);
-  const city = asString(req.body?.city);
-  const location = asString(req.body?.location);
-  const currencyId = asString(req.body?.currencyId);
+  const countryProvided = hasOwn(req.body, "country");
+  const stateProvided = hasOwn(req.body, "state");
+  const cityProvided = hasOwn(req.body, "city");
+  const currencyProvided = hasOwn(req.body, "currencyId");
+  const languageProvided = hasOwn(req.body, "languageId");
+  const nayaxProvided = hasOwn(req.body, "nayaxTerminalId");
+  if (
+    !countryProvided &&
+    !stateProvided &&
+    !cityProvided &&
+    !currencyProvided &&
+    !languageProvided &&
+    !nayaxProvided
+  ) {
+    return res.status(400).json({ error: "no_machine_updates" });
+  }
+  if (nayaxProvided && typeof req.body?.nayaxTerminalId !== "string") {
+    return res.status(400).json({ error: "invalid_nayax_terminal_id" });
+  }
+  const country = countryProvided ? asString(req.body?.country) : machine.country || "";
+  const stateRegion = stateProvided
+    ? asString(req.body?.state)
+    : machine.state_region || "";
+  const city = cityProvided ? asString(req.body?.city) : machine.city || "";
+  const currencyId = currencyProvided ? asString(req.body?.currencyId) : "";
+  const languageId = languageProvided ? asString(req.body?.languageId) : "";
   const nayaxTerminalId =
-    typeof req.body?.nayaxTerminalId === "string"
+    nayaxProvided && typeof req.body?.nayaxTerminalId === "string"
       ? req.body.nayaxTerminalId.trim()
       : undefined;
-  if (!country || !stateRegion || !city || !currencyId) {
+  if (
+    countryProvided &&
+    !country
+  ) {
     return res.status(400).json({
       error: "missing_location",
-      message: "Country, state/region, city, and currency are required.",
+      message: "Country cannot be empty.",
     });
   }
   if (nayaxTerminalId && nayaxTerminalId.length > 255) {
@@ -59,28 +86,66 @@ export default async function handler(
     });
   }
 
-  const currency = await requestStrapiRestAsService<Currency>(
-    `/api/currencies/${currencyId}`,
-  ).catch(() => null);
-  if (!currency?.id || currency.isActive === false) {
-    return res.status(400).json({
-      error: "invalid_currency",
-      message: "Select an active currency.",
-    });
+  let currency: Currency | null = null;
+  if (currencyProvided) {
+    currency = currencyId
+      ? await requestStrapiRestAsService<Currency>(
+          `/api/currencies/${currencyId}`,
+        ).catch(() => null)
+      : null;
+    if (!currency?.id || currency.isActive === false) {
+      return res.status(400).json({
+        error: "invalid_currency",
+        message: "Select an active currency.",
+      });
+    }
+  }
+
+  let language: Language | null = null;
+  if (languageProvided) {
+    language = languageId
+      ? await requestStrapiRestAsService<Language>(
+          `/api/languages/${languageId}`,
+        ).catch(() => null)
+      : null;
+    if (!language?.id || language.isActive === false) {
+      return res.status(400).json({
+        error: "invalid_language",
+        message: "Select an active language.",
+      });
+    }
   }
 
   try {
-    const updatedMachine = await updateMachineRegistrationData({
-      client: session.client,
-      machine,
-      nickname: session.client.company,
-      country,
-      stateRegion,
-      city,
-      location,
-      currencyId: currency.id,
-      nayaxTerminalId,
-    });
+    const updatesRegistration =
+      countryProvided || stateProvided || cityProvided;
+    const updatedMachine = updatesRegistration
+      ? await updateMachineRegistrationData({
+          client: session.client,
+          machine,
+          nickname: session.client.company,
+          country,
+          stateRegion,
+          city,
+          currencyId: currencyProvided ? currency?.id : undefined,
+          languageId: language?.id,
+          nayaxTerminalId,
+        })
+      : await requestStrapiRestAsService(
+          `/api/machines/${machine.id}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              data: {
+                ...(currency ? { currency: currency.id } : {}),
+                ...(language ? { language: language.id } : {}),
+                ...(nayaxProvided
+                  ? { nayax_terminal_id: nayaxTerminalId || null }
+                  : {}),
+              },
+            }),
+          },
+        );
     return res.status(200).json({ machine: updatedMachine });
   } catch (error) {
     console.error("[portal/machines/:id] update failed:", error);

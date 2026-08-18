@@ -1,6 +1,7 @@
 import {
   Alert,
   AlertIcon,
+  Badge,
   Box,
   Button,
   FormControl,
@@ -13,7 +14,6 @@ import {
   Tbody,
   Td,
   Text,
-  Textarea,
   Th,
   Thead,
   Tr,
@@ -28,10 +28,10 @@ import { requireAdminSession } from "../../lib/admin/auth";
 
 export default function AdminTranslationsPage() {
   const toast = useToast();
-  const [languages, setLanguages] = useState<any[]>([]);
   const [translations, setTranslations] = useState<any[]>([]);
   const [query, setQuery] = useState("");
   const [namespace, setNamespace] = useState("");
+  const [audience, setAudience] = useState("customer");
   const [newKey, setNewKey] = useState("");
   const [newNamespace, setNewNamespace] = useState("");
   const [description, setDescription] = useState("");
@@ -47,7 +47,6 @@ export default function AdminTranslationsPage() {
       setError("Translations could not be loaded.");
       return;
     }
-    setLanguages(payload.languages || []);
     setTranslations(payload.translations || []);
   };
   useEffect(() => {
@@ -64,9 +63,12 @@ export default function AdminTranslationsPage() {
   const filtered = translations.filter(
     (item) =>
       (!namespace || item.namespace === namespace) &&
+      (!audience || item.audience === audience) &&
       (!query ||
         item.key.toLowerCase().includes(query.toLowerCase()) ||
-        (item.namespace || "").toLowerCase().includes(query.toLowerCase())),
+        (item.namespace || "").toLowerCase().includes(query.toLowerCase()) ||
+        (item.usage || "").toLowerCase().includes(query.toLowerCase()) ||
+        (item.default_value || "").toLowerCase().includes(query.toLowerCase())),
   );
 
   const createKey = async () => {
@@ -114,57 +116,6 @@ export default function AdminTranslationsPage() {
     if (response.ok) await load();
   };
 
-  const updateLocalEntry = (
-    translationId: string | number,
-    languageId: string | number,
-    patch: Record<string, any>,
-  ) =>
-    setTranslations((current) =>
-      current.map((translation) => {
-        if (String(translation.id) !== String(translationId)) return translation;
-        const existing = (translation.entries || []).find(
-          (entry: any) => String(entry.language?.id) === String(languageId),
-        );
-        const entries = existing
-          ? translation.entries.map((entry: any) =>
-              entry === existing ? { ...entry, ...patch } : entry,
-            )
-          : [
-              ...(translation.entries || []),
-              {
-                language: languages.find(
-                  (language) => String(language.id) === String(languageId),
-                ),
-                value: "",
-                status: "draft",
-                ...patch,
-              },
-            ];
-        return { ...translation, entries };
-      }),
-    );
-
-  const saveEntry = async (translation: any, language: any) => {
-    const entry = (translation.entries || []).find(
-      (item: any) => String(item.language?.id) === String(language.id),
-    );
-    const response = await fetch("/api/admin/translations/entries", {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        translationId: translation.id,
-        languageId: language.id,
-        value: entry?.value || "",
-        status: entry?.status || "draft",
-      }),
-    });
-    toast({
-      title: response.ok ? `${language.name} entry saved` : "Entry save failed",
-      status: response.ok ? "success" : "error",
-    });
-    if (response.ok) await load();
-  };
-
   return (
     <AdminShell title="Translations">
       {isLoading ? <Loader size="lg" mb="5" /> : null}
@@ -174,6 +125,11 @@ export default function AdminTranslationsPage() {
           <Input maxW="300px" placeholder="Search key or namespace" value={query} onChange={(event) => setQuery(event.target.value)} />
           <Select maxW="240px" placeholder="All namespaces" value={namespace} onChange={(event) => setNamespace(event.target.value)}>
             {namespaces.map((item) => <option key={item} value={item}>{item}</option>)}
+          </Select>
+          <Select maxW="220px" value={audience} onChange={(event) => setAudience(event.target.value)}>
+            <option value="">All audiences</option>
+            <option value="customer">Customer</option>
+            <option value="owner">Owner</option>
           </Select>
           <Button as="a" href="/api/admin/translations/export" variant="primary">Download approved Localization CSV</Button>
         </HStack>
@@ -188,9 +144,16 @@ export default function AdminTranslationsPage() {
         </HStack>
       </Box>
       <TableContainer bg="bg.900" borderRadius="2xl" maxH="70vh" overflow="auto">
-        <Table size="sm" minW={`${500 + languages.length * 360}px`}>
+        <Table size="sm" minW="1380px">
           <Thead position="sticky" top="0" bg="bg.800" zIndex="1">
-            <Tr><Th minW="330px">Key</Th>{languages.map((language) => <Th key={language.id} minW="360px">{language.name}</Th>)}</Tr>
+            <Tr>
+              <Th minW="300px">Key</Th>
+              <Th minW="150px">Namespace</Th>
+              <Th minW="120px">File</Th>
+              <Th minW="120px">Audience</Th>
+              <Th minW="330px">Usage</Th>
+              <Th minW="300px">Default</Th>
+            </Tr>
           </Thead>
           <Tbody>
             {filtered.map((translation) => (
@@ -198,26 +161,14 @@ export default function AdminTranslationsPage() {
                 <Td verticalAlign="top">
                   <VStack align="stretch">
                     <Input value={translation.key} onChange={(event) => setTranslations((items) => items.map((item) => item.id === translation.id ? { ...item, key: event.target.value } : item))} />
-                    <Input placeholder="Namespace" value={translation.namespace || ""} onChange={(event) => setTranslations((items) => items.map((item) => item.id === translation.id ? { ...item, namespace: event.target.value } : item))} />
                     <HStack><Button size="xs" onClick={() => saveKey(translation)}>Save key</Button><Button size="xs" colorScheme="red" variant="ghost" onClick={() => deleteKey(translation)}>Delete</Button></HStack>
                   </VStack>
                 </Td>
-                {languages.map((language) => {
-                  const entry = (translation.entries || []).find((item: any) => String(item.language?.id) === String(language.id));
-                  return (
-                    <Td key={language.id} verticalAlign="top">
-                      <VStack align="stretch">
-                        <Textarea value={entry?.value || ""} onChange={(event) => updateLocalEntry(translation.id, language.id, { value: event.target.value })} />
-                        <HStack>
-                          <Select size="sm" value={entry?.status || "draft"} onChange={(event) => updateLocalEntry(translation.id, language.id, { status: event.target.value })}>
-                            <option value="draft">Draft</option><option value="reviewed">Reviewed</option><option value="approved">Approved</option>
-                          </Select>
-                          <Button size="sm" onClick={() => saveEntry(translation, language)}>Save</Button>
-                        </HStack>
-                      </VStack>
-                    </Td>
-                  );
-                })}
+                <Td verticalAlign="top"><Text>{translation.namespace || "—"}</Text></Td>
+                <Td verticalAlign="top"><Text>{translation.file || "—"}</Text></Td>
+                <Td verticalAlign="top"><Badge colorScheme={translation.audience === "customer" ? "green" : "gray"}>{translation.audience || "—"}</Badge></Td>
+                <Td verticalAlign="top" whiteSpace="normal"><Text color="bg.200">{translation.usage || "Usage not documented"}</Text></Td>
+                <Td verticalAlign="top" whiteSpace="pre-wrap"><Text color="bg.300">{translation.default_value || "—"}</Text></Td>
               </Tr>
             ))}
           </Tbody>

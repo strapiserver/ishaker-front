@@ -2,7 +2,7 @@ import { Box, Image, Text, Tooltip } from "@chakra-ui/react";
 import type { KeyboardEvent, PointerEvent } from "react";
 
 export type PowderContainerProps = {
-  color: string;
+  color?: string | null;
   height: number;
   maxWeightKg: number;
   onHeightChange: (height: number) => void;
@@ -16,12 +16,60 @@ export type PowderContainerProps = {
 };
 
 export const CONTAINER_WIDTH = 200;
+export const DEFAULT_POWDER_COLOR = "#d9b56d";
 const CONTAINER_HEIGHT = 610;
 // Reduce this value to let the powder fill reach higher inside the PNG.
 const POWDER_START_Y = 10;
 export const MAX_POWDER_HEIGHT = CONTAINER_HEIGHT - POWDER_START_Y;
 // The visible color remains this tall even when the powder value is zero.
 const MIN_POWDER_VISUAL_HEIGHT = 120;
+
+export const resolvePowderColor = (value?: string | null) => {
+  const color = value?.trim();
+  if (!color || /^(transparent|none|initial|inherit|unset)$/i.test(color)) {
+    return DEFAULT_POWDER_COLOR;
+  }
+
+  const shortHex = color.match(/^#([0-9a-f]{4})$/i)?.[1];
+  const longHex = color.match(/^#([0-9a-f]{8})$/i)?.[1];
+  if (shortHex?.endsWith("0") || longHex?.endsWith("00")) {
+    return DEFAULT_POWDER_COLOR;
+  }
+
+  const opaqueHex = color.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)?.[1];
+  if (opaqueHex) {
+    const expanded =
+      opaqueHex.length === 3
+        ? opaqueHex
+            .split("")
+            .map((digit) => `${digit}${digit}`)
+            .join("")
+        : opaqueHex;
+    const red = Number.parseInt(expanded.slice(0, 2), 16);
+    const green = Number.parseInt(expanded.slice(2, 4), 16);
+    const blue = Number.parseInt(expanded.slice(4, 6), 16);
+    const perceivedBrightness =
+      (red * 299 + green * 587 + blue * 114) / 1000;
+    if (perceivedBrightness < 50) return DEFAULT_POWDER_COLOR;
+  }
+
+  if (
+    /^(?:rgba|hsla)\([^)]*(?:,|\/)\s*(?:0(?:\.0+)?|0%)\s*\)$/i.test(
+      color,
+    )
+  ) {
+    return DEFAULT_POWDER_COLOR;
+  }
+
+  const isSupportedColor =
+    /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(
+      color,
+    ) ||
+    /^(?:rgb|rgba|hsl|hsla)\([^)]*\)$/i.test(color) ||
+    /^[a-z]+$/i.test(color);
+
+  return isSupportedColor ? color : DEFAULT_POWDER_COLOR;
+};
 
 export function PowderContainer({
   color,
@@ -41,14 +89,14 @@ export function PowderContainer({
     Math.max(0, Math.round(height)),
   );
   const fillRatio = powderHeight / MAX_POWDER_HEIGHT;
-  const isEmpty = fillRatio < 0.05;
   const visualPowderHeight =
     MIN_POWDER_VISUAL_HEIGHT +
     fillRatio * (MAX_POWDER_HEIGHT - MIN_POWDER_VISUAL_HEIGHT);
-  const powderHeightPercent = isEmpty
+  const powderHeightPercent = isDisabled
     ? 0
     : (visualPowderHeight / CONTAINER_HEIGHT) * 100;
   const weight = fillRatio * maxWeightKg;
+  const powderColor = resolvePowderColor(color);
 
   const getHeightFromPointer = (event: PointerEvent<HTMLDivElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -153,7 +201,7 @@ export function PowderContainer({
           left="1%"
           w="98%"
           h={`${powderHeightPercent}%`}
-          bg={color}
+          bg={powderColor}
           overflow="hidden"
           sx={{
             WebkitMaskImage: "url(/container.png)",

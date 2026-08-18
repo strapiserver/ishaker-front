@@ -50,13 +50,13 @@ export const updateMachineRegistrationData = async (params: {
   country: string;
   stateRegion: string;
   city: string;
-  location?: string;
   currencyId?: string | number;
+  languageId?: string | number;
   nayaxTerminalId?: string;
 }) => {
   const index = await getMachineOwnerIndex(params.client.id, params.machine.id);
   const title =
-    `${params.stateRegion.toUpperCase()} • ${capitalize(params.nickname)}'s iShaker ${getMachineTypeLabel(
+    `${params.stateRegion ? `${params.stateRegion.toUpperCase()} • ` : ""}${capitalize(params.nickname)}'s iShaker ${getMachineTypeLabel(
       params.machine,
     ).toUpperCase()} #${index}`
       .replace(/\s+/g, " ")
@@ -73,8 +73,8 @@ export const updateMachineRegistrationData = async (params: {
           country: params.country,
           state_region: params.stateRegion,
           city: params.city,
-          location: clean(params.location),
           ...(params.currencyId ? { currency: params.currencyId } : {}),
+          ...(params.languageId ? { language: params.languageId } : {}),
           ...(typeof params.nayaxTerminalId === "string"
             ? { nayax_terminal_id: clean(params.nayaxTerminalId) || null }
             : {}),

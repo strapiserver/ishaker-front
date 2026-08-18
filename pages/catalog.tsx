@@ -124,42 +124,6 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
       description="Browse available tastes or submit a custom taste for iShaker review."
       clientName={session.client.company}
     >
-      <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing="4" mb="10">
-        {tastes.map((taste) => (
-          <Box
-            key={taste.id}
-            bg="bg.900"
-            border="1px solid"
-            borderColor="whiteAlpha.100"
-            borderRadius="2xl"
-            overflow="hidden"
-          >
-            {taste.main?.url ? (
-              <AspectRatio ratio={1} bg="bg.800">
-                <Image
-                  src={getSmallestMediaUrl(taste.main)}
-                  alt={taste.name}
-                  w="full"
-                  h="full"
-                  objectFit="contain"
-                  p="3"
-                />
-              </AspectRatio>
-            ) : null}
-            <VStack p="5" spacing="2" align="stretch">
-              <Text color="bg.50" fontWeight="800">
-                {taste.name}
-              </Text>
-              {taste.submission_status === "pending" ? (
-                <Badge colorScheme="yellow" alignSelf="flex-start">
-                  Pending review
-                </Badge>
-              ) : null}
-            </VStack>
-          </Box>
-        ))}
-      </SimpleGrid>
-
       <Box
         as="form"
         onSubmit={submit}
@@ -169,6 +133,7 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
         borderRadius="2xl"
         p={{ base: "5", md: "7" }}
         maxW="760px"
+        my="4"
       >
         <VStack spacing="5" align="stretch">
           <Box>
@@ -262,6 +227,41 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
           </Button>
         </VStack>
       </Box>
+      <SimpleGrid columns={{ base: 3, sm: 4, lg: 6 }} spacing="4" mb="10">
+        {tastes.map((taste) => (
+          <Box
+            key={taste.id}
+            bg="bg.900"
+            border="1px solid"
+            borderColor="whiteAlpha.100"
+            borderRadius="2xl"
+            overflow="hidden"
+          >
+            {taste.main?.url ? (
+              <AspectRatio ratio={1} bg="bg.800">
+                <Image
+                  src={getSmallestMediaUrl(taste.main)}
+                  alt={taste.name}
+                  w="full"
+                  h="full"
+                  objectFit="contain"
+                  p="3"
+                />
+              </AspectRatio>
+            ) : null}
+            <VStack p="5" spacing="2" align="stretch">
+              <Text color="bg.50" fontWeight="800">
+                {taste.name}
+              </Text>
+              {taste.submission_status === "pending" ? (
+                <Badge colorScheme="yellow" alignSelf="flex-start">
+                  Pending review
+                </Badge>
+              ) : null}
+            </VStack>
+          </Box>
+        ))}
+      </SimpleGrid>
     </PortalShell>
   );
 }

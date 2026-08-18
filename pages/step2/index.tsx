@@ -35,7 +35,6 @@ export default function Step2Page({ currencies }: Step2PageProps) {
   const [country, setCountry] = useState("USA");
   const [state, setState] = useState("");
   const [city, setCity] = useState("");
-  const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
   const [machineLabel, setMachineLabel] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
@@ -52,7 +51,6 @@ export default function Step2Page({ currencies }: Step2PageProps) {
     setCountry(draft.country || "USA");
     setState(draft.state || "");
     setCity(draft.city || "");
-    setLocation(draft.location || "");
     setNotes(draft.notes || "");
     setMachineLabel(draft.machineTitle || "Selected machine");
     setSerialNumber(draft.serialNumber);
@@ -71,7 +69,6 @@ export default function Step2Page({ currencies }: Step2PageProps) {
       country,
       state,
       city,
-      location,
       notes,
       currencyId,
       currencyCode: currencies.find((currency) => String(currency.id) === currencyId)?.code,
@@ -153,14 +150,6 @@ export default function Step2Page({ currencies }: Step2PageProps) {
                       </option>
                     ))}
                   </Select>
-                </FormControl>
-                <FormControl>
-                  <FormLabel>Machine location</FormLabel>
-                  <Input
-                    value={location}
-                    onChange={(event) => setLocation(event.target.value)}
-                    placeholder="Gym, hotel, office, campus, or branch"
-                  />
                 </FormControl>
                 <FormControl>
                   <FormLabel>Notes for ops</FormLabel>

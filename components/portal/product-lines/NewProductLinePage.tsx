@@ -53,6 +53,7 @@ export type NewProductLinePageProps = {
   existingProductLines?: PortalProductLine[];
   splashes: PortalSplash[];
   productLine?: PortalProductLine;
+  initialBaseProductLineId?: string;
   loadError?: string;
 };
 
@@ -105,7 +106,7 @@ const productLineIcons: Record<string, SearchableImageOption["icon"]> = {
   "whey protein": <FaDumbbell />,
 };
 
-const getProductLineIcon = (name: string) =>
+export const getProductLineIcon = (name: string) =>
   productLineIcons[name.trim().toLocaleLowerCase()] || <FaFlask />;
 
 export function NewProductLinePage({
@@ -114,24 +115,46 @@ export function NewProductLinePage({
   existingProductLines = [],
   splashes,
   productLine,
+  initialBaseProductLineId,
   loadError,
 }: NewProductLinePageProps) {
   const router = useRouter();
   const toast = useToast();
   const isEditing = Boolean(productLine?.id);
+  const initialBaseLine = !isEditing
+    ? rootProductLines.find(
+        (line) => String(line.id) === initialBaseProductLineId,
+      )
+    : null;
   const [name, setName] = useState(
-    capitalizeName(productLine?.base_product_line?.name || productLine?.name),
+    capitalizeName(
+      productLine?.base_product_line?.name ||
+        productLine?.name ||
+        initialBaseLine?.name,
+    ),
   );
   const [baseProductLineId, setBaseProductLineId] = useState(
     productLine?.base_product_line?.id
       ? String(productLine.base_product_line.id)
-      : "",
+      : initialBaseLine
+        ? String(initialBaseLine.id)
+        : "",
   );
   const [cupId, setCupId] = useState(
-    productLine?.cups?.[0]?.id ? String(productLine.cups[0].id) : "",
+    productLine?.cups?.[0]?.id
+      ? String(productLine.cups[0].id)
+      : initialBaseLine?.cups?.[0]?.id
+        ? String(initialBaseLine.cups[0].id)
+        : "",
   );
   const [customSplashId, setCustomSplashId] = useState(
-    productLine?.custom_splash?.id ? String(productLine.custom_splash.id) : "",
+    productLine?.custom_splash?.id
+      ? String(productLine.custom_splash.id)
+      : initialBaseLine?.cups?.[0]?.default_splash?.id
+        ? String(initialBaseLine.cups[0].default_splash.id)
+        : initialBaseLine?.custom_splash?.id
+          ? String(initialBaseLine.custom_splash.id)
+          : "",
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");

@@ -69,6 +69,16 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
           `/api/product-lines?${existingParams.toString()}`,
         ),
       ]);
+    const requestedBaseProductLineId = Array.isArray(
+      context.query.baseProductLineId,
+    )
+      ? context.query.baseProductLineId[0]
+      : context.query.baseProductLineId;
+    const initialBaseProductLineId = rootProductLines.some(
+      (line) => String(line.id) === requestedBaseProductLineId,
+    )
+      ? requestedBaseProductLineId
+      : undefined;
 
     return {
       props: {
@@ -76,6 +86,7 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
         rootProductLines,
         existingProductLines,
         splashes,
+        ...(initialBaseProductLineId ? { initialBaseProductLineId } : {}),
       },
     };
   } catch (error) {

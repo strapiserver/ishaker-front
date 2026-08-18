@@ -657,7 +657,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       country,
       stateRegion: state,
       city,
-      location: asString(req.body?.location),
       currencyId: currency.id,
     });
   } catch (error) {
@@ -738,7 +737,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       messengerType === "whatsapp"
         ? `${messengerCountryCode} ${messengerValue}`.trim()
         : "",
-    location: asString(req.body?.location),
     notes: [
       asString(req.body?.notes),
       messengerType && messengerValue

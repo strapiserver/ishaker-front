@@ -18,6 +18,29 @@ export type Patch = {
   slug?: string | null;
 };
 
+export type Language = {
+  id: string | number;
+  code: string;
+  name: string;
+  native_name?: string | null;
+  app_name?: string | null;
+  isActive?: boolean;
+  isDefault?: boolean;
+  sort_order?: number | null;
+};
+
+export type TranslationSet = {
+  id: string | number;
+  name: string;
+  slug?: string | null;
+  language?: Language | null;
+  client?: Pick<Client, "id" | "company"> | null;
+  is_root?: boolean;
+  based_on?: TranslationSet | null;
+  isActive?: boolean;
+  notes?: string | null;
+};
+
 export type Machine = {
   id: string | number;
   has_door_lock?: boolean | null;
@@ -95,7 +118,6 @@ export type Machine = {
   country?: string;
   state_region?: string;
   city?: string;
-  location?: string;
   admin_comment?: string;
   product_lines?: Array<{
     id: string | number;
@@ -123,12 +145,8 @@ export type Machine = {
   } | null;
   currency?: Currency | null;
   nayax_terminal_id?: string | null;
-  language?: {
-    id: string | number;
-    code: string;
-    name: string;
-    native_name?: string | null;
-  } | null;
+  language?: Language | null;
+  translation_set?: TranslationSet | null;
 };
 
 export type Currency = {

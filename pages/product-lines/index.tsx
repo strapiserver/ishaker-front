@@ -58,6 +58,17 @@ const createProductParams = (session: PortalSession) => {
   return params;
 };
 
+const createRootProductLineParams = () => {
+  const params = new URLSearchParams();
+  params.set("filters[author][username][$eq]", "root");
+  params.set("fields[0]", "name");
+  params.set("fields[1]", "isPopular");
+  params.set("sort[0]", "isPopular:DESC");
+  params.set("sort[1]", "name:ASC");
+  params.set("pagination[pageSize]", "2000");
+  return params;
+};
+
 export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = async (
   context,
 ) => {
@@ -110,12 +121,17 @@ export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = asy
   }
 
   try {
-    const ownProductLines = await requestStrapiRestAsService<PortalProductLine[]>(
-      `/api/product-lines?${createProductLineParams(result.session).toString()}`,
-    );
-    const ownProducts = await requestStrapiRestAsService<ProductWithLine[]>(
-      `/api/products?${createProductParams(result.session).toString()}`,
-    );
+    const [ownProductLines, ownProducts, rootProductLines] = await Promise.all([
+      requestStrapiRestAsService<PortalProductLine[]>(
+        `/api/product-lines?${createProductLineParams(result.session).toString()}`,
+      ),
+      requestStrapiRestAsService<ProductWithLine[]>(
+        `/api/products?${createProductParams(result.session).toString()}`,
+      ),
+      requestStrapiRestAsService<PortalProductLine[]>(
+        `/api/product-lines?${createRootProductLineParams().toString()}`,
+      ),
+    ]);
     const productLines = ownProductLines.map((productLine) => ({
       ...productLine,
       products: ownProducts.filter(
@@ -128,6 +144,7 @@ export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = asy
       props: {
         session: result.session,
         productLines,
+        rootProductLines,
         orphanProducts: ownProducts.filter((product) => !product.product_line),
         catalogProducts,
         machineAssignments,
@@ -140,6 +157,7 @@ export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = asy
       props: {
         session: result.session,
         productLines: [],
+        rootProductLines: [],
         orphanProducts: [],
         catalogProducts,
         machineAssignments,

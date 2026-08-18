@@ -48,6 +48,7 @@ export function AdminHeader({ title = "Client machines" }: { title?: string }) {
             ["/admin/presets", "Presets"],
             ["/admin/languages", "Languages"],
             ["/admin/translations", "Translations"],
+            ["/admin/translation-sets", "Text packs"],
             ["/admin/voice-clips", "Voice clips"],
           ].map(([href, label]) => (
             <Button key={href} as={Link} href={href} size="sm" variant="ghost">

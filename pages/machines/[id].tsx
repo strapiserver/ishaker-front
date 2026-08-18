@@ -15,6 +15,7 @@ import type { GetServerSideProps } from "next";
 import { MachineRegistrationEditor } from "../../components/portal/machines/MachineRegistrationEditor";
 import { MachineDoorUnlock } from "../../components/portal/machines/MachineDoorUnlock";
 import { MachineHealthStrip } from "../../components/portal/machines/MachineHealthStrip";
+import { MachineKioskTexts } from "../../components/portal/machines/MachineKioskTexts";
 import { NayaxSettingsSection } from "../../components/portal/NayaxSettingsSection";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { requirePortalSession } from "../../lib/portal/auth";
@@ -28,7 +29,7 @@ import {
 } from "../../services/server/telemetryClient";
 import { requestStrapiRestAsService } from "../../services/server/strapiClient";
 import type { PortalSession } from "../../types/portal";
-import type { Currency, Machine } from "../../types/strapi";
+import type { Currency, Language, Machine } from "../../types/strapi";
 import { formatMoney } from "../../lib/portal/currency";
 import { buildMachineHealthRow } from "../../lib/portal/machineHealth";
 
@@ -44,6 +45,7 @@ type MachineDetailPageProps = {
   telemetryStorage?: any | null;
   telemetryPrices?: any[] | null;
   currencies: Currency[];
+  languages: Language[];
 };
 
 const displayValue = (value: unknown, fallback = "-"): string => {
@@ -80,7 +82,6 @@ const rows = (machine: Machine) => [
   ["Country", displayValue(machine.country)],
   ["State / region", displayValue(machine.state_region)],
   ["City", displayValue(machine.city)],
-  ["Site", displayValue(machine.location)],
   ["Hostname", displayValue(machine.hostname)],
   ["AnyDesk ID", displayValue(machine.anydesk_id)],
   ["Tailscale IP", displayValue(machine.tailscale_ip)],
@@ -117,6 +118,7 @@ export default function MachineDetailPage({
   telemetryStorage,
   telemetryPrices,
   currencies,
+  languages,
 }: MachineDetailPageProps) {
   return (
     <PortalShell
@@ -149,6 +151,12 @@ export default function MachineDetailPage({
               state: session.client.state,
               city: session.client.city,
             }}
+          />
+        </Box>
+        <Box gridColumn={{ xl: "1 / -1" }}>
+          <MachineKioskTexts
+            machine={machine}
+            languages={languages}
             currencies={currencies}
           />
         </Box>
@@ -305,10 +313,16 @@ export const getServerSideProps: GetServerSideProps<MachineDetailPageProps> = as
 
   const telemetryConfigured = isTelemetryConfigured();
   let currencies: Currency[] = [];
+  let languages: Language[] = [];
   try {
-    currencies = await requestStrapiRestAsService<Currency[]>(
-      "/api/currencies?filters[isActive][$ne]=false&sort[0]=code:ASC&pagination[pageSize]=2000",
-    );
+    [currencies, languages] = await Promise.all([
+      requestStrapiRestAsService<Currency[]>(
+        "/api/currencies?filters[isActive][$eq]=true&sort[0]=code:ASC&pagination[pageSize]=2000",
+      ),
+      requestStrapiRestAsService<Language[]>(
+        "/api/languages?filters[isActive][$eq]=true&sort[0]=name:ASC&pagination[pageSize]=2000",
+      ),
+    ]);
   } catch (error) {
     console.error("[machines/detail] currency loading failed:", error);
   }
@@ -318,6 +332,7 @@ export const getServerSideProps: GetServerSideProps<MachineDetailPageProps> = as
     machine,
     telemetryConfigured,
     currencies,
+    languages,
   };
 
   if (!telemetryConfigured) {

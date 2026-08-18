@@ -135,7 +135,6 @@ export default function Step4Page() {
                     .join(", ")}
                 </Text>
                 <Text>Currency: {draft?.currencyCode || "Selected currency"}</Text>
-                {draft?.location ? <Text>Site: {draft.location}</Text> : null}
               </VStack>
             </Box>
 

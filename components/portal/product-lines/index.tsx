@@ -12,12 +12,18 @@ import {
   MenuButton,
   MenuItem,
   MenuList,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalHeader,
+  ModalOverlay,
   SimpleGrid,
   Text,
   VStack,
+  useDisclosure,
 } from "@chakra-ui/react";
-import { useState } from "react";
-import Link from "next/link";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { FiCheck, FiChevronDown } from "react-icons/fi";
 import type {
@@ -29,11 +35,13 @@ import type {
 } from "../../../types/portal";
 import type { Machine } from "../../../types/strapi";
 import { getMachineContainerCount } from "../../../lib/portal/containerSlots";
+import { capitalizeName } from "../../../lib/formatName";
 import { getSmallestMediaUrl } from "../../../lib/portal/media";
 import { PortalShell } from "../PortalShell";
 import { MachineCellsSection } from "../machines/MachineCellsSection";
 import { OrphanProductCard } from "./OrphanProductCard";
 import { ProductLineCard } from "./ProductLineCard";
+import { getProductLineIcon } from "./NewProductLinePage";
 
 export type MachineContainerAssignment = {
   machine: Machine;
@@ -44,6 +52,7 @@ export type MachineContainerAssignment = {
 export type ProductLinesPageProps = {
   session: PortalSession;
   productLines: PortalProductLine[];
+  rootProductLines: PortalProductLine[];
   orphanProducts: PortalProduct[];
   catalogProducts: PortalCatalogProduct[];
   machineAssignments: MachineContainerAssignment[];
@@ -140,6 +149,7 @@ function MachineSelectorContent({
 export function ProductLinesPage({
   session,
   productLines,
+  rootProductLines,
   orphanProducts,
   catalogProducts,
   machineAssignments,
@@ -147,6 +157,7 @@ export function ProductLinesPage({
   loadError,
 }: ProductLinesPageProps) {
   const router = useRouter();
+  const productLineChooser = useDisclosure();
   const [selectedMachineId, setSelectedMachineId] = useState(
     machineAssignments.some(
       ({ machine }) => String(machine.id) === initialMachineId,
@@ -156,22 +167,38 @@ export function ProductLinesPage({
         ? String(machineAssignments[0].machine.id)
         : "",
   );
-  const [machineCells, setMachineCells] = useState<Record<string, PortalMachineCell[]>>(
-    () =>
-      Object.fromEntries(
-        machineAssignments.map(({ machine, cells }) => [String(machine.id), cells]),
-      ),
+  const [machineCells, setMachineCells] = useState<
+    Record<string, PortalMachineCell[]>
+  >(() =>
+    Object.fromEntries(
+      machineAssignments.map(({ machine, cells }) => [
+        String(machine.id),
+        cells,
+      ]),
+    ),
   );
   const selectedAssignment =
     machineAssignments.find(
       ({ machine }) => String(machine.id) === selectedMachineId,
     ) || machineAssignments[0];
   const selectedCells = selectedAssignment
-    ? machineCells[String(selectedAssignment.machine.id)] || selectedAssignment.cells
+    ? machineCells[String(selectedAssignment.machine.id)] ||
+      selectedAssignment.cells
     : [];
   const selectedContainerCount = selectedAssignment
     ? getMachineContainerCount(selectedAssignment.machine.machine_type)
     : null;
+  const productLineOptions = useMemo(
+    () =>
+      [...rootProductLines].sort(
+        (left, right) =>
+          Number(Boolean(right.isPopular)) - Number(Boolean(left.isPopular)) ||
+          left.name.localeCompare(right.name, undefined, {
+            sensitivity: "base",
+          }),
+      ),
+    [rootProductLines],
+  );
 
   const replaceMachineCells = (
     machineId: string | number,
@@ -193,6 +220,32 @@ export function ProductLinesPage({
     );
   };
 
+  const startNewProduct = () => {
+    if (!productLineOptions.length) {
+      void router.push("/product-lines/new");
+      return;
+    }
+    productLineChooser.onOpen();
+  };
+
+  const selectProductLineForNewProduct = (rootLine: PortalProductLine) => {
+    productLineChooser.onClose();
+    const normalizedName = rootLine.name.trim().toLocaleLowerCase();
+    const existingProductLine =
+      productLines.find(
+        (line) => String(line.base_product_line?.id) === String(rootLine.id),
+      ) ||
+      productLines.find(
+        (line) => line.name.trim().toLocaleLowerCase() === normalizedName,
+      );
+
+    void router.push(
+      existingProductLine
+        ? `/product-lines/${existingProductLine.id}/products/new`
+        : `/product-lines/new?baseProductLineId=${encodeURIComponent(rootLine.id)}`,
+    );
+  };
+
   return (
     <PortalShell
       title="Product lines"
@@ -202,8 +255,7 @@ export function ProductLinesPage({
       showSupportBanner={false}
       headerAction={
         <Button
-          as={Link}
-          href="/product-lines/new"
+          onClick={startNewProduct}
           bg="#69e65d"
           color="#071008"
           size="md"
@@ -212,78 +264,86 @@ export function ProductLinesPage({
           boxShadow="0 8px 24px rgba(70, 220, 84, 0.18)"
           _hover={{ bg: "#80ef75", transform: "translateY(-1px)" }}
         >
-          +&nbsp; New product line
+          +&nbsp; New product
         </Button>
       }
     >
+      <FormControl maxW="620px" my="5">
+        <Menu matchWidth placement="bottom-start">
+          <MenuButton
+            as={Button}
+            w="full"
+            h="auto"
+            minH={{ base: "80px", sm: "92px" }}
+            p={{ base: "3", sm: "3.5" }}
+            bg="bg.900"
+            border="1px solid"
+            borderColor="whiteAlpha.100"
+            borderRadius="lg"
+            textAlign="left"
+            whiteSpace="normal"
+            rightIcon={<FiChevronDown />}
+            _hover={{ bg: "bg.800", borderColor: "whiteAlpha.300" }}
+            _active={{ bg: "bg.800", borderColor: "acid.300" }}
+            _expanded={{ bg: "bg.800", borderColor: "acid.300" }}
+          >
+            <MachineSelectorContent
+              machine={selectedAssignment.machine}
+              accountNickname={session.client.company}
+            />
+          </MenuButton>
+          <MenuList
+            bg="bg.900"
+            borderColor="whiteAlpha.200"
+            p="1.5"
+            maxH="360px"
+            overflowY="auto"
+            zIndex="dropdown"
+          >
+            {machineAssignments.map(({ machine }) => {
+              const isSelected =
+                String(machine.id) === String(selectedAssignment.machine.id);
+
+              return (
+                <MenuItem
+                  key={machine.id}
+                  bg={isSelected ? "whiteAlpha.100" : "transparent"}
+                  borderRadius="md"
+                  p="3"
+                  onClick={() => selectMachine(machine.id)}
+                  _hover={{ bg: "whiteAlpha.100" }}
+                  _focus={{ bg: "whiteAlpha.100" }}
+                >
+                  <MachineSelectorContent
+                    machine={machine}
+                    accountNickname={session.client.company}
+                    isSelected={isSelected}
+                  />
+                </MenuItem>
+              );
+            })}
+          </MenuList>
+        </Menu>
+      </FormControl>
       {loadError ? (
         <Text color="orange.200" mb="5">
           {loadError}
         </Text>
       ) : null}
 
-      <Box>
+      <SimpleGrid columns={1} spacing="4">
+        {productLines.map((productLine) => (
+          <ProductLineCard key={productLine.id} productLine={productLine} />
+        ))}
+      </SimpleGrid>
+
+      {!productLines.length && !loadError ? (
+        <Text color="bg.300">No product lines are available yet.</Text>
+      ) : null}
+
+      <Box mt="10">
         {machineAssignments.length ? (
           <>
-            <FormControl maxW="620px" mb="5">
-              <FormLabel>Machine for container assignment</FormLabel>
-              <Menu matchWidth placement="bottom-start">
-                <MenuButton
-                  as={Button}
-                  w="full"
-                  h="auto"
-                  minH={{ base: "80px", sm: "92px" }}
-                  p={{ base: "3", sm: "3.5" }}
-                  bg="bg.900"
-                  border="1px solid"
-                  borderColor="whiteAlpha.100"
-                  borderRadius="lg"
-                  textAlign="left"
-                  whiteSpace="normal"
-                  rightIcon={<FiChevronDown />}
-                  _hover={{ bg: "bg.800", borderColor: "whiteAlpha.300" }}
-                  _active={{ bg: "bg.800", borderColor: "acid.300" }}
-                  _expanded={{ bg: "bg.800", borderColor: "acid.300" }}
-                >
-                  <MachineSelectorContent
-                    machine={selectedAssignment.machine}
-                    accountNickname={session.client.company}
-                  />
-                </MenuButton>
-                <MenuList
-                  bg="bg.900"
-                  borderColor="whiteAlpha.200"
-                  p="1.5"
-                  maxH="360px"
-                  overflowY="auto"
-                  zIndex="dropdown"
-                >
-                  {machineAssignments.map(({ machine }) => {
-                    const isSelected =
-                      String(machine.id) ===
-                      String(selectedAssignment.machine.id);
-
-                    return (
-                      <MenuItem
-                        key={machine.id}
-                        bg={isSelected ? "whiteAlpha.100" : "transparent"}
-                        borderRadius="md"
-                        p="3"
-                        onClick={() => selectMachine(machine.id)}
-                        _hover={{ bg: "whiteAlpha.100" }}
-                        _focus={{ bg: "whiteAlpha.100" }}
-                      >
-                        <MachineSelectorContent
-                          machine={machine}
-                          accountNickname={session.client.company}
-                          isSelected={isSelected}
-                        />
-                      </MenuItem>
-                    );
-                  })}
-                </MenuList>
-              </Menu>
-            </FormControl>
             <MachineCellsSection
               key={selectedAssignment.machine.id}
               machineId={selectedAssignment.machine.id}
@@ -303,18 +363,6 @@ export function ProductLinesPage({
           </Text>
         )}
       </Box>
-
-      <SimpleGrid columns={1} spacing="4" mt="10">
-        {productLines.map((productLine) => (
-          <ProductLineCard key={productLine.id} productLine={productLine} />
-        ))}
-      </SimpleGrid>
-
-      {!productLines.length && !loadError ? (
-        <Text color="bg.300" mt="10">
-          No product lines are available yet.
-        </Text>
-      ) : null}
 
       {orphanProducts.length ? (
         <Box mt="10">
@@ -337,6 +385,85 @@ export function ProductLinesPage({
           </SimpleGrid>
         </Box>
       ) : null}
+
+      <Modal
+        isOpen={productLineChooser.isOpen}
+        onClose={productLineChooser.onClose}
+        isCentered
+        size="lg"
+      >
+        <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(4px)" />
+        <ModalContent
+          bg="bg.900"
+          border="1px solid"
+          borderColor="whiteAlpha.200"
+        >
+          <ModalHeader>Choose a product line</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Text color="bg.300" mb="4">
+              Existing lines open product creation. New lines open setup with
+              your selection already filled in.
+            </Text>
+            <VStack align="stretch" spacing="2">
+              {productLineOptions.map((rootLine) => {
+                const normalizedName = rootLine.name.trim().toLocaleLowerCase();
+                const existingProductLine =
+                  productLines.find(
+                    (line) =>
+                      String(line.base_product_line?.id) ===
+                      String(rootLine.id),
+                  ) ||
+                  productLines.find(
+                    (line) =>
+                      line.name.trim().toLocaleLowerCase() === normalizedName,
+                  );
+                return (
+                  <Button
+                    key={rootLine.id}
+                    variant="ghost"
+                    h="auto"
+                    minH="50px"
+                    px="2"
+                    py="2"
+                    justifyContent="flex-start"
+                    onClick={() => selectProductLineForNewProduct(rootLine)}
+                    _hover={{ bg: "whiteAlpha.100" }}
+                  >
+                    <HStack w="full" spacing="3" textAlign="left">
+                      <Box
+                        display="grid"
+                        placeItems="center"
+                        boxSize="34px"
+                        flexShrink="0"
+                        borderRadius="md"
+                        bg="whiteAlpha.100"
+                        color="acid.300"
+                        fontSize="lg"
+                      >
+                        {getProductLineIcon(rootLine.name)}
+                      </Box>
+                      <Box flex="1" minW="0">
+                        <Text color="bg.50" fontWeight="700" noOfLines={1}>
+                          {capitalizeName(rootLine.name)}
+                        </Text>
+                        {rootLine.isPopular ? (
+                          <Text color="green.300" fontSize="xs">
+                            Popular
+                          </Text>
+                        ) : null}
+                      </Box>
+                      <Text color="bg.400" fontSize="xs" flexShrink="0">
+                        {existingProductLine ? "Add product" : "Create line"}
+                      </Text>
+                    </HStack>
+                  </Button>
+                );
+              })}
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </PortalShell>
   );
 }
