@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { capitalizeName } from "../../../../../lib/formatName";
 import { getPortalSessionFromApiRequest } from "../../../../../lib/portal/auth";
+import { requestWithSplashOwnershipFallback } from "../../../../../lib/portal/splashOwnership";
 import {
   fetchStrapiCatalogEndpoint,
   hasStrapiCatalogToken,
@@ -500,6 +501,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       String(session.user.id),
     );
     visibleSplashParams.set("pagination[pageSize]", "1");
+    const loadVisibleSplash = (query: URLSearchParams) =>
+      requestStrapiRestAsService<RelatedEntity[]>(
+        `/api/splashes?${query.toString()}`,
+      );
 
     const [
       splash,
@@ -510,8 +515,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       brand,
       customCup,
     ] = await Promise.all([
-      requestStrapiRestAsService<RelatedEntity[]>(
-        `/api/splashes?${visibleSplashParams.toString()}`,
+      requestWithSplashOwnershipFallback(
+        visibleSplashParams,
+        loadVisibleSplash,
       ).then((items) => items[0]),
       requestStrapiRestAsService<RelatedEntity>(
         `/api/circles/${resolvedCircleId}`,

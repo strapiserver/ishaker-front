@@ -4,6 +4,9 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 
 module.exports = withBundleAnalyzer({
   reactStrictMode: true,
+  // Keep local development output separate from production builds. Running
+  // `next build` while the dev server is active must not replace its chunks.
+  distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
   typescript: {
     ignoreBuildErrors: true,
   },
