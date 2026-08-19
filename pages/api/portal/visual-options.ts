@@ -51,10 +51,19 @@ export default async function handler(
       params.set("populate[images][fields][1]", "formats");
       params.set("populate[images][fields][2]", "name");
       params.set("sort[0]", "name:ASC");
-      const splashes = await loadAllPages<PortalSplash>(
-        "/api/splashes",
-        params,
-      );
+      let splashes: PortalSplash[];
+      try {
+        splashes = await loadAllPages<PortalSplash>("/api/splashes", params);
+      } catch (error) {
+        // Compatibility with deployed Strapi schemas that predate splash.author.
+        if ((error as { status?: number }).status !== 500) throw error;
+        params.delete("filters[$or][0][author][username][$eq]");
+        params.delete("filters[$or][1][author][id][$eq]");
+        console.warn(
+          "[portal/visual-options] splash ownership filtering is unsupported; using the compatible query.",
+        );
+        splashes = await loadAllPages<PortalSplash>("/api/splashes", params);
+      }
       return res.status(200).json({ splashes });
     }
     if (type === "tastes") {
