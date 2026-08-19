@@ -248,7 +248,7 @@ export const buildMachineHealthRow = (
   const fleetAt = typeof fleet?.at === "string" ? fleet.at : null;
   const fleetFresh = Boolean(fleetAt && !isStale(fleetAt, now));
   const fleetHealthy = fleet?.sweep === "ok" && fleet?.ssh_ok === true;
-  const online: MachineHealthIndicator = fleetAt
+  const currentOnline: MachineHealthIndicator = fleetAt
     ? fleetFresh
       ? {
           state: fleetHealthy ? "ok" : "error",
@@ -258,6 +258,15 @@ export const buildMachineHealthRow = (
         }
       : { state: "unknown", label: "Stale", source: "ops", at: fleetAt }
     : fallback.online;
+  const online: MachineHealthIndicator = {
+    ...currentOnline,
+    // `at` is the time of the latest status report. When that report says Offline,
+    // only last_seen_at tells us when the machine was actually online most recently.
+    lastOnlineAt:
+      currentOnline.state === "ok" && currentOnline.at
+        ? currentOnline.at
+        : machine.last_seen_at || null,
+  };
 
   if (own) {
     // Levels stay on the own reading even once it ages — "this is what we last saw" is
@@ -267,7 +276,16 @@ export const buildMachineHealthRow = (
     // fresh the own badge wins outright, because it is the stronger evidence — we were
     // inside the machine seconds ago, not asking a third party about it.
     const ownFresh = !isStale(machine.health?.at, now);
-    return { ...own, online: ownFresh ? own.online : online };
+    const ownOnline = ownFresh
+      ? {
+          ...own.online,
+          lastOnlineAt:
+            own.online.state === "ok" && own.online.at
+              ? own.online.at
+              : machine.last_seen_at || null,
+        }
+      : online;
+    return { ...own, online: ownOnline };
   }
 
   return {

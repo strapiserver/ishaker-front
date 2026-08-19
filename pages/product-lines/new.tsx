@@ -28,6 +28,11 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
   rootParams.set("pagination[pageSize]", "2000");
 
   const splashParams = new URLSearchParams();
+  splashParams.set("filters[$or][0][author][username][$eq]", "root");
+  splashParams.set(
+    "filters[$or][1][author][id][$eq]",
+    String(result.session.user.id),
+  );
   splashParams.set("fields[0]", "name");
   splashParams.set("fields[1]", "color");
   splashParams.set("fields[2]", "isEmpty");

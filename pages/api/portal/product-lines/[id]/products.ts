@@ -489,6 +489,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    const visibleSplashParams = new URLSearchParams();
+    visibleSplashParams.set("filters[id][$eq]", resolvedSplashId);
+    visibleSplashParams.set(
+      "filters[$or][0][author][username][$eq]",
+      "root",
+    );
+    visibleSplashParams.set(
+      "filters[$or][1][author][id][$eq]",
+      String(session.user.id),
+    );
+    visibleSplashParams.set("pagination[pageSize]", "1");
+
     const [
       splash,
       circle,
@@ -498,9 +510,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       brand,
       customCup,
     ] = await Promise.all([
-      requestStrapiRestAsService<RelatedEntity>(
-        `/api/splashes/${resolvedSplashId}`,
-      ),
+      requestStrapiRestAsService<RelatedEntity[]>(
+        `/api/splashes?${visibleSplashParams.toString()}`,
+      ).then((items) => items[0]),
       requestStrapiRestAsService<RelatedEntity>(
         `/api/circles/${resolvedCircleId}`,
       ),

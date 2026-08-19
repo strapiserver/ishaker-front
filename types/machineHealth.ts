@@ -7,6 +7,7 @@ export type MachineHealthIndicator = {
   label: string;
   source: HealthSource;
   at?: string | null;
+  lastOnlineAt?: string | null;
 };
 
 export type MachineHealthRow = {

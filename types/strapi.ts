@@ -52,6 +52,8 @@ export type Machine = {
   description?: string;
   context?: string;
   anydesk_id?: string;
+  rustdesk_id?: string | null;
+  rustdesk_password?: string | null;
   tailscale_ip?: string;
   tailscale_hostname?: string;
   ssh_user?: string;

@@ -16,6 +16,18 @@ const asId = (value: unknown) => {
   return /^\d+$/.test(id) ? id : "";
 };
 
+const loadVisibleSplash = async (id: string, userId: string | number) => {
+  const params = new URLSearchParams();
+  params.set("filters[id][$eq]", id);
+  params.set("filters[$or][0][author][username][$eq]", "root");
+  params.set("filters[$or][1][author][id][$eq]", String(userId));
+  params.set("pagination[pageSize]", "1");
+  const splashes = await requestStrapiRestAsService<PortalSplash[]>(
+    `/api/splashes?${params.toString()}`,
+  );
+  return splashes[0] || null;
+};
+
 const createOwnershipParams = (
   id: string,
   session: Awaited<ReturnType<typeof getPortalSessionFromApiRequest>>,
@@ -152,9 +164,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ),
         requestStrapiRestAsService<PortalCup>(`/api/cups/${cupId}`),
         customSplashId
-          ? requestStrapiRestAsService<PortalSplash>(
-              `/api/splashes/${customSplashId}`,
-            )
+          ? loadVisibleSplash(customSplashId, session.user.id)
           : Promise.resolve(null),
       ]);
     const baseProductLine = baseProductLines[0];

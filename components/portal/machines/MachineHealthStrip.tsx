@@ -46,17 +46,35 @@ const ageLabel = (at?: string | null) => {
   return `Reported ${hours}h ago`;
 };
 
+const lastOnlineLabel = (at?: string | null) => {
+  if (!at) return "Last online unavailable";
+  const timestamp = Date.parse(at);
+  if (Number.isNaN(timestamp)) return "Last online unavailable";
+  const minutes = Math.max(0, Math.round((Date.now() - timestamp) / 60_000));
+  if (minutes < 1) return "Last online just now";
+  if (minutes < 60) return `Last online ${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `Last online ${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return `Last online ${days}d ago`;
+};
+
 const HealthItem = ({
   title,
   icon,
   indicator,
+  showLastOnline = false,
 }: {
   title: string;
   icon: IconType;
   indicator: MachineHealthIndicator;
+  showLastOnline?: boolean;
 }) => {
   const color = stateColor[indicator.state];
-  const tooltip = `${title}: ${indicator.label}. Source: ${indicator.source}. ${ageLabel(indicator.at)}`;
+  const lastOnline = lastOnlineLabel(indicator.lastOnlineAt);
+  const tooltip = `${title}: ${indicator.label}. Source: ${indicator.source}. ${
+    showLastOnline ? `${lastOnline}. ` : ""
+  }${ageLabel(indicator.at)}`;
 
   return (
     <Tooltip label={tooltip} hasArrow>
@@ -89,6 +107,11 @@ const HealthItem = ({
             </Text>
           </Box>
         </HStack>
+        {showLastOnline && indicator.state !== "ok" ? (
+          <Text color="bg.400" fontSize="8px" lineHeight="1" noOfLines={1}>
+            {lastOnline}
+          </Text>
+        ) : null}
         {indicator.source !== "ops" && indicator.source !== "own" ? (
           <Badge colorScheme={color} fontSize="8px" lineHeight="14px">
             {indicator.source}
@@ -120,7 +143,12 @@ export function MachineHealthStrip({
   }
 
   const items = [
-    { title: "Online", icon: FaWifi, indicator: health?.online || noData },
+    {
+      title: "Online",
+      icon: FaWifi,
+      indicator: health?.online || noData,
+      showLastOnline: true,
+    },
     { title: "Nayax", icon: FaCreditCard, indicator: health?.terminal || noData },
     { title: "Water", icon: FaTint, indicator: health?.water || noData },
     { title: "Powders", icon: FaBoxOpen, indicator: health?.powders || noData },

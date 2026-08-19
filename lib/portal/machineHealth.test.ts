@@ -81,3 +81,22 @@ test("a stale reading hands the online badge back to fleet_status", () => {
   assert.equal(row.online.label, "Online");
   assert.equal(row.online.source, "ops");
 });
+
+test("an offline report preserves the last time the machine was online", () => {
+  const machine = {
+    id: 112,
+    nickname: "bone",
+    serial_number: "26041826",
+    last_seen_at: "2026-08-18T16:42:00Z",
+    fleet_status: {
+      at: "2026-08-18T17:11:00Z",
+      sweep: "error",
+      ssh_ok: false,
+    },
+  } as unknown as Machine;
+
+  const row = buildMachineHealthRow(machine, null, NOW);
+  assert.equal(row.online.label, "Offline");
+  assert.equal(row.online.at, "2026-08-18T17:11:00Z");
+  assert.equal(row.online.lastOnlineAt, "2026-08-18T16:42:00Z");
+});

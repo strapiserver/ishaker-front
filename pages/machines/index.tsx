@@ -16,13 +16,14 @@ import type { GetServerSideProps } from "next";
 import { useEffect, useMemo, useState } from "react";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { MachineHealthStrip } from "../../components/portal/machines/MachineHealthStrip";
+import { RemoteAccessDialog } from "../../components/portal/machines/RemoteAccessDialog";
 import { requirePortalSession } from "../../lib/portal/auth";
 import { getSmallestMediaUrl } from "../../lib/portal/media";
 import type { PortalMachineSummary, PortalSession } from "../../types/portal";
 import type { Machine } from "../../types/strapi";
 import type { MachineHealthRow } from "../../types/machineHealth";
 import { FaArrowRight, FaPlus, FaWrench } from "react-icons/fa";
-
+import { MdAddToHomeScreen } from "react-icons/md";
 type MachinesPageProps = {
   session: PortalSession;
   machines: PortalMachineSummary[];
@@ -57,6 +58,7 @@ const deriveStatusLabel = (machine: Machine) => {
 export default function MachinesPage({ session, machines }: MachinesPageProps) {
   const [healthRows, setHealthRows] = useState<MachineHealthRow[]>([]);
   const [isHealthLoading, setIsHealthLoading] = useState(true);
+  const [remoteMachine, setRemoteMachine] = useState<Machine | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -241,11 +243,17 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                   <Button
                     as={Link}
                     href={`/product-lines/machines/${machine.id}`}
-                    variant="ghost"
                     size="sm"
-                    leftIcon={<Icon as={FaPlus} boxSize="3" />}
+                    rightIcon={<Icon as={FaPlus} boxSize="3" />}
                   >
                     Add product
+                  </Button>
+                  <Button
+                    size="sm"
+                    rightIcon={<Icon as={MdAddToHomeScreen} boxSize="3" />}
+                    onClick={() => setRemoteMachine(machine)}
+                  >
+                    Remote access
                   </Button>
                 </HStack>
               </VStack>
@@ -253,6 +261,11 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
           );
         })}
       </SimpleGrid>
+      <RemoteAccessDialog
+        machine={remoteMachine}
+        isOpen={Boolean(remoteMachine)}
+        onClose={() => setRemoteMachine(null)}
+      />
     </PortalShell>
   );
 }

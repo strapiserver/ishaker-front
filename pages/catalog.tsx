@@ -16,8 +16,13 @@ import {
 } from "@chakra-ui/react";
 import type { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
+import {
+  SPLASH_FADE_MS,
+  useSplashAnimation,
+} from "../components/home/Splash";
 import { PortalShell } from "../components/portal/PortalShell";
+import { SearchableImageSelect } from "../components/portal/product-lines/SearchableImageSelect";
 import { requirePortalSession } from "../lib/portal/auth";
 import { getSmallestMediaUrl } from "../lib/portal/media";
 import {
@@ -25,14 +30,32 @@ import {
   normalizeMediaFilename,
 } from "../lib/portal/mediaFilename";
 import { requestStrapiRestAsService } from "../services/server/strapiClient";
-import type { PortalSession, PortalTaste } from "../types/portal";
+import type {
+  PortalCircle,
+  PortalSession,
+  PortalSplash,
+  PortalTaste,
+} from "../types/portal";
 
 type CatalogPageProps = {
   session: PortalSession;
   tastes: PortalTaste[];
+  circles: PortalCircle[];
+  splashes: PortalSplash[];
 };
 
 type EncodedFile = { name: string; type: string; data: string };
+
+const sortMediaByName = <T extends { name?: string; url?: string }>(
+  images: T[] = [],
+) =>
+  [...images].sort((left, right) =>
+    (left.name || left.url || "").localeCompare(
+      right.name || right.url || "",
+      undefined,
+      { numeric: true, sensitivity: "base" },
+    ),
+  );
 
 const MediaKeyPreview = ({ file }: { file: File | null }) =>
   file ? (
@@ -57,20 +80,79 @@ const encodeFile = (file: File): Promise<EncodedFile> =>
     reader.readAsDataURL(file);
   });
 
-export default function CatalogPage({ session, tastes }: CatalogPageProps) {
+export default function CatalogPage({
+  session,
+  tastes = [],
+  circles = [],
+  splashes = [],
+}: CatalogPageProps) {
   const [name, setName] = useState("");
-  const [color, setColor] = useState("#7c3aed");
   const [main, setMain] = useState<File | null>(null);
-  const [circle, setCircle] = useState<File | null>(null);
+  const [circleId, setCircleId] = useState("");
+  const [splashId, setSplashId] = useState("");
   const [elements, setElements] = useState<File[]>([]);
+  const [generatedFrames, setGeneratedFrames] = useState<EncodedFile[]>([]);
+  const [generatedPreview, setGeneratedPreview] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
   const router = useRouter();
+  const generatedFrameUrls = useMemo(
+    () =>
+      generatedFrames.map(
+        (frame) => `data:${frame.type};base64,${frame.data}`,
+      ),
+    [generatedFrames],
+  );
+  const { activeFrame: generatedActiveFrame, isFading: isPreviewFading } =
+    useSplashAnimation(
+      generatedFrameUrls.length ? [generatedFrameUrls] : [],
+      generatedFrameUrls.length > 0,
+    );
+
+  const clearGeneratedSplash = () => {
+    setGeneratedFrames([]);
+    setGeneratedPreview("");
+  };
+
+  const generateSplash = async () => {
+    if (name.trim().length < 2 || !splashId || elements.length !== 5) return;
+
+    setIsGenerating(true);
+    setMessage("");
+    setIsError(false);
+    clearGeneratedSplash();
+    try {
+      const response = await fetch("/api/portal/tastes/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name,
+          splashId,
+          elements: await Promise.all(elements.map(encodeFile)),
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.message || "Splash generation failed.");
+      }
+      setGeneratedFrames(payload.frames || []);
+      setGeneratedPreview(payload.preview || "");
+      setMessage("Custom splash generated. Review the preview, then submit.");
+    } catch (error) {
+      setIsError(true);
+      setMessage(
+        error instanceof Error ? error.message : "Splash generation failed.",
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!main || !circle) return;
+    if (!main || !circleId || !splashId || generatedFrames.length !== 20) return;
 
     // Grab the form node before the first await: React nulls
     // event.currentTarget once the handler returns.
@@ -86,10 +168,10 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name,
-          color,
           main: await encodeFile(main),
-          circle: await encodeFile(circle),
-          elements: await Promise.all(elements.map(encodeFile)),
+          circleId,
+          splashId,
+          generatedFrames,
         }),
       });
       const payload = await response.json();
@@ -101,8 +183,10 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
       );
       setName("");
       setMain(null);
-      setCircle(null);
+      setCircleId("");
+      setSplashId("");
       setElements([]);
+      clearGeneratedSplash();
       form.reset();
       // Re-run getServerSideProps so the new taste shows up in the
       // grid with its "Pending review" badge. A failed refresh must not
@@ -132,7 +216,7 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
         borderColor="whiteAlpha.100"
         borderRadius="2xl"
         p={{ base: "5", md: "7" }}
-        maxW="760px"
+        maxW="1200px"
         my="4"
       >
         <VStack spacing="5" align="stretch">
@@ -146,85 +230,173 @@ export default function CatalogPage({ session, tastes }: CatalogPageProps) {
             </Text>
           </Box>
 
-          <FormControl isRequired>
-            <FormLabel>Taste name</FormLabel>
-            <Input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              minLength={2}
-              maxLength={80}
+          <SimpleGrid columns={{ base: 1, lg: 2 }} spacing="8" alignItems="start">
+            <VStack spacing="5" align="stretch">
+              <FormControl isRequired>
+                <FormLabel>Taste name</FormLabel>
+                <Input
+                  value={name}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    clearGeneratedSplash();
+                  }}
+                  minLength={2}
+                  maxLength={80}
+                  bg="bg.800"
+                />
+              </FormControl>
+
+              <FormControl isRequired>
+                <FormLabel>Main image</FormLabel>
+                <Input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  p="1"
+                  onChange={(event) => setMain(event.target.files?.[0] || null)}
+                />
+                <FormHelperText>PNG, JPEG, or WebP; maximum 5 MB.</FormHelperText>
+                <MediaKeyPreview file={main} />
+              </FormControl>
+
+              <FormControl isRequired>
+                <FormLabel>Circle image</FormLabel>
+                <SearchableImageSelect
+                  ariaLabel="Select a circle image"
+                  emptyLabel="No circle images are available."
+                  options={circles.map((circle) => ({
+                    id: String(circle.id),
+                    name: circle.name || `Circle ${circle.id}`,
+                    imageUrl: getSmallestMediaUrl(circle.images?.[0]),
+                    color: circle.color || undefined,
+                  }))}
+                  placeholder="Select an existing circle image"
+                  value={circleId}
+                  onChange={setCircleId}
+                />
+                <FormHelperText>
+                  Choose from circle images already available in iShaker.
+                </FormHelperText>
+              </FormControl>
+
+              <FormControl isRequired>
+                <FormLabel>Base color splash</FormLabel>
+                <SearchableImageSelect
+                  ariaLabel="Select a base color splash"
+                  emptyLabel='No splashes beginning with "color " are available.'
+                  options={splashes.map((splash) => {
+                    const frames = sortMediaByName(splash.images);
+                    return {
+                      id: String(splash.id),
+                      name: splash.name,
+                      imageUrl: getSmallestMediaUrl(frames[frames.length - 1]),
+                      color: splash.color || undefined,
+                    };
+                  })}
+                  placeholder="Select an existing color splash"
+                  value={splashId}
+                  onChange={(value) => {
+                    setSplashId(value);
+                    clearGeneratedSplash();
+                  }}
+                />
+                <FormHelperText>
+                  The selected root splash is combined with the five images
+                  below. Selectors show its last animation frame.
+                </FormHelperText>
+              </FormControl>
+
+              <FormControl isRequired>
+                <FormLabel>Ingredient images</FormLabel>
+                <Input
+                  type="file"
+                  multiple
+                  accept="image/png,image/jpeg,image/webp"
+                  p="1"
+                  onChange={(event) => {
+                    setElements(Array.from(event.target.files || []).slice(0, 5));
+                    clearGeneratedSplash();
+                  }}
+                />
+                <FormHelperText>
+                  Choose exactly 5 images, maximum 5 MB each.
+                </FormHelperText>
+              </FormControl>
+
+              <Button
+                type="button"
+                variant="default"
+                alignSelf="flex-start"
+                isLoading={isGenerating}
+                loadingText="Generating"
+                isDisabled={
+                  name.trim().length < 2 || !splashId || elements.length !== 5
+                }
+                onClick={generateSplash}
+              >
+                Generate splash
+              </Button>
+
+              {message ? (
+                <Alert status={isError ? "error" : "success"} borderRadius="xl">
+                  <AlertIcon />
+                  {message}
+                </Alert>
+              ) : null}
+
+              <Button
+                type="submit"
+                variant="primary"
+                alignSelf="flex-start"
+                isLoading={isSubmitting}
+                isDisabled={
+                  !name ||
+                  !main ||
+                  !circleId ||
+                  !splashId ||
+                  generatedFrames.length !== 20
+                }
+              >
+                Submit custom taste
+              </Button>
+            </VStack>
+
+            <Box
               bg="bg.800"
-            />
-          </FormControl>
-
-          <FormControl isRequired>
-            <FormLabel>Theme color</FormLabel>
-            <Input
-              type="color"
-              value={color}
-              onChange={(event) => setColor(event.target.value)}
-              w="100px"
-              p="1"
-              bg="bg.800"
-            />
-          </FormControl>
-
-          <FormControl isRequired>
-            <FormLabel>Main image</FormLabel>
-            <Input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              p="1"
-              onChange={(event) => setMain(event.target.files?.[0] || null)}
-            />
-            <FormHelperText>PNG, JPEG, or WebP; maximum 5 MB.</FormHelperText>
-            <MediaKeyPreview file={main} />
-          </FormControl>
-
-          <FormControl isRequired>
-            <FormLabel>Circle image</FormLabel>
-            <Input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              p="1"
-              onChange={(event) => setCircle(event.target.files?.[0] || null)}
-            />
-            <FormHelperText>
-              Square transparent PNG works best; maximum 5 MB.
-            </FormHelperText>
-            <MediaKeyPreview file={circle} />
-          </FormControl>
-
-          <FormControl>
-            <FormLabel>Ingredient images (optional)</FormLabel>
-            <Input
-              type="file"
-              multiple
-              accept="image/png,image/jpeg,image/webp"
-              p="1"
-              onChange={(event) =>
-                setElements(Array.from(event.target.files || []).slice(0, 5))
-              }
-            />
-            <FormHelperText>Up to 5 images, maximum 5 MB each.</FormHelperText>
-          </FormControl>
-
-          {message ? (
-            <Alert status={isError ? "error" : "success"} borderRadius="xl">
-              <AlertIcon />
-              {message}
-            </Alert>
-          ) : null}
-
-          <Button
-            type="submit"
-            variant="primary"
-            alignSelf="flex-start"
-            isLoading={isSubmitting}
-            isDisabled={!name || !main || !circle}
-          >
-            Submit custom taste
-          </Button>
+              border="1px solid"
+              borderColor="whiteAlpha.100"
+              borderRadius="2xl"
+              p={{ base: "4", md: "6" }}
+              position={{ lg: "sticky" }}
+              top={{ lg: "5" }}
+            >
+              <Text color="bg.50" fontSize="lg" fontWeight="800" mb="3">
+                Resulting splash
+              </Text>
+              <AspectRatio ratio={619 / 617} bg="blackAlpha.300" borderRadius="xl">
+                {generatedPreview ? (
+                  <Image
+                    src={generatedActiveFrame || generatedPreview}
+                    alt="Generated custom splash preview"
+                    objectFit="contain"
+                    p="3"
+                    opacity={isPreviewFading ? 0 : 1}
+                    transition={`opacity ${SPLASH_FADE_MS / 1000}s ease`}
+                  />
+                ) : (
+                  <Box display="flex" alignItems="center" justifyContent="center" p="8">
+                    <Text color="bg.300" textAlign="center">
+                      Select a color splash and five ingredient images, then
+                      generate to preview the result.
+                    </Text>
+                  </Box>
+                )}
+              </AspectRatio>
+              <Text color="bg.300" fontSize="sm" mt="3">
+                This preview plays the generated 20-frame animation and holds
+                briefly on its final frame.
+              </Text>
+            </Box>
+          </SimpleGrid>
         </VStack>
       </Box>
       <SimpleGrid columns={{ base: 3, sm: 4, lg: 6 }} spacing="4" mb="10">
@@ -282,14 +454,43 @@ export const getServerSideProps: GetServerSideProps<CatalogPageProps> = async (
   tasteParams.set("sort[0]", "name:ASC");
   tasteParams.set("pagination[pageSize]", "2000");
 
+  const circleParams = new URLSearchParams();
+  circleParams.set("fields[0]", "name");
+  circleParams.set("fields[1]", "color");
+  circleParams.set("populate[images][fields][0]", "url");
+  circleParams.set("populate[images][fields][1]", "formats");
+  circleParams.set("sort[0]", "name:ASC");
+  circleParams.set("pagination[pageSize]", "2000");
+
+  const splashParams = new URLSearchParams();
+  splashParams.set("filters[name][$startsWithi]", "color ");
+  splashParams.set("filters[author][username][$eq]", "root");
+  splashParams.set("fields[0]", "name");
+  splashParams.set("fields[1]", "color");
+  splashParams.set("populate[images][fields][0]", "url");
+  splashParams.set("populate[images][fields][1]", "formats");
+  splashParams.set("populate[images][fields][2]", "name");
+  splashParams.set("sort[0]", "name:ASC");
+  splashParams.set("pagination[pageSize]", "2000");
+
   let tastes: PortalTaste[] = [];
+  let circles: PortalCircle[] = [];
+  let splashes: PortalSplash[] = [];
   try {
-    tastes = await requestStrapiRestAsService<PortalTaste[]>(
-      `/api/tastes?${tasteParams.toString()}`,
-    );
+    [tastes, circles, splashes] = await Promise.all([
+      requestStrapiRestAsService<PortalTaste[]>(
+        `/api/tastes?${tasteParams.toString()}`,
+      ),
+      requestStrapiRestAsService<PortalCircle[]>(
+        `/api/circles?${circleParams.toString()}`,
+      ),
+      requestStrapiRestAsService<PortalSplash[]>(
+        `/api/splashes?${splashParams.toString()}`,
+      ),
+    ]);
   } catch (error) {
-    console.error("[catalog] taste loading failed:", error);
+    console.error("[catalog] catalog loading failed:", error);
   }
 
-  return { props: { session: result.session, tastes } };
+  return { props: { session: result.session, tastes, circles, splashes } };
 };

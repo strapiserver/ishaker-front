@@ -19,6 +19,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const params = new URLSearchParams();
+    params.set("filters[id][$eq]", id);
+    params.set("filters[$or][0][author][username][$eq]", "root");
+    params.set(
+      "filters[$or][1][author][id][$eq]",
+      String(session.user.id),
+    );
     params.set("fields[0]", "name");
     params.set("fields[1]", "color");
     params.set("fields[2]", "isEmpty");
@@ -26,9 +32,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     params.set("populate[images][fields][1]", "formats");
     params.set("populate[images][fields][2]", "name");
 
-    const splash = await requestStrapiRestAsService<PortalSplash>(
-      `/api/splashes/${id}?${params.toString()}`,
+    params.set("pagination[pageSize]", "1");
+    const splashes = await requestStrapiRestAsService<PortalSplash[]>(
+      `/api/splashes?${params.toString()}`,
     );
+    const splash = splashes[0];
+    if (!splash) return res.status(404).json({ error: "splash_not_found" });
 
     return res.status(200).json({ splash });
   } catch (error) {

@@ -179,6 +179,7 @@ export type PortalSplash = {
   color?: string | null;
   isEmpty?: boolean;
   images?: PortalMedia[];
+  author?: Pick<PortalUser, "id" | "username" | "email"> | null;
 };
 
 export type PortalCup = {
