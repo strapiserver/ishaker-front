@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getPortalSessionFromApiRequest } from "../../../../lib/portal/auth";
+import { requestWithSplashOwnershipFallback } from "../../../../lib/portal/splashOwnership";
 import { requestStrapiRestAsService } from "../../../../services/server/strapiClient";
 import type { PortalSplash } from "../../../../types/portal";
 
@@ -37,21 +38,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       requestStrapiRestAsService<PortalSplash[]>(
         `/api/splashes?${query.toString()}`,
       );
-    let splashes: PortalSplash[];
-    try {
-      splashes = await request(params);
-    } catch (error) {
-      // The currently deployed Strapi schema predates splash.author and throws
-      // 500 for ownership filters. Keep previews working until that schema is
-      // deployed, while retaining the scoped query for newer installations.
-      if ((error as { status?: number }).status !== 500) throw error;
-      params.delete("filters[$or][0][author][username][$eq]");
-      params.delete("filters[$or][1][author][id][$eq]");
-      console.warn(
-        "[portal/splashes] ownership filtering is unsupported; using the compatible query.",
-      );
-      splashes = await request(params);
-    }
+    const splashes = await requestWithSplashOwnershipFallback(
+      params,
+      request,
+      () =>
+        console.warn(
+          "[portal/splashes] ownership filtering is unsupported; using the compatible query.",
+        ),
+    );
     const splash = splashes[0];
     if (!splash) return res.status(404).json({ error: "splash_not_found" });
 

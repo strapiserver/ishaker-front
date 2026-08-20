@@ -24,6 +24,7 @@ import {
 import { PortalShell } from "../components/portal/PortalShell";
 import { SearchableImageSelect } from "../components/portal/product-lines/SearchableImageSelect";
 import { requirePortalSession } from "../lib/portal/auth";
+import { requestWithSplashOwnershipFallback } from "../lib/portal/splashOwnership";
 import { getSmallestMediaUrl } from "../lib/portal/media";
 import {
   mediaKeyFromFilename,
@@ -472,6 +473,10 @@ export const getServerSideProps: GetServerSideProps<CatalogPageProps> = async (
   splashParams.set("populate[images][fields][2]", "name");
   splashParams.set("sort[0]", "name:ASC");
   splashParams.set("pagination[pageSize]", "2000");
+  const loadSplashes = (params: URLSearchParams) =>
+    requestStrapiRestAsService<PortalSplash[]>(
+      `/api/splashes?${params.toString()}`,
+    );
 
   let tastes: PortalTaste[] = [];
   let circles: PortalCircle[] = [];
@@ -484,8 +489,13 @@ export const getServerSideProps: GetServerSideProps<CatalogPageProps> = async (
       requestStrapiRestAsService<PortalCircle[]>(
         `/api/circles?${circleParams.toString()}`,
       ),
-      requestStrapiRestAsService<PortalSplash[]>(
-        `/api/splashes?${splashParams.toString()}`,
+      requestWithSplashOwnershipFallback(
+        splashParams,
+        loadSplashes,
+        () =>
+          console.warn(
+            "[catalog] splash ownership filtering is unsupported; using the compatible query.",
+          ),
       ),
     ]);
   } catch (error) {

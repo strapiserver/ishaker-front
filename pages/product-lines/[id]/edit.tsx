@@ -4,6 +4,7 @@ import {
   type NewProductLinePageProps,
 } from "../../../components/portal/product-lines";
 import { requirePortalSession } from "../../../lib/portal/auth";
+import { requestWithSplashOwnershipFallback } from "../../../lib/portal/splashOwnership";
 import { requestStrapiRestAsService } from "../../../services/server/strapiClient";
 import type {
   PortalProductLine,
@@ -62,6 +63,10 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
   splashParams.set("fields[2]", "isEmpty");
   splashParams.set("sort[0]", "name:ASC");
   splashParams.set("pagination[pageSize]", "2000");
+  const loadSplashes = (params: URLSearchParams) =>
+    requestStrapiRestAsService<PortalSplash[]>(
+      `/api/splashes?${params.toString()}`,
+    );
 
   try {
     const [ownProductLines, rootProductLines, splashes] =
@@ -72,8 +77,13 @@ export const getServerSideProps: GetServerSideProps<NewProductLinePageProps> = a
         requestStrapiRestAsService<PortalProductLine[]>(
           `/api/product-lines?${rootParams.toString()}`,
         ),
-        requestStrapiRestAsService<PortalSplash[]>(
-          `/api/splashes?${splashParams.toString()}`,
+        requestWithSplashOwnershipFallback(
+          splashParams,
+          loadSplashes,
+          () =>
+            console.warn(
+              "[product-lines/edit] splash ownership filtering is unsupported; using the compatible query.",
+            ),
         ),
       ]);
 

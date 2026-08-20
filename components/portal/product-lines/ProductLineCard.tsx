@@ -93,7 +93,7 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
         );
       }
       deleteDialog.onClose();
-      await router.replace(router.asPath);
+      router.reload();
     } catch (error) {
       window.alert(
         error instanceof Error
@@ -116,48 +116,128 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
         position="relative"
         transition="opacity 0.2s ease"
       >
-        <HStack minH="48px" px={{ base: "4", md: "5" }} justify="space-between" borderBottom="1px solid" borderColor="rgba(255,255,255,0.09)">
+        <HStack
+          minH="48px"
+          px={{ base: "4", md: "5" }}
+          justify="space-between"
+          borderBottom="1px solid"
+          borderColor="rgba(255,255,255,0.09)"
+        >
           <HStack spacing="3">
-            <Box boxSize="10px" borderRadius="full" bg={isActive ? "#62e85b" : "whiteAlpha.300"} boxShadow={isActive ? "0 0 10px rgba(98,232,91,.5)" : "none"} />
-            <Text color="white" fontWeight="700" fontSize="md">{`${productLineName} (${productCount})`}</Text>
-            <Text color={isActive ? "#6ce864" : "whiteAlpha.500"} fontSize="xs">•&nbsp; {isActive ? "Active" : "Inactive"}</Text>
+            <Box
+              boxSize="10px"
+              borderRadius="full"
+              bg={isActive ? "#62e85b" : "whiteAlpha.300"}
+              boxShadow={isActive ? "0 0 10px rgba(98,232,91,.5)" : "none"}
+            />
+            <Text
+              color="white"
+              fontWeight="700"
+              fontSize="md"
+            >{`${productLineName} (${productCount})`}</Text>
+            <Text color={isActive ? "#6ce864" : "whiteAlpha.500"} fontSize="xs">
+              •&nbsp; {isActive ? "Active" : "Inactive"}
+            </Text>
           </HStack>
           <HStack spacing="4">
             <HStack spacing="2">
               <CupThumbnailStack cups={productLine.cups?.slice(0, 1)} />
-              <Text color="whiteAlpha.600" fontSize="xs" whiteSpace="nowrap">
-                {productLine.cups?.length ? "Default cup" : "No default cup"}
-              </Text>
             </HStack>
-            <Text color="whiteAlpha.600" fontSize="xs">{brandCount} {brandCount === 1 ? "brand" : "brands"}</Text>
+            <Text color="whiteAlpha.600" fontSize="xs">
+              {brandCount} {brandCount === 1 ? "brand" : "brands"}
+            </Text>
             <Menu placement="bottom-end">
-              <MenuButton as={IconButton} aria-label={`Actions for ${productLineName}`} icon={<FiMoreVertical />} variant="ghost" size="sm" color="whiteAlpha.800" />
+              <MenuButton
+                as={IconButton}
+                aria-label={`Actions for ${productLineName}`}
+                icon={<FiMoreVertical />}
+                variant="ghost"
+                size="sm"
+                color="whiteAlpha.800"
+              />
               <Portal>
-                <MenuList bg="#171b1c" borderColor="whiteAlpha.200" minW="190px">
-                  <MenuItem as={Link} href={`/product-lines/${productLine.id}/edit`} icon={<FiEdit2 />} bg="transparent" _hover={{ bg: "whiteAlpha.100" }}>Edit product line</MenuItem>
-                  <MenuItem icon={<FiPower />} bg="transparent" _hover={{ bg: "whiteAlpha.100" }} isDisabled={isUpdatingActive} onClick={() => void updateActiveState(!isActive)}>{isActive ? "Set inactive" : "Set active"}</MenuItem>
-                  <MenuItem icon={<FiTrash2 />} bg="transparent" color="red.300" _hover={{ bg: "whiteAlpha.100" }} onClick={deleteDialog.onOpen}>Delete product line</MenuItem>
+                <MenuList
+                  bg="#171b1c"
+                  borderColor="whiteAlpha.200"
+                  minW="190px"
+                >
+                  <MenuItem
+                    as={Link}
+                    href={`/product-lines/${productLine.id}/edit`}
+                    icon={<FiEdit2 />}
+                    bg="transparent"
+                    _hover={{ bg: "whiteAlpha.100" }}
+                  >
+                    Edit product line
+                  </MenuItem>
+                  <MenuItem
+                    icon={<FiPower />}
+                    bg="transparent"
+                    _hover={{ bg: "whiteAlpha.100" }}
+                    isDisabled={isUpdatingActive}
+                    onClick={() => void updateActiveState(!isActive)}
+                  >
+                    {isActive ? "Set inactive" : "Set active"}
+                  </MenuItem>
+                  <MenuItem
+                    icon={<FiTrash2 />}
+                    bg="transparent"
+                    color="red.300"
+                    _hover={{ bg: "whiteAlpha.100" }}
+                    onClick={deleteDialog.onOpen}
+                  >
+                    Delete product line
+                  </MenuItem>
                 </MenuList>
               </Portal>
             </Menu>
           </HStack>
         </HStack>
         <Box overflowX="auto">
-          <Grid templateColumns="minmax(210px,1.45fr) minmax(180px,1.25fr) minmax(90px,.7fr) 90px" minW="680px" px="5" h="37px" alignItems="center" borderBottom="1px solid" borderColor="rgba(255,255,255,0.08)">
-            {['PRODUCT', 'BRAND', 'STATUS', 'ACTIONS'].map((label) => <Text key={label} color="whiteAlpha.500" fontSize="10px">{label}</Text>)}
-          </Grid>
-        {productLine.products?.length ? (
-          <Box minW="680px">
-            {productLine.products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                productLineId={productLine.id}
-              />
+          <Grid
+            templateColumns="minmax(210px,1.45fr) minmax(180px,1.25fr) minmax(90px,.7fr) 90px"
+            minW="680px"
+            px="5"
+            h="37px"
+            alignItems="center"
+            borderBottom="1px solid"
+            borderColor="rgba(255,255,255,0.08)"
+          >
+            {["PRODUCT", "BRAND", "STATUS", "ACTIONS"].map((label) => (
+              <Text key={label} color="whiteAlpha.500" fontSize="10px">
+                {label}
+              </Text>
             ))}
-          </Box>
-        ) : null}
-          <Button as={Link} href={`/product-lines/${productLine.id}/products/new`} variant="ghost" justifyContent="flex-start" minW="680px" w="full" h="46px" px="5" borderRadius="0" color="#65df5c" fontSize="sm" fontWeight="500" leftIcon={<FiPlus />} _hover={{ bg: "whiteAlpha.50" }}>Add product</Button>
+          </Grid>
+          {productLine.products?.length ? (
+            <Box minW="680px">
+              {productLine.products.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  productLineId={productLine.id}
+                />
+              ))}
+            </Box>
+          ) : null}
+          <Button
+            as={Link}
+            href={`/product-lines/${productLine.id}/products/new`}
+            variant="ghost"
+            justifyContent="flex-start"
+            minW="680px"
+            w="full"
+            h="46px"
+            px="5"
+            borderRadius="0"
+            color="#65df5c"
+            fontSize="sm"
+            fontWeight="500"
+            leftIcon={<FiPlus />}
+            _hover={{ bg: "whiteAlpha.50" }}
+          >
+            Add product
+          </Button>
         </Box>
       </Box>
       <DeleteProductLineDialog

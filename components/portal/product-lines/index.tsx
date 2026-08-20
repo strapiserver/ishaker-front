@@ -62,20 +62,15 @@ export type ProductLinesPageProps = {
 
 type MachineSelectorContentProps = {
   machine: Machine;
-  accountNickname: string;
   isSelected?: boolean;
 };
 
 function MachineSelectorContent({
   machine,
-  accountNickname,
   isSelected = false,
 }: MachineSelectorContentProps) {
   const previewUrl = getSmallestMediaUrl(machine.machine_type?.preview);
   const title = machine.title || `Machine #${machine.id}`;
-  const nickname = machine.nickname || accountNickname;
-  const showNickname =
-    Boolean(nickname) && !title.toLowerCase().includes(nickname.toLowerCase());
 
   return (
     <HStack spacing="4" align="center" w="full" minW="0">
@@ -112,7 +107,6 @@ function MachineSelectorContent({
           noOfLines={2}
         >
           {title}
-          {showNickname ? ` • ${nickname}` : ""}
         </Text>
         <HStack
           spacing="2"
@@ -289,7 +283,6 @@ export function ProductLinesPage({
           >
             <MachineSelectorContent
               machine={selectedAssignment.machine}
-              accountNickname={session.client.company}
             />
           </MenuButton>
           <MenuList
@@ -316,7 +309,6 @@ export function ProductLinesPage({
                 >
                   <MachineSelectorContent
                     machine={machine}
-                    accountNickname={session.client.company}
                     isSelected={isSelected}
                   />
                 </MenuItem>

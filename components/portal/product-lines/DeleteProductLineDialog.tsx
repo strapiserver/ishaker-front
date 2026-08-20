@@ -45,7 +45,9 @@ export function DeleteProductLineDialog({
               <Text as="span" color="bg.50" fontWeight="700">
                 {productLineName}
               </Text>{" "}
-              will be permanently deleted. This action cannot be undone.
+              and all of its products will be permanently deleted. Products
+              will also be cleared automatically from machine and preset
+              containers. This action cannot be undone.
             </Text>
           </AlertDialogBody>
           <AlertDialogFooter>

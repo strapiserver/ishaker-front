@@ -4,6 +4,10 @@ import type {
   NextApiResponse,
 } from "next";
 import type { Client, Machine } from "../../types/strapi";
+import {
+  addPortalMachineFields,
+  withoutMachineNickname,
+} from "./machinePrivacy";
 import type { PortalSession, PortalUser } from "../../types/portal";
 import { readAdminImpersonationUserId } from "../admin/auth";
 import {
@@ -79,6 +83,7 @@ export const isProductClientUser = (user?: PortalUser | null) =>
 
 const fetchClientById = async (clientId: string | number) => {
   const params = new URLSearchParams();
+  addPortalMachineFields(params, "populate[machines][fields]");
   params.set(
     "populate[machines][populate][machine_type][populate][preview][fields][0]",
     "url",
@@ -104,11 +109,15 @@ const fetchClientById = async (clientId: string | number) => {
 const withoutPrivateClientFields = (client: Client) => {
   const safeClient = { ...client } as Client & Record<string, unknown>;
   delete safeClient.nayax_token;
+  safeClient.machines = (client.machines || []).map((machine) =>
+    withoutMachineNickname(machine as Machine & Record<string, unknown>),
+  ) as Machine[];
   return safeClient as Client;
 };
 
 export const fetchMachineByIdAsService = async (machineId: string | number) => {
   const params = new URLSearchParams();
+  addPortalMachineFields(params);
   params.set("populate[0]", "client");
   params.set("populate[1]", "machine_type");
   params.set("populate[2]", "currency");
@@ -122,6 +131,7 @@ export const fetchMachineByIdAsService = async (machineId: string | number) => {
 export const fetchMachineBySerialAsService = async (serialNumber: string) => {
   const serialBase = getMachineSerialBase(serialNumber);
   const params = new URLSearchParams();
+  addPortalMachineFields(params);
   params.set("filters[serial_number][$startsWith]", serialBase);
   params.set("populate[0]", "client");
   params.set("populate[1]", "machine_type");

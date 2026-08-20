@@ -1,6 +1,10 @@
 import type { Client, Machine } from "../../types/strapi";
 import { capitalize } from "../helper";
 import { requestStrapiRestAsService } from "./strapiClient";
+import {
+  addPortalMachineFields,
+  withoutMachineNickname,
+} from "../../lib/portal/machinePrivacy";
 
 const clean = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
@@ -61,9 +65,10 @@ export const updateMachineRegistrationData = async (params: {
     ).toUpperCase()} #${index}`
       .replace(/\s+/g, " ")
       .trim();
+  const responseParams = addPortalMachineFields(new URLSearchParams());
 
-  return requestStrapiRestAsService<Machine>(
-    `/api/machines/${params.machine.id}`,
+  const updatedMachine = await requestStrapiRestAsService<Machine>(
+    `/api/machines/${params.machine.id}?${responseParams.toString()}`,
     {
       method: "PUT",
       body: JSON.stringify({
@@ -82,4 +87,7 @@ export const updateMachineRegistrationData = async (params: {
       }),
     },
   );
+  return withoutMachineNickname(
+    updatedMachine as Machine & Record<string, unknown>,
+  ) as Machine;
 };

@@ -11,11 +11,11 @@ type CupSelectorProps = {
 export function CupSelector({ cups, value, onChange }: CupSelectorProps) {
   return (
     <Box py={{ base: "4", md: "6" }} w="full">
-      <Text as="h3" color="bg.50" fontWeight="700" mb="1">
+      <Text color="bg.50" mb="1">
         Default cup
       </Text>
       <Text color="bg.300" fontSize="sm" mb="4">
-        Select the cup products use unless they have their own custom cup.
+        You will be able to change it for each product later.
       </Text>
       {cups.length ? (
         <SimpleGrid

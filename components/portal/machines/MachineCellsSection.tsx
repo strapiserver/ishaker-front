@@ -179,6 +179,7 @@ export function MachineCellsSection({
   const emptyAssignedContainers = cells.filter(
     (cell) => cell.productId && (Number(cell.amount_kg) || 0) <= 0,
   );
+  const defaultAssignedAmountKg = (containerCount === 8 ? 2 : 1) * 0.7;
   const hasValidationError =
     containerCount === null ||
     invalidLegacyCells.length > 0 ||
@@ -215,7 +216,7 @@ export function MachineCellsSection({
               ...patch,
               ...(patch.productId !== undefined &&
               patch.productId !== cell.productId
-                ? { amount_kg: 0 }
+                ? { amount_kg: patch.productId ? defaultAssignedAmountKg : 0 }
                 : {}),
             }
           : cell,
@@ -328,7 +329,12 @@ export function MachineCellsSection({
       toast(
         emptyAssignedContainers.length
           ? {
-              title: "Assignments saved with empty containers",
+              title:
+                emptyAssignedContainers.length === 1
+                  ? `Container ${emptyAssignedContainers[0].position} has a product but is empty.`
+                  : `Containers ${emptyAssignedContainers
+                      .map((cell) => cell.position)
+                      .join(", ")} have products but are empty.`,
               description: "Click on container to set powder volume",
               status: "warning",
               duration: 7000,
@@ -418,10 +424,61 @@ export function MachineCellsSection({
         p="4"
       >
         <HStack justify="space-between" mb="4">
+          <HStack
+            spacing="1"
+            flexShrink={0}
+            bg="bg.900"
+            border="1px solid"
+            borderColor="whiteAlpha.200"
+            borderRadius="md"
+            p="0.5"
+          >
+            <Tooltip label="Powder">
+              <IconButton
+                aria-label={`Powder container ${cell.position}`}
+                aria-pressed={cell.cellCategory === "powder"}
+                icon={<GiPowder size="1.5rem" />}
+                size="sm"
+                maxH="6"
+                p="0"
+                minW="8"
+                variant={cell.cellCategory === "powder" ? "solid" : "ghost"}
+                bg={cell.cellCategory === "powder" ? "#D8C3A5" : "transparent"}
+                color={cell.cellCategory === "powder" ? "#3B2F24" : "bg.300"}
+                _hover={{
+                  bg:
+                    cell.cellCategory === "powder"
+                      ? "#CBB28F"
+                      : "whiteAlpha.100",
+                }}
+                onClick={() => updateCell(cell, { cellCategory: "powder" })}
+              />
+            </Tooltip>
+            <Tooltip label="Concentrate">
+              <IconButton
+                aria-label={`Concentrate container ${cell.position}`}
+                aria-pressed={cell.cellCategory === "concentrate"}
+                icon={<IoWaterSharp size="1.5rem" />}
+                size="sm"
+                maxH="6"
+                p="0"
+                minW="8"
+                variant={
+                  cell.cellCategory === "concentrate" ? "solid" : "ghost"
+                }
+                colorScheme={
+                  cell.cellCategory === "concentrate" ? "blue" : "gray"
+                }
+                onClick={() =>
+                  updateCell(cell, { cellCategory: "concentrate" })
+                }
+              />
+            </Tooltip>
+          </HStack>
           <Text fontWeight="800" fontSize="lg">
             {isLegacy ? "Invalid container" : `Container ${cell.position}`}
           </Text>
-          <HStack>
+          <HStack spacing="3">
             <Switch
               isChecked={cell.isActive}
               onChange={(event) =>
@@ -474,205 +531,149 @@ export function MachineCellsSection({
               </FormErrorMessage>
             </FormControl>
           ) : null}
-          <HStack align="center" spacing="3">
-            <HStack
-              spacing="1"
-              flexShrink={0}
-              bg="bg.900"
-              border="1px solid"
-              borderColor="whiteAlpha.200"
-              borderRadius="md"
-              p="0.5"
-            >
-              <Tooltip label="Powder">
-                <IconButton
-                  aria-label={`Powder container ${cell.position}`}
-                  aria-pressed={cell.cellCategory === "powder"}
-                  icon={<GiPowder size="1.5rem" />}
-                  size="sm"
-                  maxH="6"
-                  p="0"
-                  minW="8"
-                  variant={cell.cellCategory === "powder" ? "solid" : "ghost"}
-                  bg={
-                    cell.cellCategory === "powder" ? "#D8C3A5" : "transparent"
-                  }
-                  color={cell.cellCategory === "powder" ? "#3B2F24" : "bg.300"}
-                  _hover={{
-                    bg:
-                      cell.cellCategory === "powder"
-                        ? "#CBB28F"
-                        : "whiteAlpha.100",
-                  }}
-                  onClick={() => updateCell(cell, { cellCategory: "powder" })}
-                />
-              </Tooltip>
-              <Tooltip label="Concentrate">
-                <IconButton
-                  aria-label={`Concentrate container ${cell.position}`}
-                  aria-pressed={cell.cellCategory === "concentrate"}
-                  icon={<IoWaterSharp size="1.5rem" />}
-                  size="sm"
-                  maxH="6"
-                  p="0"
-                  minW="8"
-                  variant={
-                    cell.cellCategory === "concentrate" ? "solid" : "ghost"
-                  }
-                  colorScheme={
-                    cell.cellCategory === "concentrate" ? "blue" : "gray"
-                  }
-                  onClick={() =>
-                    updateCell(cell, { cellCategory: "concentrate" })
-                  }
-                />
-              </Tooltip>
-            </HStack>
-            <FormControl
-              flex="1"
-              isInvalid={productProblems.length > 0 || categoryMismatch}
-            >
-              <Menu matchWidth placement="bottom-start">
-                <MenuButton
-                  as={Button}
-                  w="full"
-                  minH="45px"
-                  h="auto"
-                  px="3"
-                  py="1.5"
-                  bg="bg.900"
-                  border="1px solid"
-                  borderColor={
-                    productProblems.length > 0 || categoryMismatch
-                      ? "red.300"
-                      : "whiteAlpha.200"
-                  }
+          <FormControl
+            isInvalid={productProblems.length > 0 || categoryMismatch}
+          >
+            <Menu matchWidth placement="bottom-start">
+              <MenuButton
+                as={Button}
+                w="full"
+                minH="45px"
+                h="auto"
+                px="3"
+                py="1.5"
+                bg="bg.900"
+                border="1px solid"
+                borderColor={
+                  productProblems.length > 0 || categoryMismatch
+                    ? "red.300"
+                    : "whiteAlpha.200"
+                }
+                borderRadius="md"
+                fontWeight="normal"
+                textAlign="left"
+                rightIcon={<FiChevronDown />}
+                aria-label={`Product for container ${cell.position}`}
+                _hover={{ bg: "bg.900", borderColor: "whiteAlpha.400" }}
+                _expanded={{ bg: "bg.900", borderColor: "acid.300" }}
+              >
+                <HStack spacing="3" minW="0">
+                  {productImageUrl(selectedProduct) ? (
+                    <Image
+                      src={productImageUrl(selectedProduct)}
+                      alt=""
+                      boxSize="32px"
+                      objectFit="contain"
+                      borderRadius="md"
+                      bg="whiteAlpha.100"
+                      flexShrink={0}
+                    />
+                  ) : (
+                    <Box
+                      boxSize="32px"
+                      borderRadius="md"
+                      bg="whiteAlpha.100"
+                      flexShrink={0}
+                    />
+                  )}
+                  <Text noOfLines={1}>
+                    {selectedProduct
+                      ? productLabel(selectedProduct)
+                      : "— Empty —"}
+                  </Text>
+                </HStack>
+              </MenuButton>
+              <MenuList
+                bg="bg.900"
+                borderColor="whiteAlpha.200"
+                p="1.5"
+                maxH="420px"
+                overflowY="auto"
+                zIndex="popover"
+              >
+                <MenuItem
+                  bg="transparent"
                   borderRadius="md"
-                  fontWeight="normal"
-                  textAlign="left"
-                  rightIcon={<FiChevronDown />}
-                  aria-label={`Product for container ${cell.position}`}
-                  _hover={{ bg: "bg.900", borderColor: "whiteAlpha.400" }}
-                  _expanded={{ bg: "bg.900", borderColor: "acid.300" }}
+                  minH="48px"
+                  onClick={() => updateCell(cell, { productId: "" })}
+                  _hover={{ bg: "whiteAlpha.100" }}
+                  _focus={{ bg: "whiteAlpha.100" }}
                 >
-                  <HStack spacing="3" minW="0">
-                    {productImageUrl(selectedProduct) ? (
-                      <Image
-                        src={productImageUrl(selectedProduct)}
-                        alt=""
-                        boxSize="32px"
-                        objectFit="contain"
-                        borderRadius="md"
-                        bg="whiteAlpha.100"
-                        flexShrink={0}
-                      />
-                    ) : (
-                      <Box
-                        boxSize="32px"
-                        borderRadius="md"
-                        bg="whiteAlpha.100"
-                        flexShrink={0}
-                      />
-                    )}
-                    <Text noOfLines={1}>
-                      {selectedProduct
-                        ? productLabel(selectedProduct)
-                        : "— Empty —"}
-                    </Text>
-                  </HStack>
-                </MenuButton>
-                <MenuList
-                  bg="bg.900"
-                  borderColor="whiteAlpha.200"
-                  p="1.5"
-                  maxH="420px"
-                  overflowY="auto"
-                  zIndex="popover"
+                  <Box boxSize="36px" mr="3" flexShrink={0} />
+                  <Text flex="1">— Empty —</Text>
+                  {!cell.productId ? <FiCheck /> : null}
+                </MenuItem>
+                {catalogProducts.map((product) => {
+                  const unavailable = !canAssignProduct(product);
+                  const isSelected = String(product.id) === cell.productId;
+                  const imageUrl = productImageUrl(product);
+                  return (
+                    <MenuItem
+                      key={product.id}
+                      isDisabled={unavailable && !isSelected}
+                      bg={isSelected ? "whiteAlpha.100" : "transparent"}
+                      borderRadius="md"
+                      minH="56px"
+                      onClick={() =>
+                        updateCell(cell, { productId: String(product.id) })
+                      }
+                      _hover={{ bg: "whiteAlpha.100" }}
+                      _focus={{ bg: "whiteAlpha.100" }}
+                    >
+                      {imageUrl ? (
+                        <Image
+                          src={imageUrl}
+                          alt=""
+                          boxSize="40px"
+                          objectFit="contain"
+                          borderRadius="md"
+                          bg="whiteAlpha.100"
+                          mr="3"
+                          flexShrink={0}
+                        />
+                      ) : (
+                        <Box
+                          boxSize="40px"
+                          borderRadius="md"
+                          bg="whiteAlpha.100"
+                          mr="3"
+                          flexShrink={0}
+                        />
+                      )}
+                      <Box flex="1" minW="0">
+                        <Text noOfLines={1}>{productLabel(product)}</Text>
+                        {unavailable ? (
+                          <Text color="orange.200" fontSize="xs">
+                            Unavailable
+                          </Text>
+                        ) : null}
+                      </Box>
+                      {isSelected ? <FiCheck /> : null}
+                    </MenuItem>
+                  );
+                })}
+                <MenuDivider borderColor="whiteAlpha.200" />
+                <MenuItem
+                  as={Link}
+                  href="/product-lines/new"
+                  bg="transparent"
+                  color="acid.300"
+                  borderRadius="md"
+                  minH="48px"
+                  icon={<FiPlus />}
+                  _hover={{ bg: "whiteAlpha.100" }}
+                  _focus={{ bg: "whiteAlpha.100" }}
                 >
-                  <MenuItem
-                    bg="transparent"
-                    borderRadius="md"
-                    minH="48px"
-                    onClick={() => updateCell(cell, { productId: "" })}
-                    _hover={{ bg: "whiteAlpha.100" }}
-                    _focus={{ bg: "whiteAlpha.100" }}
-                  >
-                    <Box boxSize="36px" mr="3" flexShrink={0} />
-                    <Text flex="1">— Empty —</Text>
-                    {!cell.productId ? <FiCheck /> : null}
-                  </MenuItem>
-                  {catalogProducts.map((product) => {
-                    const unavailable = !canAssignProduct(product);
-                    const isSelected = String(product.id) === cell.productId;
-                    const imageUrl = productImageUrl(product);
-                    return (
-                      <MenuItem
-                        key={product.id}
-                        isDisabled={unavailable && !isSelected}
-                        bg={isSelected ? "whiteAlpha.100" : "transparent"}
-                        borderRadius="md"
-                        minH="56px"
-                        onClick={() =>
-                          updateCell(cell, { productId: String(product.id) })
-                        }
-                        _hover={{ bg: "whiteAlpha.100" }}
-                        _focus={{ bg: "whiteAlpha.100" }}
-                      >
-                        {imageUrl ? (
-                          <Image
-                            src={imageUrl}
-                            alt=""
-                            boxSize="40px"
-                            objectFit="contain"
-                            borderRadius="md"
-                            bg="whiteAlpha.100"
-                            mr="3"
-                            flexShrink={0}
-                          />
-                        ) : (
-                          <Box
-                            boxSize="40px"
-                            borderRadius="md"
-                            bg="whiteAlpha.100"
-                            mr="3"
-                            flexShrink={0}
-                          />
-                        )}
-                        <Box flex="1" minW="0">
-                          <Text noOfLines={1}>{productLabel(product)}</Text>
-                          {unavailable ? (
-                            <Text color="orange.200" fontSize="xs">
-                              Unavailable
-                            </Text>
-                          ) : null}
-                        </Box>
-                        {isSelected ? <FiCheck /> : null}
-                      </MenuItem>
-                    );
-                  })}
-                  <MenuDivider borderColor="whiteAlpha.200" />
-                  <MenuItem
-                    as={Link}
-                    href="/product-lines/new"
-                    bg="transparent"
-                    color="acid.300"
-                    borderRadius="md"
-                    minH="48px"
-                    icon={<FiPlus />}
-                    _hover={{ bg: "whiteAlpha.100" }}
-                    _focus={{ bg: "whiteAlpha.100" }}
-                  >
-                    Add new product line
-                  </MenuItem>
-                </MenuList>
-              </Menu>
-              <FormErrorMessage>
-                {categoryMismatch
-                  ? `Choose a ${cell.cellCategory} product.`
-                  : productProblems[0]?.detail}
-              </FormErrorMessage>
-            </FormControl>
-          </HStack>
+                  Add new product line
+                </MenuItem>
+              </MenuList>
+            </Menu>
+            <FormErrorMessage>
+              {categoryMismatch
+                ? `Choose a ${cell.cellCategory} product.`
+                : productProblems[0]?.detail}
+            </FormErrorMessage>
+          </FormControl>
           {isLegacy ? (
             <Button
               colorScheme="red"
@@ -757,21 +758,6 @@ export function MachineCellsSection({
                 <Text key={`${problem}-${index}`}>{problem}</Text>
               ))}
             </VStack>
-          </Alert>
-        ) : null}
-        {emptyAssignedContainers.length ? (
-          <Alert status="warning" alignItems="flex-start">
-            <AlertIcon mt="1" />
-            <Box>
-              <Text fontWeight="800">
-                {emptyAssignedContainers.length === 1
-                  ? `Container ${emptyAssignedContainers[0].position} has a product but is empty.`
-                  : `Containers ${emptyAssignedContainers
-                      .map((cell) => cell.position)
-                      .join(", ")} have products but are empty.`}
-              </Text>
-              <Text>Click on container to set powder volume</Text>
-            </Box>
           </Alert>
         ) : null}
         {saveError ? (

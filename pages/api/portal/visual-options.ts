@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getPortalSessionFromApiRequest } from "../../../lib/portal/auth";
+import { requestWithSplashOwnershipFallback } from "../../../lib/portal/splashOwnership";
 import { requestStrapiRestAsService } from "../../../services/server/strapiClient";
 import type { PortalSplash, PortalTaste } from "../../../types/portal";
 
@@ -51,19 +52,14 @@ export default async function handler(
       params.set("populate[images][fields][1]", "formats");
       params.set("populate[images][fields][2]", "name");
       params.set("sort[0]", "name:ASC");
-      let splashes: PortalSplash[];
-      try {
-        splashes = await loadAllPages<PortalSplash>("/api/splashes", params);
-      } catch (error) {
-        // Compatibility with deployed Strapi schemas that predate splash.author.
-        if ((error as { status?: number }).status !== 500) throw error;
-        params.delete("filters[$or][0][author][username][$eq]");
-        params.delete("filters[$or][1][author][id][$eq]");
-        console.warn(
-          "[portal/visual-options] splash ownership filtering is unsupported; using the compatible query.",
-        );
-        splashes = await loadAllPages<PortalSplash>("/api/splashes", params);
-      }
+      const splashes = await requestWithSplashOwnershipFallback(
+        params,
+        (query) => loadAllPages<PortalSplash>("/api/splashes", query),
+        () =>
+          console.warn(
+            "[portal/visual-options] splash ownership filtering is unsupported; using the compatible query.",
+          ),
+      );
       return res.status(200).json({ splashes });
     }
     if (type === "tastes") {

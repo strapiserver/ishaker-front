@@ -5,6 +5,10 @@ import {
 } from "../../../../../lib/portal/auth";
 import { updateMachineRegistrationData } from "../../../../../services/server/machineRegistration";
 import { requestStrapiRestAsService } from "../../../../../services/server/strapiClient";
+import {
+  addPortalMachineFields,
+  withoutMachineNickname,
+} from "../../../../../lib/portal/machinePrivacy";
 import type { Currency, Language } from "../../../../../types/strapi";
 
 const asString = (value: unknown) =>
@@ -119,6 +123,7 @@ export default async function handler(
   try {
     const updatesRegistration =
       countryProvided || stateProvided || cityProvided;
+    const responseParams = addPortalMachineFields(new URLSearchParams());
     const updatedMachine = updatesRegistration
       ? await updateMachineRegistrationData({
           client: session.client,
@@ -132,7 +137,7 @@ export default async function handler(
           nayaxTerminalId,
         })
       : await requestStrapiRestAsService(
-          `/api/machines/${machine.id}`,
+          `/api/machines/${machine.id}?${responseParams.toString()}`,
           {
             method: "PUT",
             body: JSON.stringify({
@@ -146,7 +151,11 @@ export default async function handler(
             }),
           },
         );
-    return res.status(200).json({ machine: updatedMachine });
+    return res.status(200).json({
+      machine: withoutMachineNickname(
+        updatedMachine as Record<string, unknown>,
+      ),
+    });
   } catch (error) {
     console.error("[portal/machines/:id] update failed:", error);
     return res.status(500).json({

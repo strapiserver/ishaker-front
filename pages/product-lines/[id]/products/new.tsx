@@ -4,6 +4,7 @@ import {
   type NewProductPageProps,
 } from "../../../../components/portal/product-lines";
 import { requirePortalSession } from "../../../../lib/portal/auth";
+import { requestWithSplashOwnershipFallback } from "../../../../lib/portal/splashOwnership";
 import { requestStrapiRestAsService } from "../../../../services/server/strapiClient";
 import type {
   PortalBrand,
@@ -158,22 +159,14 @@ export const getServerSideProps: GetServerSideProps<NewProductPageProps> = async
       requestStrapiRestAsService<PortalSplash[]>(
         `/api/splashes?${query.toString()}`,
       );
-
-    try {
-      return await request(splashParams);
-    } catch (error) {
-      // Older deployed Strapi schemas do not expose splash.author. They return
-      // 500 (rather than a validation error) for a relation filter, although
-      // the same splash collection remains readable without that filter.
-      if ((error as { status?: number }).status !== 500) throw error;
-      const compatibleParams = new URLSearchParams(splashParams);
-      compatibleParams.delete("filters[$or][0][author][username][$eq]");
-      compatibleParams.delete("filters[$or][1][author][id][$eq]");
-      console.warn(
-        "[products/new] splash ownership filtering is unsupported; using the compatible query.",
-      );
-      return request(compatibleParams);
-    }
+    return requestWithSplashOwnershipFallback(
+      splashParams,
+      request,
+      () =>
+        console.warn(
+          "[products/new] splash ownership filtering is unsupported; using the compatible query.",
+        ),
+    );
   };
 
   try {

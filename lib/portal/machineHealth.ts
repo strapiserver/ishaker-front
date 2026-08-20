@@ -161,7 +161,6 @@ const ownHealth = (machine: Machine, now: number): MachineHealthRow | null => {
 
   return {
     id: machine.id,
-    nickname: machine.nickname,
     serial_number: machine.serial_number,
     online,
     terminal,
@@ -290,7 +289,6 @@ export const buildMachineHealthRow = (
 
   return {
     id: machine.id,
-    nickname: machine.nickname,
     serial_number: machine.serial_number,
     online,
     terminal: unknown(),

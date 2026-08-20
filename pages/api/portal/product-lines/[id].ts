@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { capitalizeName } from "../../../../lib/formatName";
 import { getPortalSessionFromApiRequest } from "../../../../lib/portal/auth";
+import { requestWithSplashOwnershipFallback } from "../../../../lib/portal/splashOwnership";
+import { deleteProductAndAssignments } from "../../../../services/server/deleteProduct";
 import { requestStrapiRestAsService } from "../../../../services/server/strapiClient";
 import type {
   PortalCup,
@@ -22,8 +24,16 @@ const loadVisibleSplash = async (id: string, userId: string | number) => {
   params.set("filters[$or][0][author][username][$eq]", "root");
   params.set("filters[$or][1][author][id][$eq]", String(userId));
   params.set("pagination[pageSize]", "1");
-  const splashes = await requestStrapiRestAsService<PortalSplash[]>(
-    `/api/splashes?${params.toString()}`,
+  const splashes = await requestWithSplashOwnershipFallback(
+    params,
+    (query) =>
+      requestStrapiRestAsService<PortalSplash[]>(
+        `/api/splashes?${query.toString()}`,
+      ),
+    () =>
+      console.warn(
+        "[portal/product-lines/id] splash ownership filtering is unsupported; using the compatible query.",
+      ),
   );
   return splashes[0] || null;
 };
@@ -83,42 +93,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const ownedProducts = await requestStrapiRestAsService<{ id: string | number }[]>(
         `/api/products?${cascadeParams.toString()}`,
       );
-      if (ownedProducts.length) {
-        const references = new URLSearchParams();
-        ownedProducts.forEach((product, index) => {
-          references.set(
-            `filters[product][id][$in][${index}]`,
-            String(product.id),
-          );
-        });
-        references.set("fields[0]", "id");
-        references.set("pagination[pageSize]", "1");
-        const [machineCells, presetCells] = await Promise.all([
-          requestStrapiRestAsService<Array<{ id: string | number }>>(
-            `/api/machine-cells?${references.toString()}`,
-          ),
-          requestStrapiRestAsService<Array<{ id: string | number }>>(
-            `/api/preset-cells?${references.toString()}`,
-          ),
-        ]);
-        if (machineCells.length || presetCells.length) {
-          return res.status(409).json({
-            error: "product_line_in_use",
-            message:
-              "Reassign every product in this drink from machine and preset containers before deleting it.",
-          });
-        }
-      }
-      for (const product of ownedProducts) {
-        await requestStrapiRestAsService(`/api/products/${product.id}`, {
-          method: "DELETE",
-        }).catch(() => undefined);
-      }
+      const cleanup = await Promise.all(
+        ownedProducts.map((product) =>
+          deleteProductAndAssignments(product.id),
+        ),
+      );
 
       await requestStrapiRestAsService(`/api/product-lines/${ownedProductLine.id}`, {
         method: "DELETE",
       });
-      return res.status(200).json({ deleted: true, deletedProducts: ownedProducts.length });
+      return res.status(200).json({
+        deleted: true,
+        deletedProducts: ownedProducts.length,
+        deletedMachineAssignments: cleanup.reduce(
+          (total, result) => total + result.deletedMachineAssignments,
+          0,
+        ),
+        deletedPresetAssignments: cleanup.reduce(
+          (total, result) => total + result.deletedPresetAssignments,
+          0,
+        ),
+      });
     }
 
     if (Object.prototype.hasOwnProperty.call(req.body || {}, "isActive")) {

@@ -37,7 +37,7 @@ export function OrphanProductCard({
       if (!response.ok) {
         throw new Error(payload?.message || "Product could not be deleted.");
       }
-      await router.replace(router.asPath);
+      router.reload();
     } catch (error) {
       window.alert(
         error instanceof Error ? error.message : "Product could not be deleted.",
@@ -59,7 +59,7 @@ export function OrphanProductCard({
       if (!response.ok) {
         throw new Error(payload?.message || "Product could not be attached.");
       }
-      await router.replace(router.asPath);
+      router.reload();
     } catch (error) {
       window.alert(
         error instanceof Error ? error.message : "Product could not be attached.",

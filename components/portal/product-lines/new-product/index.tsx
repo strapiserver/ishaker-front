@@ -61,7 +61,7 @@ const sortFramesByName = <T extends { name?: string; url?: string }>(
 
 const DEFAULT_DOSAGE: ProductDosageValue = {
   drinkVolume: "300",
-  fullDrinkPrice: "",
+  fullDrinkPrice: "5.49",
   smallDrinkVolume: "",
   smallDrinkPrice: "",
   water: "270",
@@ -217,6 +217,20 @@ export function NewProductPage({
   const toast = useToast();
   const splashDialog = useDisclosure();
   const tasteMainDialog = useDisclosure();
+  const availableCups = productLine.base_product_line?.cups?.length
+    ? productLine.base_product_line.cups
+    : productLine.cups || [];
+  const assignedDefaultCupId = productLine.cups?.[0]?.id
+    ? String(productLine.cups[0].id)
+    : "";
+  const defaultCup =
+    availableCups.find((cup) => String(cup.id) === assignedDefaultCupId) ||
+    availableCups[0];
+  const defaultCupId = defaultCup ? String(defaultCup.id) : "";
+  const validCupId = (candidate?: string) =>
+    candidate && availableCups.some((cup) => String(cup.id) === candidate)
+      ? candidate
+      : defaultCupId;
   const {
     data: allSplashOptions,
     error: allSplashOptionsError,
@@ -271,7 +285,9 @@ export function NewProductPage({
         : "",
   );
   const [cupId, setCupId] = useState(
-    initialProduct?.cup?.id ? String(initialProduct.cup.id) : "",
+    validCupId(
+      initialProduct?.cup?.id ? String(initialProduct.cup.id) : undefined,
+    ),
   );
   const [componentRows, setComponentRows] = useState<ProductComponentRow[]>(
     toComponentRows(initialProduct),
@@ -407,9 +423,6 @@ export function NewProductPage({
       name: capitalizeName(taste.name),
       imageUrl: getSmallestMediaUrl(taste.main),
     }));
-  const availableCups =
-    productLine.base_product_line?.cups || productLine.cups || [];
-  const defaultCup = productLine.cups?.[0];
   const cupOptions: SearchableImageOption[] = availableCups.map((cup) => ({
     id: String(cup.id),
     name: capitalizeName(cup.name),
@@ -540,7 +553,7 @@ export function NewProductPage({
     setSplashId("");
     setCircleId("");
     setMainImageId("");
-    setCupId("");
+    setCupId(defaultCupId);
   };
   const selectProduct = (product: ProductNameOption) => {
     setName(product.name);
@@ -590,7 +603,9 @@ export function NewProductPage({
           ? String(selected.taste.main.id)
           : "",
     );
-    setCupId(selected?.cup?.id ? String(selected.cup.id) : "");
+    setCupId(
+      validCupId(selected?.cup?.id ? String(selected.cup.id) : undefined),
+    );
   };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -624,7 +639,7 @@ export function NewProductPage({
             splashId,
             circleId,
             mainImageId,
-            cupId,
+            cupId: validCupId(cupId),
             components: componentRows.map(
               ({
                 componentId,
@@ -672,7 +687,9 @@ export function NewProductPage({
       }
       toast({
         title: "Product saved",
-        description: "Updates will take place on machine in 5 minutes.",
+        description: isEditing
+          ? "Updates will take place on machine in 5 minutes."
+          : "Assign new product to container",
         status: "success",
         duration: 5000,
         isClosable: true,

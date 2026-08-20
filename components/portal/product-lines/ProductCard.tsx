@@ -75,7 +75,7 @@ export function ProductCard({ product, productLineId }: ProductCardProps) {
         throw new Error(payload?.message || "Product could not be deleted.");
       }
       deleteDialog.onClose();
-      await router.replace(router.asPath);
+      router.reload();
     } catch (error) {
       window.alert(
         error instanceof Error

@@ -12,7 +12,7 @@ const asId = (value: unknown) => {
   return /^\d+$/.test(id) ? Number(id) : null;
 };
 const asPrice = (value: unknown) => {
-  if (value === "" || value === null || value === undefined) return null;
+  if (value === "" || value === null || value === undefined) return 5.49;
   const price = Number(value);
   return Number.isFinite(price) && price > 0 ? price : undefined;
 };

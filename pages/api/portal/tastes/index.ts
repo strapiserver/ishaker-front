@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getPortalSessionFromApiRequest } from "../../../../lib/portal/auth";
+import { requestWithSplashOwnershipFallback } from "../../../../lib/portal/splashOwnership";
 import { requestStrapiRestAsService } from "../../../../services/server/strapiClient";
 import {
   decodePortalImage,
@@ -87,8 +88,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       requestStrapiRestAsService<Array<{ id: string | number }>>(
         `/api/circles?${circleParams.toString()}`,
       ),
-      requestStrapiRestAsService<Array<{ id: string | number; color?: string | null }>>(
-        `/api/splashes?${splashParams.toString()}`,
+      requestWithSplashOwnershipFallback(
+        splashParams,
+        (query) =>
+          requestStrapiRestAsService<
+            Array<{ id: string | number; color?: string | null }>
+          >(`/api/splashes?${query.toString()}`),
+        () =>
+          console.warn(
+            "[portal/tastes] splash ownership filtering is unsupported; using the compatible query.",
+          ),
       ),
     ]);
     if (!circles[0]) {

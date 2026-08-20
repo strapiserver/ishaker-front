@@ -259,7 +259,7 @@ export function NewProductLinePage({
     setIsSubmitting(true);
     setError("");
     try {
-      const saveProductLine = async (): Promise<boolean> => {
+      const saveProductLine = async (): Promise<string | false> => {
         const response = await fetch(
           isEditing
             ? `/api/portal/product-lines/${productLine?.id}`
@@ -294,11 +294,15 @@ export function NewProductLinePage({
           );
         }
 
-        return true;
+        const savedProductLineId = payload?.productLine?.id;
+        if (!savedProductLineId) {
+          throw new Error("The saved product line ID was not returned.");
+        }
+        return String(savedProductLineId);
       };
 
-      const wasSaved = await saveProductLine();
-      if (!wasSaved) return;
+      const savedProductLineId = await saveProductLine();
+      if (!savedProductLineId) return;
 
       toast({
         title: isEditing ? "Drink updated" : "Drink created",
@@ -308,7 +312,11 @@ export function NewProductLinePage({
         duration: 5000,
         isClosable: true,
       });
-      await router.push("/product-lines");
+      await router.push(
+        isEditing
+          ? "/product-lines"
+          : `/product-lines/${savedProductLineId}/products/new`,
+      );
     } catch (submissionError) {
       const message =
         submissionError instanceof Error

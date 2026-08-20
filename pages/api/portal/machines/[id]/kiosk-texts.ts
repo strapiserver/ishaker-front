@@ -4,6 +4,7 @@ import {
   getPortalSessionFromApiRequest,
 } from "../../../../../lib/portal/auth";
 import { requestStrapiRestAsService } from "../../../../../services/server/strapiClient";
+import { addPortalMachineFields } from "../../../../../lib/portal/machinePrivacy";
 import type {
   Language,
   Machine,
@@ -40,6 +41,7 @@ const idFrom = (value: string | string[] | undefined) => {
 
 const machineWithLocalization = async (machineId: string | number) => {
   const params = new URLSearchParams();
+  addPortalMachineFields(params);
   params.set("populate[language]", "*");
   params.set("populate[translation_set][populate][language]", "*");
   params.set("populate[translation_set][populate][client]", "*");

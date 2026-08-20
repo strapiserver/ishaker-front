@@ -8,7 +8,6 @@ const NOW = Date.parse("2026-08-18T17:12:00Z");
 const machineWith = (app: NonNullable<Machine["health"]>["app"]): Machine =>
   ({
     id: 112,
-    nickname: "bone",
     serial_number: "26041826",
     health: { at: "2026-08-18T17:11:30Z", app },
   }) as unknown as Machine;
@@ -68,7 +67,6 @@ test("no kiosk process at all reads as App down", () => {
 test("a stale reading hands the online badge back to fleet_status", () => {
   const machine = {
     id: 112,
-    nickname: "bone",
     serial_number: "26041826",
     health: {
       at: "2026-08-18T16:00:00Z",
@@ -85,7 +83,6 @@ test("a stale reading hands the online badge back to fleet_status", () => {
 test("an offline report preserves the last time the machine was online", () => {
   const machine = {
     id: 112,
-    nickname: "bone",
     serial_number: "26041826",
     last_seen_at: "2026-08-18T16:42:00Z",
     fleet_status: {

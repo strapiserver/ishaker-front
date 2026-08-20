@@ -12,7 +12,6 @@ export type MachineHealthIndicator = {
 
 export type MachineHealthRow = {
   id: string | number;
-  nickname?: string | null;
   serial_number: string;
   online: MachineHealthIndicator;
   terminal: MachineHealthIndicator;

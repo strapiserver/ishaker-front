@@ -62,6 +62,8 @@ type Row = {
   isActive: boolean;
 };
 
+const DEFAULT_PRICE = "5.49";
+
 const emptyForm = () => ({
   id: "",
   name: "",
@@ -93,7 +95,7 @@ const fillPhysicalSlots = (cells: Row[], containerCount: number | null) => {
         position,
         cellCategory: "powder" as const,
         productId: "",
-        price: "",
+        price: DEFAULT_PRICE,
         isActive: true,
       })),
   ].sort((left, right) => left.position - right.position);
@@ -162,7 +164,7 @@ export default function AdminPresetsPage() {
           productId: cell.product?.id ? String(cell.product.id) : "",
           price:
             cell.price === null || cell.price === undefined
-              ? ""
+              ? DEFAULT_PRICE
               : String(cell.price),
           isActive: cell.isActive !== false,
         })), getMachineContainerCount(presetMachineType)),

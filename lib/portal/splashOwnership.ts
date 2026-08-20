@@ -1,4 +1,6 @@
 const SPLASH_OWNERSHIP_FILTERS = [
+  "filters[author][username][$eq]",
+  "filters[author][id][$eq]",
   "filters[$or][0][author][username][$eq]",
   "filters[$or][1][author][id][$eq]",
 ] as const;
@@ -12,7 +14,7 @@ export const requestWithSplashOwnershipFallback = async <T>(
   request: (query: URLSearchParams) => Promise<T>,
   warn: () => void = () =>
     console.warn(
-      "[portal/products] splash ownership filtering is unsupported; using the compatible query.",
+      "Splash ownership filtering is unsupported; using the compatible query.",
     ),
 ) => {
   try {

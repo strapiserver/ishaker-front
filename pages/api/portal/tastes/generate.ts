@@ -5,6 +5,7 @@ import path from "path";
 import { promisify } from "util";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getPortalSessionFromApiRequest } from "../../../../lib/portal/auth";
+import { requestWithSplashOwnershipFallback } from "../../../../lib/portal/splashOwnership";
 import { decodePortalImage } from "../../../../services/server/imageUpload";
 import { requestStrapiRestAsService } from "../../../../services/server/strapiClient";
 import { getStrapiBaseUrl } from "../../../../services/fetchers";
@@ -83,8 +84,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     params.set("populate[images][fields][0]", "url");
     params.set("populate[images][fields][1]", "name");
     params.set("pagination[pageSize]", "1");
-    const splashes = await requestStrapiRestAsService<PortalSplash[]>(
-      `/api/splashes?${params.toString()}`,
+    const splashes = await requestWithSplashOwnershipFallback(
+      params,
+      (query) =>
+        requestStrapiRestAsService<PortalSplash[]>(
+          `/api/splashes?${query.toString()}`,
+        ),
+      () =>
+        console.warn(
+          "[portal/tastes/generate] splash ownership filtering is unsupported; using the compatible query.",
+        ),
     );
     const splash = splashes[0];
     const baseFrames = sortFrames(splash?.images).filter((frame) => frame.url);

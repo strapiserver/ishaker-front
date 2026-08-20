@@ -13,6 +13,7 @@ import {
   MachineSerialIssueError,
 } from "../../../lib/portal/machineSerial";
 import { WHATSAPP_SUPPORT_URL } from "../../../lib/portal/support";
+import { addPortalMachineFields } from "../../../lib/portal/machinePrivacy";
 
 const normalizeMachineClient = (machine: Machine | null): MachineLookupResponse => {
   const client = (machine?.client || null) as Client | null;
@@ -35,6 +36,7 @@ const loadViaServiceGraphql = async (serial: string) => {
 
 const loadViaRest = async (serial: string) => {
   const params = new URLSearchParams();
+  addPortalMachineFields(params);
   params.set("filters[serial_number][$startsWith]", serial);
   params.set("populate[0]", "client");
   params.set("populate[1]", "machine_type");
@@ -49,6 +51,7 @@ const loadViaRest = async (serial: string) => {
 
 const loadViaServiceRest = async (serial: string) => {
   const params = new URLSearchParams();
+  addPortalMachineFields(params);
   params.set("filters[serial_number][$startsWith]", serial);
   params.set("populate[0]", "client");
   params.set("populate[1]", "machine_type");

@@ -33,6 +33,23 @@ test("retries without splash ownership filters when an older Strapi returns 500"
   assert.equal(warned, true);
 });
 
+test("removes a root-only splash ownership filter on compatibility retry", async () => {
+  const params = new URLSearchParams();
+  params.set("filters[name][$startsWithi]", "color ");
+  params.set("filters[author][username][$eq]", "root");
+  const queries: string[] = [];
+
+  await requestWithSplashOwnershipFallback(params, async (query) => {
+    queries.push(query.toString());
+    if (queries.length === 1) throw { status: 500 };
+    return [];
+  });
+
+  assert.match(queries[0], /author/);
+  assert.doesNotMatch(queries[1], /author/);
+  assert.match(queries[1], /name/);
+});
+
 test("does not hide non-compatibility failures", async () => {
   const expected = { status: 401 };
   let attempts = 0;

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getPortalSessionFromApiRequest } from "../../../../lib/portal/auth";
+import { requestWithSplashOwnershipFallback } from "../../../../lib/portal/splashOwnership";
 import { requestStrapiRestAsService } from "../../../../services/server/strapiClient";
 import { capitalizeName } from "../../../../lib/formatName";
 import type {
@@ -22,8 +23,16 @@ const loadVisibleSplash = async (id: string, userId: string | number) => {
   params.set("filters[$or][0][author][username][$eq]", "root");
   params.set("filters[$or][1][author][id][$eq]", String(userId));
   params.set("pagination[pageSize]", "1");
-  const splashes = await requestStrapiRestAsService<PortalSplash[]>(
-    `/api/splashes?${params.toString()}`,
+  const splashes = await requestWithSplashOwnershipFallback(
+    params,
+    (query) =>
+      requestStrapiRestAsService<PortalSplash[]>(
+        `/api/splashes?${query.toString()}`,
+      ),
+    () =>
+      console.warn(
+        "[portal/product-lines] splash ownership filtering is unsupported; using the compatible query.",
+      ),
   );
   return splashes[0] || null;
 };
