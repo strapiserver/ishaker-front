@@ -23,7 +23,7 @@ import {
   VStack,
   useDisclosure,
 } from "@chakra-ui/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { FiCheck, FiChevronDown } from "react-icons/fi";
 import type {
@@ -57,6 +57,7 @@ export type ProductLinesPageProps = {
   catalogProducts: PortalCatalogProduct[];
   machineAssignments: MachineContainerAssignment[];
   initialMachineId?: string;
+  initialNewProduct?: boolean;
   loadError?: string;
 };
 
@@ -148,10 +149,12 @@ export function ProductLinesPage({
   catalogProducts,
   machineAssignments,
   initialMachineId,
+  initialNewProduct = false,
   loadError,
 }: ProductLinesPageProps) {
   const router = useRouter();
   const productLineChooser = useDisclosure();
+  const handledInitialNewProduct = useRef(false);
   const [selectedMachineId, setSelectedMachineId] = useState(
     machineAssignments.some(
       ({ machine }) => String(machine.id) === initialMachineId,
@@ -221,6 +224,12 @@ export function ProductLinesPage({
     }
     productLineChooser.onOpen();
   };
+
+  useEffect(() => {
+    if (!initialNewProduct || handledInitialNewProduct.current) return;
+    handledInitialNewProduct.current = true;
+    startNewProduct();
+  }, [initialNewProduct]);
 
   const selectProductLineForNewProduct = (rootLine: PortalProductLine) => {
     productLineChooser.onClose();

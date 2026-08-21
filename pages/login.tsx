@@ -78,7 +78,7 @@ export default function LoginPage() {
           <Text color="bg.300" mb="8">
             {router.query.reason === "nickname-exists"
               ? "That nickname already has an account. Sign in to register or manage its machines."
-              : "Use your nickname or email and password."}
+              : "Use your nickname and password."}
           </Text>
 
           <Box

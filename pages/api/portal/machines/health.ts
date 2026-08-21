@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getPortalSessionFromApiRequest } from "../../../../lib/portal/auth";
-import { buildMachineHealthRow } from "../../../../lib/portal/machineHealth";
+import {
+  applyStoredPowderLevels,
+  buildMachineHealthRow,
+} from "../../../../lib/portal/machineHealth";
 import { applyMachineHealthFixture } from "../../../../lib/portal/machineHealthFixture";
 import { matchTelemetryMachineBySerial } from "../../../../lib/portal/telemetrySerial";
 import {
@@ -11,6 +14,7 @@ import {
   resolveTelemetryOrganizationId,
 } from "../../../../services/server/telemetryClient";
 import type { TelemetryHealthInput } from "../../../../types/machineHealth";
+import { getMachineCells } from "../../../../services/server/machineCells";
 
 export default async function handler(
   req: NextApiRequest,
@@ -28,6 +32,26 @@ export default async function handler(
 
   const machines = applyMachineHealthFixture(session.machines);
   const telemetryBySerial = new Map<string, TelemetryHealthInput>();
+  const storedCellsByMachineId = new Map<
+    string,
+    Awaited<ReturnType<typeof getMachineCells>>
+  >();
+
+  await Promise.all(
+    machines.map(async (machine) => {
+      try {
+        storedCellsByMachineId.set(
+          String(machine.id),
+          await getMachineCells(machine.id),
+        );
+      } catch (error) {
+        console.error(
+          `[portal/machines/health] stored containers for machine ${machine.id} failed:`,
+          error,
+        );
+      }
+    }),
+  );
 
   if (isTelemetryConfigured()) {
     try {
@@ -65,11 +89,15 @@ export default async function handler(
 
   res.setHeader("Cache-Control", "private, no-store");
   return res.status(200).json({
-    machines: machines.map((machine) =>
-      buildMachineHealthRow(
+    machines: machines.map((machine) => {
+      const row = buildMachineHealthRow(
         machine,
         telemetryBySerial.get(String(machine.serial_number || "").trim()),
-      ),
-    ),
+      );
+      const storedCells = storedCellsByMachineId.get(String(machine.id));
+      return storedCells
+        ? applyStoredPowderLevels(row, machine, storedCells)
+        : row;
+    }),
   });
 }

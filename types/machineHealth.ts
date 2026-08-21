@@ -1,6 +1,6 @@
 export type HealthSource = "own" | "ops" | "telemetry" | "none";
 
-export type HealthState = "ok" | "warning" | "error" | "unknown";
+export type HealthState = "ok" | "warning" | "low" | "error" | "unknown";
 
 export type MachineHealthIndicator = {
   state: HealthState;
@@ -17,7 +17,11 @@ export type MachineHealthRow = {
   terminal: MachineHealthIndicator;
   water: MachineHealthIndicator;
   powders: MachineHealthIndicator;
+  powderLevels?: Array<number | null>;
   cups: MachineHealthIndicator | null;
+  waterType?: "bottle" | "mains" | null;
+  waterAmountLiters?: number | null;
+  cupsAmount?: number | null;
 };
 
 export type TelemetryHealthInput = {

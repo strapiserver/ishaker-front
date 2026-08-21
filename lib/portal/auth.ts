@@ -81,9 +81,13 @@ export const isProductClientUser = (user?: PortalUser | null) =>
   normalizeRoleKey(user?.role?.type) === "productclient" ||
   normalizeRoleKey(user?.role?.name) === "productclient";
 
-const fetchClientById = async (clientId: string | number) => {
+const buildClientParams = (includeInventory: boolean) => {
   const params = new URLSearchParams();
-  addPortalMachineFields(params, "populate[machines][fields]");
+  addPortalMachineFields(
+    params,
+    "populate[machines][fields]",
+    includeInventory,
+  );
   params.set(
     "populate[machines][populate][machine_type][populate][preview][fields][0]",
     "url",
@@ -101,9 +105,24 @@ const fetchClientById = async (clientId: string | number) => {
   params.set("populate[currency]", "*");
   params.set("populate[machines][sort][0]", "title:ASC");
 
-  return requestStrapiRestAsService<Client>(
-    `/api/clients/${clientId}?${params.toString()}`,
-  );
+  return params;
+};
+
+const fetchClientById = async (clientId: string | number) => {
+  try {
+    const params = buildClientParams(true);
+    return await requestStrapiRestAsService<Client>(
+      `/api/clients/${clientId}?${params.toString()}`,
+    );
+  } catch (error) {
+    // During a rolling deploy the frontend can start before Strapi has loaded
+    // the new inventory columns. Keep the portal usable until Strapi restarts.
+    if ((error as { status?: number }).status !== 500) throw error;
+    const compatibleParams = buildClientParams(false);
+    return requestStrapiRestAsService<Client>(
+      `/api/clients/${clientId}?${compatibleParams.toString()}`,
+    );
+  }
 };
 
 const withoutPrivateClientFields = (client: Client) => {
@@ -116,16 +135,24 @@ const withoutPrivateClientFields = (client: Client) => {
 };
 
 export const fetchMachineByIdAsService = async (machineId: string | number) => {
-  const params = new URLSearchParams();
-  addPortalMachineFields(params);
-  params.set("populate[0]", "client");
-  params.set("populate[1]", "machine_type");
-  params.set("populate[2]", "currency");
-  params.set("populate[3]", "language");
+  const requestMachine = (includeInventory: boolean) => {
+    const params = new URLSearchParams();
+    addPortalMachineFields(params, "fields", includeInventory);
+    params.set("populate[0]", "client");
+    params.set("populate[1]", "machine_type");
+    params.set("populate[2]", "currency");
+    params.set("populate[3]", "language");
+    return requestStrapiRestAsService<Machine>(
+      `/api/machines/${machineId}?${params.toString()}`,
+    );
+  };
 
-  return requestStrapiRestAsService<Machine>(
-    `/api/machines/${machineId}?${params.toString()}`,
-  );
+  try {
+    return await requestMachine(true);
+  } catch (error) {
+    if ((error as { status?: number }).status !== 500) throw error;
+    return requestMachine(false);
+  }
 };
 
 export const fetchMachineBySerialAsService = async (serialNumber: string) => {

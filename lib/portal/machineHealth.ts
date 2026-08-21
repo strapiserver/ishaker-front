@@ -1,9 +1,11 @@
 import type { Machine } from "../../types/strapi";
+import type { PortalMachineCell } from "../../types/portal";
 import type {
   MachineHealthIndicator,
   MachineHealthRow,
   TelemetryHealthInput,
 } from "../../types/machineHealth";
+import { getMachineContainerCount } from "./containerSlots";
 
 const STALE_AFTER_MS = 10 * 60 * 1000;
 // A kiosk that has just been relaunched has not counted a frame yet. FleetPulse restarts it
@@ -33,6 +35,88 @@ const finiteNumber = (value: unknown): number | null => {
 const liters = (milliliters: number) => {
   const value = milliliters / 1000;
   return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} L`;
+};
+
+const waterLevelState = (litersRemaining: number): MachineHealthIndicator["state"] => {
+  if (litersRemaining < 1) return "error";
+  if (litersRemaining < 2) return "low";
+  if (litersRemaining < 5) return "warning";
+  return "ok";
+};
+
+const cupsLevelState = (cupsRemaining: number): MachineHealthIndicator["state"] => {
+  if (cupsRemaining < 5) return "error";
+  if (cupsRemaining < 10) return "low";
+  if (cupsRemaining < 20) return "warning";
+  return "ok";
+};
+
+const fillPercentage = (
+  current: unknown,
+  maximum: unknown,
+  isEmpty = false,
+) => {
+  const currentValue = finiteNumber(current);
+  const maximumValue = finiteNumber(maximum);
+  if (currentValue !== null && currentValue <= 0) return 0;
+  if (currentValue !== null && maximumValue !== null && maximumValue > 0) {
+    return Math.max(0, Math.min(100, (currentValue / maximumValue) * 100));
+  }
+  return isEmpty ? 0 : 100;
+};
+
+const powderLevelsState = (
+  levels: Array<number | null>,
+): MachineHealthIndicator["state"] => {
+  const assignedLevels = levels.filter(
+    (level): level is number => level !== null && level > 0,
+  );
+  const lowest = assignedLevels.length ? Math.min(...assignedLevels) : null;
+  if (lowest === null) return "unknown";
+  if (lowest < 10) return "error";
+  if (lowest < 20) return "low";
+  if (lowest < 40) return "warning";
+  return "ok";
+};
+
+export const applyStoredPowderLevels = (
+  row: MachineHealthRow,
+  machine: Machine,
+  cells: PortalMachineCell[],
+): MachineHealthRow => {
+  const containerCount = getMachineContainerCount(machine.machine_type);
+  if (containerCount === null) return row;
+  if (
+    cells.some(
+      (cell) => cell.product && typeof cell.amount_kg === "undefined",
+    )
+  ) {
+    return row;
+  }
+
+  const maximumKg = containerCount === 8 ? 2 : 1;
+  const powderLevels = Array.from({ length: containerCount }, (_, index) => {
+    const cell = cells.find((candidate) => candidate.position === index + 1);
+    if (!cell?.product || cell.isActive === false) return null;
+    const amountKg = finiteNumber(cell.amount_kg);
+    if (amountKg === null || amountKg <= 0) return null;
+    return Math.max(0, Math.min(100, (amountKg / maximumKg) * 100));
+  });
+  const assignedLevels = powderLevels.filter(
+    (level): level is number => level !== null,
+  );
+
+  return {
+    ...row,
+    powderLevels,
+    powders: {
+      state: powderLevelsState(powderLevels),
+      label: assignedLevels.length
+        ? `${assignedLevels.length} loaded`
+        : "No powder",
+      source: "ops",
+    },
+  };
 };
 
 const ownHealth = (machine: Machine, now: number): MachineHealthRow | null => {
@@ -104,22 +188,45 @@ const ownHealth = (machine: Machine, now: number): MachineHealthRow | null => {
         state:
           waterCurrent === null
             ? "unknown"
-            : health.water?.low
-              ? "error"
-              : "ok",
+            : waterLevelState(waterCurrent / 1000),
         label: waterLabel,
         source: "own",
         at: health.at,
       };
 
   const containers = health.containers || [];
+  const configuredContainerCount = getMachineContainerCount(machine.machine_type);
+  const containerCount =
+    configuredContainerCount ||
+    Math.max(0, ...containers.map((container) => Number(container.position) || 0));
+  const powderLevels = Array.from({ length: containerCount }, (_, index) => {
+    const container = containers.find(
+      (candidate) => Number(candidate.position) === index + 1,
+    );
+    if (!container) return null;
+    const current = finiteNumber(container.current);
+    const servingsLeft = finiteNumber(container.servings_left);
+    const hasPowder =
+      (current !== null && current > 0) ||
+      (servingsLeft !== null && servingsLeft > 0);
+    const isAssigned = Boolean(container.product) || hasPowder || container.runs_out;
+    if (!isAssigned || current === 0 || (!hasPowder && servingsLeft === 0)) {
+      return null;
+    }
+    const level = fillPercentage(
+      container.current ?? (container.runs_out ? 1 : null),
+      container.max,
+      false,
+    );
+    return container.runs_out && level >= 10 ? 9 : level > 0 ? level : null;
+  });
   const lowContainers = containers.filter((container) => container.runs_out);
   const powders: MachineHealthIndicator = stale
     ? { state: "unknown", label: "Stale", source: "own", at: health.at }
     : !containers.length
       ? { state: "unknown", label: "No data", source: "own", at: health.at }
       : {
-          state: lowContainers.length ? "error" : "ok",
+          state: powderLevelsState(powderLevels),
           label: lowContainers.length
             ? `${lowContainers.length} low`
             : `${containers.length} OK`,
@@ -144,10 +251,9 @@ const ownHealth = (machine: Machine, now: number): MachineHealthRow | null => {
           }
         : health.cups
           ? {
-              state:
-                health.cups.low || hasCupError
-                  ? ("error" as const)
-                  : ("ok" as const),
+              state: hasCupError
+                ? ("error" as const)
+                : cupsLevelState(cupCount || 0),
               label:
                 cupCount === null
                   ? "No data"
@@ -166,11 +272,15 @@ const ownHealth = (machine: Machine, now: number): MachineHealthRow | null => {
     terminal,
     water,
     powders,
+    powderLevels,
     cups,
   };
 };
 
-const telemetryIndicators = (telemetry?: TelemetryHealthInput | null) => {
+const telemetryIndicators = (
+  telemetry?: TelemetryHealthInput | null,
+  configuredContainerCount?: number | null,
+) => {
   const connectionStatus = String(
     telemetry?.status?.connectionStatus || "",
   ).toUpperCase();
@@ -191,14 +301,9 @@ const telemetryIndicators = (telemetry?: TelemetryHealthInput | null) => {
     (sum: number, cell: any) => sum + (finiteNumber(cell?.maxVolume) || 0),
     0,
   );
-  const waterLow = waters.some((cell: any) => {
-    const volume = finiteNumber(cell?.volume);
-    const minimum = finiteNumber(cell?.minVolume);
-    return volume !== null && minimum !== null && volume <= minimum;
-  });
   const water: MachineHealthIndicator = waters.length
     ? {
-        state: waterLow ? "error" : "ok",
+        state: waterLevelState(waterCurrent / 1000),
         label: waterMax
           ? `${liters(waterCurrent)} / ${liters(waterMax)}`
           : liters(waterCurrent),
@@ -207,14 +312,27 @@ const telemetryIndicators = (telemetry?: TelemetryHealthInput | null) => {
     : unknown();
 
   const cells = Array.isArray(storage.cells) ? storage.cells : [];
-  const lowCells = cells.filter((cell: any) => {
+  const containerCount = configuredContainerCount || cells.length;
+  const powderLevels = Array.from({ length: containerCount }, (_, index) => {
+    const cell = cells.find(
+      (candidate: any, candidateIndex: number) =>
+        Number(candidate?.position ?? candidate?.cellNumber ?? candidateIndex + 1) ===
+        index + 1,
+    );
+    if (!cell || cell?.isActive === false) return null;
     const volume = finiteNumber(cell?.volume);
-    const minimum = finiteNumber(cell?.minVolume);
-    return volume !== null && minimum !== null && volume <= minimum;
+    const isAssigned =
+      cell?.productId != null || Boolean(cell?.productName) || (volume !== null && volume > 0);
+    if (!isAssigned || volume === null || volume <= 0) return null;
+    const level = fillPercentage(cell?.volume, cell?.maxVolume);
+    return level > 0 ? level : null;
   });
+  const lowCells = powderLevels.filter(
+    (level): level is number => level !== null && level < 40,
+  );
   const powders: MachineHealthIndicator = cells.length
     ? {
-        state: lowCells.length ? "error" : "ok",
+        state: powderLevelsState(powderLevels),
         label: lowCells.length ? `${lowCells.length} low` : `${cells.length} OK`,
         source: "telemetry",
       }
@@ -227,13 +345,13 @@ const telemetryIndicators = (telemetry?: TelemetryHealthInput | null) => {
   );
   const cups: MachineHealthIndicator = cupCells.length
     ? {
-        state: cupCount > 0 ? "ok" : "error",
+      state: cupsLevelState(cupCount),
         label: `${cupCount} left`,
         source: "telemetry",
       }
     : unknown();
 
-  return { online, water, powders, cups };
+  return { online, water, powders, powderLevels, cups };
 };
 
 export const buildMachineHealthRow = (
@@ -241,8 +359,15 @@ export const buildMachineHealthRow = (
   telemetry?: TelemetryHealthInput | null,
   now = Date.now(),
 ): MachineHealthRow => {
+  const waterType = machine.water_type || null;
+  const waterAmountLiters = finiteNumber(machine.water_amount_liters);
+  const cupsAmount = finiteNumber(machine.cups_amount);
+  const persisted = { waterType, waterAmountLiters, cupsAmount };
   const own = ownHealth(machine, now);
-  const fallback = telemetryIndicators(telemetry);
+  const fallback = telemetryIndicators(
+    telemetry,
+    getMachineContainerCount(machine.machine_type),
+  );
   const fleet = machine.fleet_status as Record<string, unknown> | null | undefined;
   const fleetAt = typeof fleet?.at === "string" ? fleet.at : null;
   const fleetFresh = Boolean(fleetAt && !isStale(fleetAt, now));
@@ -284,7 +409,23 @@ export const buildMachineHealthRow = (
               : machine.last_seen_at || null,
         }
       : online;
-    return { ...own, online: ownOnline };
+    const water = waterType === "mains"
+      ? { state: "ok" as const, label: "∞ Mains", source: "ops" as const }
+      : waterType === "bottle" && waterAmountLiters !== null
+        ? {
+            state: waterLevelState(waterAmountLiters),
+            label: `${waterAmountLiters.toFixed(1)} L`,
+            source: "ops" as const,
+          }
+        : own.water;
+    const cups = cupsAmount !== null
+      ? {
+          state: cupsLevelState(cupsAmount),
+          label: `${cupsAmount} left`,
+          source: "ops" as const,
+        }
+      : own.cups;
+    return { ...own, online: ownOnline, water, cups, ...persisted };
   }
 
   return {
@@ -292,8 +433,26 @@ export const buildMachineHealthRow = (
     serial_number: machine.serial_number,
     online,
     terminal: unknown(),
-    water: fallback.water,
+    water:
+      waterType === "mains"
+        ? { state: "ok", label: "∞ Mains", source: "ops" }
+        : waterType === "bottle" && waterAmountLiters !== null
+          ? {
+              state: waterLevelState(waterAmountLiters),
+              label: `${waterAmountLiters.toFixed(1)} L`,
+              source: "ops",
+            }
+          : fallback.water,
     powders: fallback.powders,
-    cups: fallback.cups,
+    powderLevels: fallback.powderLevels,
+    cups:
+      cupsAmount !== null
+        ? {
+            state: cupsLevelState(cupsAmount),
+            label: `${cupsAmount} left`,
+            source: "ops",
+          }
+        : fallback.cups,
+    ...persisted,
   };
 };

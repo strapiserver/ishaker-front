@@ -147,6 +147,9 @@ export type Machine = {
   } | null;
   currency?: Currency | null;
   nayax_terminal_id?: string | null;
+  water_type?: "bottle" | "mains" | null;
+  water_amount_liters?: number | string | null;
+  cups_amount?: number | null;
   language?: Language | null;
   translation_set?: TranslationSet | null;
 };

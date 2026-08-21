@@ -82,6 +82,7 @@ export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = asy
   )
     ? requestedMachineId
     : undefined;
+  const initialNewProduct = context.query.action === "new-product";
 
   let catalogProducts: PortalCatalogProduct[] = [];
   let machineAssignments: MachineContainerAssignment[] = [];
@@ -149,6 +150,7 @@ export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = asy
         catalogProducts,
         machineAssignments,
         ...(initialMachineId ? { initialMachineId } : {}),
+        ...(initialNewProduct ? { initialNewProduct: true } : {}),
       },
     };
   } catch (error) {
@@ -162,6 +164,7 @@ export const getServerSideProps: GetServerSideProps<ProductLinesPageProps> = asy
         catalogProducts,
         machineAssignments,
         ...(initialMachineId ? { initialMachineId } : {}),
+        ...(initialNewProduct ? { initialNewProduct: true } : {}),
         loadError: "Product lines could not be loaded.",
       },
     };

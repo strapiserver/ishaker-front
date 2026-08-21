@@ -12,6 +12,7 @@ import {
   Tr,
 } from "@chakra-ui/react";
 import type { GetServerSideProps } from "next";
+import { useRouter } from "next/router";
 import { MachineRegistrationEditor } from "../../components/portal/machines/MachineRegistrationEditor";
 import { MachineDoorUnlock } from "../../components/portal/machines/MachineDoorUnlock";
 import { MachineHealthStrip } from "../../components/portal/machines/MachineHealthStrip";
@@ -120,6 +121,7 @@ export default function MachineDetailPage({
   currencies,
   languages,
 }: MachineDetailPageProps) {
+  const router = useRouter();
   return (
     <PortalShell
       title={machine.title || "Machine detail"}
@@ -135,10 +137,12 @@ export default function MachineDetailPage({
         >
           <Box flex="1" minW="0">
             <MachineHealthStrip
+              machine={machine}
               health={buildMachineHealthRow(machine, {
                 status: telemetryStatus,
                 storage: telemetryStorage,
               })}
+              onHealthChanged={() => void router.replace(router.asPath)}
             />
           </Box>
           <MachineDoorUnlock machine={machine} />

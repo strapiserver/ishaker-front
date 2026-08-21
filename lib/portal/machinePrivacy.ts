@@ -28,11 +28,21 @@ const PORTAL_MACHINE_FIELDS = [
   "has_door_lock",
 ] as const;
 
+const PORTAL_MACHINE_INVENTORY_FIELDS = [
+  "water_type",
+  "water_amount_liters",
+  "cups_amount",
+] as const;
+
 export const addPortalMachineFields = (
   params: URLSearchParams,
   keyPrefix = "fields",
+  includeInventory = false,
 ) => {
-  PORTAL_MACHINE_FIELDS.forEach((field, index) =>
+  const fields = includeInventory
+    ? [...PORTAL_MACHINE_FIELDS, ...PORTAL_MACHINE_INVENTORY_FIELDS]
+    : PORTAL_MACHINE_FIELDS;
+  fields.forEach((field, index) =>
     params.set(`${keyPrefix}[${index}]`, field),
   );
   return params;

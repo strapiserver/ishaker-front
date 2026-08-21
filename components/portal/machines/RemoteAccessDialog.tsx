@@ -1,4 +1,6 @@
 import {
+  Alert,
+  AlertIcon,
   Button,
   FormControl,
   FormLabel,
@@ -149,11 +151,23 @@ export function RemoteAccessDialog({
             </VStack>
 
             <VStack spacing="4" align="stretch">
-              <CopyField label="Login" value={machine?.rustdesk_id} />
-              <CopyField
-                label="Password"
-                value={machine?.rustdesk_password}
-              />
+              <Alert
+                status="warning"
+                bg="yellow.900"
+                color="yellow.50"
+                borderRadius="md"
+                border="1px solid"
+                borderColor="yellow.700"
+              >
+                <AlertIcon color="yellow.300" />
+                <Text fontWeight="700">
+                  Before connecting:
+                  <br />
+                  Go to Settings -&gt; Login with Google
+                </Text>
+              </Alert>
+              <CopyField label="ID" value={machine?.rustdesk_id} />
+              <CopyField label="Password" value={machine?.rustdesk_password} />
             </VStack>
           </VStack>
         </ModalBody>

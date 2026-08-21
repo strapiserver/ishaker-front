@@ -10,10 +10,11 @@ import {
   Text,
   Icon,
   Image,
+  IconButton,
 } from "@chakra-ui/react";
 import Link from "next/link";
 import type { GetServerSideProps } from "next";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { MachineHealthStrip } from "../../components/portal/machines/MachineHealthStrip";
 import { RemoteAccessDialog } from "../../components/portal/machines/RemoteAccessDialog";
@@ -22,8 +23,10 @@ import { getSmallestMediaUrl } from "../../lib/portal/media";
 import type { PortalMachineSummary, PortalSession } from "../../types/portal";
 import type { Machine } from "../../types/strapi";
 import type { MachineHealthRow } from "../../types/machineHealth";
-import { FaArrowRight, FaPlus, FaWrench } from "react-icons/fa";
+import { FaPlus, FaWrench } from "react-icons/fa";
 import { MdAddToHomeScreen } from "react-icons/md";
+import { Box3D } from "../../styles/theme/custom";
+import { ImInfo } from "react-icons/im";
 type MachinesPageProps = {
   session: PortalSession;
   machines: PortalMachineSummary[];
@@ -60,34 +63,25 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
   const [isHealthLoading, setIsHealthLoading] = useState(true);
   const [remoteMachine, setRemoteMachine] = useState<Machine | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadHealth = async () => {
-      try {
-        const response = await fetch("/api/portal/machines/health", {
-          cache: "no-store",
-        });
-        const payload = await response.json().catch(() => null);
-        if (!response.ok)
-          throw new Error("Machine health could not be loaded.");
-        if (!cancelled) {
-          setHealthRows(
-            Array.isArray(payload?.machines) ? payload.machines : [],
-          );
-        }
-      } catch (error) {
-        console.error("[machines] health loading failed:", error);
-      } finally {
-        if (!cancelled) setIsHealthLoading(false);
-      }
-    };
-
-    void loadHealth();
-    return () => {
-      cancelled = true;
-    };
+  const loadHealth = useCallback(async (showLoading = false) => {
+    if (showLoading) setIsHealthLoading(true);
+    try {
+      const response = await fetch("/api/portal/machines/health", {
+        cache: "no-store",
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error("Machine health could not be loaded.");
+      setHealthRows(Array.isArray(payload?.machines) ? payload.machines : []);
+    } catch (error) {
+      console.error("[machines] health loading failed:", error);
+    } finally {
+      setIsHealthLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadHealth(true);
+  }, [loadHealth]);
 
   const healthByMachineId = useMemo(
     () => new Map(healthRows.map((row) => [String(row.id), row])),
@@ -100,38 +94,14 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
       description="All machines registered to your account. Assign library products to their physical containers."
       clientName={session.client.company}
     >
-      <HStack spacing="3" mb="6" flexWrap="wrap">
-        <Button
-          as={Link}
-          href={"/product-lines"}
-          variant="primary"
-          fontSize={{ base: "md", md: "lg" }}
-          leftIcon={<Icon as={FaPlus} boxSize={{ base: "4", md: "5" }} />}
-        >
-          New product line
-        </Button>
-        <Button
-          as={Link}
-          href="/step1"
-          variant="contrast"
-          fontSize={{ base: "md", md: "lg" }}
-          leftIcon={<Icon as={FaWrench} boxSize={{ base: "4", md: "5" }} />}
-        >
-          Register another machine
-        </Button>
-      </HStack>
-
       <SimpleGrid columns={{ base: 1, lg: 2 }} spacing="4">
         {machines.map((machine) => {
           const previewUrl = getSmallestMediaUrl(machine.machine_type?.preview);
 
           return (
-            <Box
+            <Box3D
               key={machine.id}
-              bg="bg.900"
-              border="1px solid"
-              borderColor="whiteAlpha.100"
-              borderRadius="xl"
+              variant="no_contrast"
               p={{ base: "4", md: "5" }}
               transition="border-color 160ms ease, transform 160ms ease"
               _hover={{
@@ -184,31 +154,38 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                       >
                         {machine.title || `Machine #${machine.id}`}
                       </Text>
-                      <Badge flexShrink={0} colorScheme="gray">
-                        Record: {machine.statusLabel}
-                      </Badge>
                     </HStack>
-
-                    <Stack
-                      direction={{ base: "column", sm: "row" }}
-                      spacing={{ base: "1", sm: "3" }}
-                      color="bg.300"
-                      fontSize="sm"
-                    >
-                      <Text noOfLines={1}>Serial: {machine.serial_number}</Text>
-                      {machine.machine_type?.name ? (
-                        <Text
-                          noOfLines={1}
-                          _before={{
-                            content: { base: '""', sm: '"•"' },
-                            mr: { base: "0", sm: "3" },
-                            color: "whiteAlpha.300",
-                          }}
-                        >
-                          Type: {machine.machine_type.name}
+                    <HStack justify="space-between" spacing="3" flexWrap="wrap">
+                      <Stack
+                        direction={{ base: "column", sm: "row" }}
+                        spacing={{ base: "1", sm: "3" }}
+                        color="bg.300"
+                        fontSize="sm"
+                      >
+                        <Text noOfLines={1}>
+                          Serial: {machine.serial_number}
                         </Text>
-                      ) : null}
-                    </Stack>
+                        {machine.machine_type?.name ? (
+                          <Text
+                            noOfLines={1}
+                            _before={{
+                              content: { base: '""', sm: '"•"' },
+                              mr: { base: "0", sm: "3" },
+                              color: "whiteAlpha.300",
+                            }}
+                          >
+                            Type: {machine.machine_type.name}
+                          </Text>
+                        ) : null}
+                      </Stack>
+                      <IconButton
+                        as={Link}
+                        href={`/machines/${machine.id}`}
+                        aria-label={`Open details for ${machine.title || `machine ${machine.id}`}`}
+                        icon={<ImInfo />}
+                        variant="contrast"
+                      />
+                    </HStack>
                     {machine.last_seen_at ? (
                       <Text color="bg.400" fontSize="xs" noOfLines={1}>
                         Last seen:{" "}
@@ -219,8 +196,10 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                 </HStack>
 
                 <MachineHealthStrip
+                  machine={machine}
                   health={healthByMachineId.get(String(machine.id))}
                   isLoading={isHealthLoading}
+                  onHealthChanged={() => void loadHealth()}
                 />
 
                 <HStack
@@ -231,15 +210,6 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                   borderColor="whiteAlpha.100"
                   flexWrap="wrap"
                 >
-                  <Button
-                    as={Link}
-                    href={`/machines/${machine.id}`}
-                    variant="contrast"
-                    size="sm"
-                    rightIcon={<Icon as={FaArrowRight} boxSize="3" />}
-                  >
-                    Open details
-                  </Button>
                   <Button
                     as={Link}
                     href={`/product-lines/machines/${machine.id}`}
@@ -257,10 +227,27 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                   </Button>
                 </HStack>
               </VStack>
-            </Box>
+            </Box3D>
           );
         })}
       </SimpleGrid>
+      <HStack spacing="3" mt="6" flexWrap="nowrap" align="stretch" mx="2">
+        <Button
+          w="100%"
+          borderRadius="2xl"
+          border="2px dashed"
+          borderColor="bg.500"
+          as={Link}
+          href="/step1"
+          variant="ghost"
+          fontSize={{ base: "xs", sm: "md", md: "lg" }}
+          px={{ base: "3", sm: "4" }}
+          minW="0"
+          leftIcon={<Icon as={FaPlus} boxSize={{ base: "4", md: "5" }} />}
+        >
+          Register another machine
+        </Button>
+      </HStack>
       <RemoteAccessDialog
         machine={remoteMachine}
         isOpen={Boolean(remoteMachine)}
