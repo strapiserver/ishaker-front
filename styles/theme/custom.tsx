@@ -41,6 +41,10 @@ export const RegularBox = (props: any) => {
 
 export const Box3D = (props: any) => {
   const { children, ...chakraProps }: { children: ReactElement } = props;
+  const primaryGradient = useColorModeValue(
+    "linear(to-br, purple.300, blue.300)",
+    "linear(to-br, green.300, orange.300)",
+  );
 
   return (
     <RegularBox
@@ -52,6 +56,7 @@ export const Box3D = (props: any) => {
         3px 3px 10px -5px rgba(0,0,0,0.5),
         -3px -3px 10px -5px rgba(200,200,200,0.2)
       `}
+      bgGradient={props.variant === "primary" ? primaryGradient : undefined}
       {...chakraProps}
     >
       {children}

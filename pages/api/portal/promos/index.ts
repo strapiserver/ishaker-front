@@ -58,6 +58,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "missing_required_fields" });
     }
 
+    if (discountType === "PERCENT" && amount > 100) {
+      return res.status(400).json({
+        error: "invalid_discount",
+        message: "Percentage discount cannot be more than 100%.",
+      });
+    }
+
+    const startsAtMs = new Date(startAt).getTime();
+    const endsAtMs = new Date(endAt).getTime();
+    if (
+      !Number.isFinite(startsAtMs) ||
+      !Number.isFinite(endsAtMs) ||
+      endsAtMs <= startsAtMs
+    ) {
+      return res.status(400).json({
+        error: "invalid_promo_dates",
+        message: "Ends at must be later than Starts at.",
+      });
+    }
+    const startsAtIso = new Date(startsAtMs).toISOString();
+    const endsAtIso = new Date(endsAtMs).toISOString();
+
     const machineId =
       typeof machineIdRaw === "string" || typeof machineIdRaw === "number"
         ? machineIdRaw
@@ -80,8 +102,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             discount_type: discountType,
             amount,
             ...(qty ? { qty } : {}),
-            start_at: startAt,
-            end_at: endAt,
+            start_at: startsAtIso,
+            end_at: endsAtIso,
             notes: asString(req.body?.notes),
             status: "draft",
             client: session.client.id,

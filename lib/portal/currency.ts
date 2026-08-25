@@ -1,4 +1,7 @@
 import type { Currency } from "../../types/strapi";
+import currencySymbols from "./currency-symbols.json";
+
+const CURRENCY_SYMBOLS = currencySymbols as Record<string, string>;
 
 export const DEFAULT_CURRENCY: Currency = {
   id: 0,
@@ -14,6 +17,12 @@ export const resolveCurrency = (
   currency?: Currency | null,
   fallback?: Currency | null,
 ) => currency || fallback || DEFAULT_CURRENCY;
+
+export const getCurrencySymbol = (currency?: Currency | null) => {
+  const resolved = resolveCurrency(currency);
+  const code = resolved.code.trim().toUpperCase();
+  return resolved.symbol?.trim() || CURRENCY_SYMBOLS[code] || code;
+};
 
 export const formatMoney = (
   value: number | string | null | undefined,
@@ -43,7 +52,7 @@ export const formatMoney = (
     fraction === undefined
       ? grouped
       : `${grouped}${resolved.decimal_separator ?? "."}${fraction}`;
-  const symbol = resolved.symbol || resolved.code.toUpperCase();
+  const symbol = getCurrencySymbol(resolved);
   return resolved.symbol_position === "after"
     ? `${sign}${number} ${symbol}`
     : `${sign}${symbol}${number}`;
