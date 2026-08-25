@@ -45,6 +45,7 @@ export default function PromosPage({ session, promos, loadError }: PromosPagePro
   const [code, setCode] = useState("");
   const [discountType, setDiscountType] = useState<"PERCENT" | "FIXED">("PERCENT");
   const [amount, setAmount] = useState("");
+  const [qty, setQty] = useState("100");
   const [startAt, setStartAt] = useState("");
   const [endAt, setEndAt] = useState("");
   const [notes, setNotes] = useState("");
@@ -69,6 +70,7 @@ export default function PromosPage({ session, promos, loadError }: PromosPagePro
         code,
         discountType,
         amount: Number(amount),
+        qty: Number(qty),
         startAt,
         endAt,
         notes,
@@ -115,6 +117,9 @@ export default function PromosPage({ session, promos, loadError }: PromosPagePro
                   <Text color="bg.300">
                     {new Date(promo.start_at).toLocaleDateString()} to {new Date(promo.end_at).toLocaleDateString()}
                   </Text>
+                  <Text color="bg.300">
+                    {promo.used_count ?? 0} of {promo.qty ?? "\u221e"} uses spent
+                  </Text>
                 </Box>
               ))
             ) : (
@@ -156,6 +161,10 @@ export default function PromosPage({ session, promos, loadError }: PromosPagePro
               <Input value={amount} onChange={(event) => setAmount(event.target.value)} type="number" min="0" step="0.01" />
             </FormControl>
             <FormControl>
+              <FormLabel>Uses available</FormLabel>
+              <Input value={qty} onChange={(event) => setQty(event.target.value)} type="number" min="1" step="1" />
+            </FormControl>
+            <FormControl>
               <FormLabel>Starts at</FormLabel>
               <Input value={startAt} onChange={(event) => setStartAt(event.target.value)} type="datetime-local" />
             </FormControl>
@@ -174,7 +183,7 @@ export default function PromosPage({ session, promos, loadError }: PromosPagePro
               type="submit"
               variant="primary"
               isLoading={isSubmitting}
-              isDisabled={!code || !amount || !startAt || !endAt}
+              isDisabled={!code || !amount || !qty || !startAt || !endAt}
             >
               Create promo code
             </Button>

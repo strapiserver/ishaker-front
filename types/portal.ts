@@ -84,6 +84,8 @@ export type PromoCode = {
   code: string;
   discount_type: "PERCENT" | "FIXED";
   amount: number;
+  qty?: number;
+  used_count?: number;
   start_at: string;
   end_at: string;
   status?: "draft" | "active" | "expired" | "cancelled";

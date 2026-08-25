@@ -42,11 +42,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === "POST") {
-    const code = asString(req.body?.code);
+    // The kiosk uppercases whatever the customer types or scans before it checks the
+    // code with the telemetry backend, and that backend matches exactly — a code stored
+    // in any other case could never be redeemed.
+    const code = asString(req.body?.code).toUpperCase();
     const discountType = asString(req.body?.discountType) as "PERCENT" | "FIXED";
     const amount = Number(req.body?.amount);
     const startAt = asString(req.body?.startAt);
     const endAt = asString(req.body?.endAt);
+    const qtyRaw = Number(req.body?.qty);
+    const qty = Number.isFinite(qtyRaw) && qtyRaw > 0 ? Math.trunc(qtyRaw) : null;
     const machineIdRaw = req.body?.machineId;
 
     if (!code || !discountType || !Number.isFinite(amount) || !startAt || !endAt) {
@@ -74,6 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             code,
             discount_type: discountType,
             amount,
+            ...(qty ? { qty } : {}),
             start_at: startAt,
             end_at: endAt,
             notes: asString(req.body?.notes),
