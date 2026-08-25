@@ -10,12 +10,14 @@ import {
 } from "@chakra-ui/react";
 import type { IconType } from "react-icons";
 import { useState } from "react";
+import { BiSolidInfoCircle } from "react-icons/bi";
+import { CiCoffeeCup } from "react-icons/ci";
 import {
   FaBoxOpen,
   FaCreditCard,
+  FaLock,
   FaTint,
   FaWifi,
-  FaWineGlass,
 } from "react-icons/fa";
 import type {
   HealthState,
@@ -45,10 +47,16 @@ const stateColor: Record<HealthState, string> = {
 
 const stateBackground: Record<HealthState, { base: string; hover: string }> = {
   ok: { base: "rgba(34, 197, 94, 0.14)", hover: "rgba(34, 197, 94, 0.22)" },
-  warning: { base: "rgba(234, 179, 8, 0.14)", hover: "rgba(234, 179, 8, 0.22)" },
+  warning: {
+    base: "rgba(234, 179, 8, 0.14)",
+    hover: "rgba(234, 179, 8, 0.22)",
+  },
   low: { base: "rgba(249, 115, 22, 0.14)", hover: "rgba(249, 115, 22, 0.22)" },
   error: { base: "rgba(239, 68, 68, 0.14)", hover: "rgba(239, 68, 68, 0.22)" },
-  unknown: { base: "rgba(148, 163, 184, 0.10)", hover: "rgba(148, 163, 184, 0.18)" },
+  unknown: {
+    base: "rgba(148, 163, 184, 0.10)",
+    hover: "rgba(148, 163, 184, 0.18)",
+  },
 };
 
 const lastOnlineLabel = (at?: string | null) => {
@@ -102,29 +110,41 @@ const HealthItem = ({
       _hover={{ bg: background.hover, transform: "translateY(-1px)" }}
       _focusVisible={{ boxShadow: "outline" }}
     >
-      <HStack spacing="1.5" minW="0">
+      <HStack spacing="1.5" minW="0" w="100%">
         <Box
           display="grid"
           placeItems="center"
           boxSize="7"
+          px="1"
           flex="0 0 auto"
           borderRadius="full"
-          bg={`${color}.900`}
+          bg={`${color}.800`}
           color={`${color}.200`}
+          boxShadow={`0 0 0 1px var(--chakra-colors-${color}-700)`}
         >
           <Icon as={icon} boxSize="3.5" />
         </Box>
-        <Box minW="0">
-          <Text color="bg.400" fontSize="9px" lineHeight="1" noOfLines={1}>
-            {title}
-          </Text>
+        <Box w="100%">
+          <HStack
+            w="100%"
+            spacing="1"
+            justifyContent="space-between"
+            color={`${color}.300`}
+          >
+            <Text color="bg.400" fontSize="9px" lineHeight="1" noOfLines={1}>
+              {title}
+            </Text>
+            <BiSolidInfoCircle size="1rem" />
+          </HStack>
           {powderLevels?.length ? (
             <HStack
               spacing="2px"
               h="12px"
               align="end"
               aria-label={`Powder levels: ${powderLevels
-                .map((level) => (level === null ? "empty" : `${Math.round(level)}%`))
+                .map((level) =>
+                  level === null ? "empty" : `${Math.round(level)}%`,
+                )
                 .join(", ")}`}
             >
               {powderLevels.map((level, index) => {
@@ -142,8 +162,8 @@ const HealthItem = ({
                   normalized < 10
                     ? "1px"
                     : normalized < 20
-                    ? "3px"
-                    : `${Math.max(1, Math.round(normalized / 10))}px`;
+                      ? "3px"
+                      : `${Math.max(1, Math.round(normalized / 10))}px`;
 
                 return (
                   <Box
@@ -200,8 +220,8 @@ export function MachineHealthStrip({
   const [dialog, setDialog] = useState<HealthDialogKind | null>(null);
   if (isLoading) {
     return (
-      <SimpleGrid columns={5} spacing="2" aria-label="Loading machine health">
-        {Array.from({ length: 5 }).map((_, index) => (
+      <SimpleGrid columns={4} spacing="2" aria-label="Loading machine health">
+        {Array.from({ length: 6 }).map((_, index) => (
           <Skeleton key={index} h="58px" borderRadius="lg" />
         ))}
       </SimpleGrid>
@@ -238,15 +258,30 @@ export function MachineHealthStrip({
     {
       title: "Cups",
       dialog: "cups" as const,
-      icon: FaWineGlass,
+      icon: CiCoffeeCup,
       indicator: health?.cups || noData,
+    },
+    {
+      title: "Door lock",
+      dialog: "lock" as const,
+      icon: FaLock,
+      indicator:
+        machine.has_door_lock === true
+          ? ({ state: "ok", label: "Installed", source: "ops" } as const)
+          : machine.has_door_lock === false
+            ? ({
+                state: "unknown",
+                label: "Not installed",
+                source: "ops",
+              } as const)
+            : noData,
     },
   ];
 
   return (
     <>
       <SimpleGrid
-        columns={{ base: 2, sm: items.length }}
+        columns={{ base: 2, sm: 4 }}
         spacing="2"
         aria-label="Machine health"
       >

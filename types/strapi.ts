@@ -44,6 +44,11 @@ export type TranslationSet = {
 export type Machine = {
   id: string | number;
   has_door_lock?: boolean | null;
+  free_mode?: boolean | null;
+  free_mode_minutes?: number | string | null;
+  free_mode_started_at?: string | null;
+  free_mode_rev?: number | string | null;
+  free_mode_source?: "portal" | "machine" | null;
   type?: "small" | "big";
   status?: "new" | "ready" | "shipped" | "working" | "error" | "offline";
   title?: string;

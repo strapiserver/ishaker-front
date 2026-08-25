@@ -1,6 +1,5 @@
 import {
   Box,
-  Button,
   Grid,
   IconButton,
   Image,
@@ -8,19 +7,25 @@ import {
   useDisclosure,
 } from "@chakra-ui/react";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { type MouseEvent, useState } from "react";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { capitalizeName } from "../../../lib/formatName";
 import { getSmallestMediaUrl } from "../../../lib/portal/media";
-import type { PortalProduct } from "../../../types/portal";
+import type { PortalCup, PortalProduct } from "../../../types/portal";
+import { CupThumbnailStack } from "./CupThumbnailStack";
 import { DeleteProductDialog } from "./DeleteProductDialog";
 
 type ProductCardProps = {
   product: PortalProduct;
   productLineId: string | number;
+  defaultCup?: PortalCup;
 };
 
-export function ProductCard({ product, productLineId }: ProductCardProps) {
+export function ProductCard({
+  product,
+  productLineId,
+  defaultCup,
+}: ProductCardProps) {
   const router = useRouter();
   const deleteDialog = useDisclosure();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -31,6 +36,7 @@ export function ProductCard({ product, productLineId }: ProductCardProps) {
   const productName = capitalizeName(product.name);
   const brandName = capitalizeName(product.brand?.name);
   const brandImage = getSmallestMediaUrl(product.brand?.logo);
+  const displayCup = product.cup || defaultCup;
 
   const updateActiveState = async (nextIsActive: boolean) => {
     const previousIsActive = isActive;
@@ -122,7 +128,29 @@ export function ProductCard({ product, productLineId }: ProductCardProps) {
           }
         }}
       >
-        <Grid templateColumns="38px 1fr" gap="3" alignItems="center" minW="0">
+        <Grid
+          templateColumns="10px 38px 1fr"
+          gap="3"
+          alignItems="center"
+          minW="0"
+        >
+          <Box
+            as="button"
+            type="button"
+            aria-label={`Set ${productName} ${isActive ? "inactive" : "active"}`}
+            title={isActive ? "Active" : "Inactive"}
+            boxSize="10px"
+            borderRadius="full"
+            bg={isActive ? "#62e85b" : "whiteAlpha.300"}
+            boxShadow={isActive ? "0 0 8px rgba(98,232,91,.45)" : "none"}
+            cursor={isUpdatingActive ? "wait" : "pointer"}
+            disabled={isUpdatingActive}
+            transition="background 0.2s ease, box-shadow 0.2s ease"
+            onClick={(event: MouseEvent<HTMLButtonElement>) => {
+              event.stopPropagation();
+              void updateActiveState(!isActive);
+            }}
+          />
           <Box aria-label={`${productName} preview`} role="img" boxSize="36px">
             {mainImage ? (
               <Image
@@ -152,7 +180,7 @@ export function ProductCard({ product, productLineId }: ProductCardProps) {
           {brandImage ? <Image src={brandImage} alt={`${brandName} logo`} w="38px" h="28px" objectFit="contain" /> : null}
           <Text color="whiteAlpha.800" fontSize="sm" noOfLines={1}>{brandName || "No brand"}</Text>
         </Grid>
-        <Button size="xs" justifySelf="start" minH="22px" h="22px" px="2" borderRadius="full" bg={isActive ? "rgba(53,209,38,.16)" : "whiteAlpha.100"} color={isActive ? "#67df5e" : "whiteAlpha.600"} fontSize="10px" fontWeight="600" isLoading={isUpdatingActive} onClick={(event) => { event.stopPropagation(); void updateActiveState(!isActive); }} _hover={{ bg: isActive ? "rgba(53,209,38,.25)" : "whiteAlpha.200" }}>{isActive ? "Active" : "Inactive"}</Button>
+        <CupThumbnailStack cups={displayCup ? [displayCup] : []} />
         <Box onClick={(event) => event.stopPropagation()}>
           <IconButton aria-label={`Edit ${productName}`} icon={<FiEdit2 />} variant="ghost" size="sm" color="whiteAlpha.800" onClick={() => void router.push(`/product-lines/${productLineId}/products/new?productId=${product.id}`)} />
           <IconButton aria-label={`Delete ${productName}`} icon={<FiTrash2 />} variant="ghost" size="sm" color="whiteAlpha.800" isLoading={isDeleting} _hover={{ color: "red.300", bg: "whiteAlpha.100" }} onClick={deleteDialog.onOpen} />

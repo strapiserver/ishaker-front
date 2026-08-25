@@ -25,8 +25,8 @@ import {
 import { capitalizeName } from "../../../lib/formatName";
 import type { PortalProductLine } from "../../../types/portal";
 import { DeleteProductLineDialog } from "./DeleteProductLineDialog";
-import { CupThumbnailStack } from "./CupThumbnailStack";
 import { ProductCard } from "./ProductCard";
+import { Box3D } from "../../../styles/theme/custom";
 type ProductLineCardProps = {
   productLine: PortalProductLine;
 };
@@ -106,12 +106,10 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
 
   return (
     <>
-      <Box
+      <Box3D
         overflow="hidden"
-        bg="rgba(255,255,255,0.025)"
-        border="1px solid"
-        borderColor="rgba(255,255,255,0.12)"
-        borderRadius="12px"
+        variant="contrast"
+        my="4"
         opacity={isActive ? 1 : 0.8}
         position="relative"
         transition="opacity 0.2s ease"
@@ -135,17 +133,8 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
               fontWeight="700"
               fontSize="md"
             >{`${productLineName} (${productCount})`}</Text>
-            <Text color={isActive ? "#6ce864" : "whiteAlpha.500"} fontSize="xs">
-              •&nbsp; {isActive ? "Active" : "Inactive"}
-            </Text>
           </HStack>
           <HStack spacing="4">
-            <HStack spacing="2">
-              <CupThumbnailStack cups={productLine.cups?.slice(0, 1)} />
-            </HStack>
-            <Text color="whiteAlpha.600" fontSize="xs">
-              {brandCount} {brandCount === 1 ? "brand" : "brands"}
-            </Text>
             <Menu placement="bottom-end">
               <MenuButton
                 as={IconButton}
@@ -203,7 +192,7 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
             borderBottom="1px solid"
             borderColor="rgba(255,255,255,0.08)"
           >
-            {["PRODUCT", "BRAND", "STATUS", "ACTIONS"].map((label) => (
+            {["PRODUCT", "BRAND", "CUP", "ACTIONS"].map((label) => (
               <Text key={label} color="whiteAlpha.500" fontSize="10px">
                 {label}
               </Text>
@@ -216,6 +205,7 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
                   key={product.id}
                   product={product}
                   productLineId={productLine.id}
+                  defaultCup={productLine.cups?.[0]}
                 />
               ))}
             </Box>
@@ -239,7 +229,7 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
             Add product
           </Button>
         </Box>
-      </Box>
+      </Box3D>
       <DeleteProductLineDialog
         isDeleting={isDeleting}
         isOpen={deleteDialog.isOpen}

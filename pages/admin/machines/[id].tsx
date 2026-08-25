@@ -14,6 +14,7 @@ import { AdminHeader } from "../../../components/admin/AdminHeader";
 import { MachineReadinessPanel } from "../../../components/admin/MachineReadinessPanel";
 import { MachineDoorUnlockPanel } from "../../../components/admin/MachineDoorUnlockPanel";
 import { MachineField } from "../../../components/admin/MachineField";
+import { MachineFreeMode } from "../../../components/machines/MachineFreeMode";
 import { requireAdminSession } from "../../../lib/admin/auth";
 import { getMachinePatchVersion } from "../../../lib/admin/machinePatch";
 import { requestStrapiRestAsService } from "../../../services/server/strapiClient";
@@ -78,6 +79,8 @@ export default function AdminMachineReadinessPage({
             />
 
             <MachineDoorUnlockPanel machine={machine} />
+
+            <MachineFreeMode machineId={machine.id} apiScope="admin" />
 
             <Box
               bg="bg.900"

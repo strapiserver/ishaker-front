@@ -4,6 +4,7 @@ import {
   Badge,
   Box,
   Button,
+  Collapse,
   FormControl,
   FormLabel,
   HStack,
@@ -100,6 +101,8 @@ export function MachineKioskTexts({
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [areTranslationsExpanded, setAreTranslationsExpanded] =
+    useState(false);
   const [resetIds, setResetIds] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState("");
 
@@ -512,80 +515,107 @@ export function MachineKioskTexts({
             minutes. No restart needed.
           </Text>
 
-          <VStack
-            display={{ base: "flex", md: "none" }}
-            align="stretch"
-            spacing="3"
-          >
-            {filtered.map((translation) => {
-              const id = String(translation.id);
-              return (
-                <Box
-                  key={translation.id}
-                  border="1px solid"
-                  borderColor={
-                    pendingIds.has(id) ? "orange.500" : "whiteAlpha.100"
-                  }
-                  borderRadius="xl"
-                  bg={pendingIds.has(id) ? "whiteAlpha.50" : "bg.800"}
-                  p="4"
-                >
-                  <Text
-                    color="bg.400"
-                    fontSize="xs"
-                    fontWeight="700"
-                    textTransform="uppercase"
-                    letterSpacing="wide"
-                    mb="1"
-                  >
-                    Where it is used
-                  </Text>
-                  <Text color="bg.200" mb="4">
-                    {translation.usage || "Usage not documented"}
-                  </Text>
-                  {renderEditor(translation)}
-                </Box>
-              );
-            })}
-          </VStack>
-
-          <TableContainer
-            display={{ base: "none", md: "block" }}
-            border="1px solid"
-            borderColor="whiteAlpha.100"
-            borderRadius="xl"
-            maxH="70vh"
-            overflowY="auto"
-          >
-            <Table size="sm" minW="680px">
-              <Thead position="sticky" top="0" bg="bg.800" zIndex="1">
-                <Tr>
-                  <Th minW="330px">Where it is used</Th>
-                  <Th minW="330px">Your text</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
+          <Box position="relative">
+            <Collapse
+              in={areTranslationsExpanded}
+              startingHeight={400}
+              animateOpacity
+            >
+              <VStack
+                display={{ base: "flex", md: "none" }}
+                align="stretch"
+                spacing="3"
+              >
                 {filtered.map((translation) => {
                   const id = String(translation.id);
                   return (
-                    <Tr
+                    <Box
                       key={translation.id}
-                      bg={pendingIds.has(id) ? "whiteAlpha.50" : undefined}
+                      border="1px solid"
+                      borderColor={
+                        pendingIds.has(id) ? "orange.500" : "whiteAlpha.100"
+                      }
+                      borderRadius="xl"
+                      bg={pendingIds.has(id) ? "whiteAlpha.50" : "bg.800"}
+                      p="4"
                     >
-                      <Td
-                        verticalAlign="top"
-                        color="bg.200"
-                        whiteSpace="normal"
+                      <Text
+                        color="bg.400"
+                        fontSize="xs"
+                        fontWeight="700"
+                        textTransform="uppercase"
+                        letterSpacing="wide"
+                        mb="1"
                       >
+                        Where it is used
+                      </Text>
+                      <Text color="bg.200" mb="4">
                         {translation.usage || "Usage not documented"}
-                      </Td>
-                      <Td verticalAlign="top">{renderEditor(translation)}</Td>
-                    </Tr>
+                      </Text>
+                      {renderEditor(translation)}
+                    </Box>
                   );
                 })}
-              </Tbody>
-            </Table>
-          </TableContainer>
+              </VStack>
+
+              <TableContainer
+                display={{ base: "none", md: "block" }}
+                border="1px solid"
+                borderColor="whiteAlpha.100"
+                borderRadius="xl"
+                overflowX="auto"
+              >
+                <Table size="sm" minW="680px">
+                  <Thead bg="bg.800">
+                    <Tr>
+                      <Th minW="330px">Where it is used</Th>
+                      <Th minW="330px">Your text</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {filtered.map((translation) => {
+                      const id = String(translation.id);
+                      return (
+                        <Tr
+                          key={translation.id}
+                          bg={pendingIds.has(id) ? "whiteAlpha.50" : undefined}
+                        >
+                          <Td
+                            verticalAlign="top"
+                            color="bg.200"
+                            whiteSpace="normal"
+                          >
+                            {translation.usage || "Usage not documented"}
+                          </Td>
+                          <Td verticalAlign="top">
+                            {renderEditor(translation)}
+                          </Td>
+                        </Tr>
+                      );
+                    })}
+                  </Tbody>
+                </Table>
+              </TableContainer>
+            </Collapse>
+            {!areTranslationsExpanded ? (
+              <Box
+                position="absolute"
+                right="0"
+                bottom="0"
+                left="0"
+                h="20"
+                bgGradient="linear(to-b, transparent, bg.900)"
+                pointerEvents="none"
+              />
+            ) : null}
+          </Box>
+          <Button
+            variant="outline"
+            alignSelf="center"
+            onClick={() => setAreTranslationsExpanded((expanded) => !expanded)}
+          >
+            {areTranslationsExpanded ? "Show less" : "Show all translations"}
+          </Button>
           <Text color="bg.400" fontSize="sm">
             Showing {filtered.length} of {data.translations.length}{" "}
             customer-facing keys.

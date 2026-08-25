@@ -53,6 +53,7 @@ const createProductParams = (session: PortalSession) => {
   params.set("populate[2]", "product_line");
   params.set("populate[3]", "brand.logo");
   params.set("populate[4]", "dosage");
+  params.set("populate[5]", "cup.image");
   params.set("sort[0]", "name:ASC");
   params.set("pagination[pageSize]", "2000");
   return params;

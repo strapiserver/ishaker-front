@@ -17,6 +17,7 @@ import { MachineRegistrationEditor } from "../../components/portal/machines/Mach
 import { MachineDoorUnlock } from "../../components/portal/machines/MachineDoorUnlock";
 import { MachineHealthStrip } from "../../components/portal/machines/MachineHealthStrip";
 import { MachineKioskTexts } from "../../components/portal/machines/MachineKioskTexts";
+import { MachineFreeMode } from "../../components/machines/MachineFreeMode";
 import { NayaxSettingsSection } from "../../components/portal/NayaxSettingsSection";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { requirePortalSession } from "../../lib/portal/auth";
@@ -156,6 +157,9 @@ export default function MachineDetailPage({
               city: session.client.city,
             }}
           />
+        </Box>
+        <Box gridColumn={{ xl: "1 / -1" }}>
+          <MachineFreeMode machineId={machine.id} apiScope="portal" />
         </Box>
         <Box gridColumn={{ xl: "1 / -1" }}>
           <MachineKioskTexts

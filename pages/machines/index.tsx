@@ -211,6 +211,7 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                   flexWrap="wrap"
                 >
                   <Button
+                    variant="contrast"
                     as={Link}
                     href={`/product-lines/machines/${machine.id}`}
                     size="sm"
@@ -219,6 +220,7 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                     Add product
                   </Button>
                   <Button
+                    variant="contrast"
                     size="sm"
                     rightIcon={<Icon as={MdAddToHomeScreen} boxSize="3" />}
                     onClick={() => setRemoteMachine(machine)}
@@ -234,8 +236,9 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
       <HStack spacing="3" mt="6" flexWrap="nowrap" align="stretch" mx="2">
         <Button
           w="100%"
+          my="2"
           borderRadius="2xl"
-          border="2px dashed"
+          border="3px dashed"
           borderColor="bg.500"
           as={Link}
           href="/step1"
@@ -243,6 +246,7 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
           fontSize={{ base: "xs", sm: "md", md: "lg" }}
           px={{ base: "3", sm: "4" }}
           minW="0"
+          minH="50px"
           leftIcon={<Icon as={FaPlus} boxSize={{ base: "4", md: "5" }} />}
         >
           Register another machine
