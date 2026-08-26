@@ -3,7 +3,9 @@ import {
   assertMachineBelongsToSessionClient,
   getPortalSessionFromApiRequest,
 } from "../../../../lib/portal/auth";
+import { hasPromoCodeScopeConflict } from "../../../../lib/portal/promoScope";
 import { requestStrapiRestAsService } from "../../../../services/server/strapiClient";
+import type { PromoCode } from "../../../../types/portal";
 
 const asString = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 const getErrorPayload = (error: unknown) => {
@@ -93,6 +95,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
+      const duplicateParams = new URLSearchParams();
+      duplicateParams.set("filters[client][id][$eq]", String(session.client.id));
+      duplicateParams.set("filters[code][$eq]", code);
+      duplicateParams.set("fields[0]", "id");
+      duplicateParams.set("fields[1]", "code");
+      duplicateParams.set("populate[machine][fields][0]", "id");
+      duplicateParams.set("pagination[pageSize]", "2000");
+      const matchingPromos = await requestStrapiRestAsService<PromoCode[]>(
+        `/api/promo-codes?${duplicateParams.toString()}`,
+      );
+
+      if (hasPromoCodeScopeConflict(matchingPromos, code, machineId)) {
+        return res.status(409).json({
+          error: "duplicate_promo_code",
+          message: machineId
+            ? "This promo code already exists on the selected machine."
+            : "This promo code overlaps an existing promo on one or more machines.",
+        });
+      }
+
       const response = await requestStrapiRestAsService("/api/promo-codes", {
         method: "POST",
         body: JSON.stringify({

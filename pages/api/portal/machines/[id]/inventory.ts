@@ -33,10 +33,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "invalid_water_type" });
     }
     const amount = Number(req.body.waterAmountLiters);
-    if (!Number.isFinite(amount) || amount < 0 || amount > 1000) {
+    if (!Number.isFinite(amount) || amount < 0 || amount > 19) {
       return res.status(400).json({
         error: "invalid_water_amount",
-        message: "Water amount must be between 0 and 1,000 liters.",
+        message: "Water amount must be between 0 and 19 liters.",
       });
     }
     data.water_type = req.body.waterType;

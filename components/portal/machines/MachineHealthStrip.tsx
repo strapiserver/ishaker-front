@@ -79,6 +79,7 @@ const HealthItem = ({
   showLastOnline = false,
   onClick,
   powderLevels,
+  levelPercent,
 }: {
   title: string;
   icon: IconType;
@@ -86,6 +87,7 @@ const HealthItem = ({
   showLastOnline?: boolean;
   onClick: () => void;
   powderLevels?: Array<number | null>;
+  levelPercent?: number;
 }) => {
   const color = stateColor[indicator.state];
   const background = stateBackground[indicator.state];
@@ -188,6 +190,35 @@ const HealthItem = ({
                 );
               })}
             </HStack>
+          ) : levelPercent !== undefined ? (
+            <HStack
+              spacing="1.5"
+              h="12px"
+              aria-label={`${title} level: ${Math.round(levelPercent)}%`}
+            >
+              <Box
+                position="relative"
+                w="6px"
+                h="10px"
+                flex="0 0 auto"
+                overflow="hidden"
+                borderRadius="1px"
+                bg="bg.500"
+              >
+                {levelPercent > 0 ? (
+                  <Box
+                    position="absolute"
+                    insetX="0"
+                    bottom="0"
+                    h={`${Math.max(1, Math.round(levelPercent / 10))}px`}
+                    bg={`${color}.400`}
+                  />
+                ) : null}
+              </Box>
+              <Text color="bg.50" fontSize="xs" fontWeight="700" noOfLines={1}>
+                {indicator.label}
+              </Text>
+            </HStack>
           ) : (
             <Text color="bg.50" fontSize="xs" fontWeight="700" noOfLines={1}>
               {indicator.label}
@@ -228,6 +259,21 @@ export function MachineHealthStrip({
     );
   }
 
+  const waterType = health?.waterType ?? machine.water_type;
+  const rawWaterAmount =
+    health?.waterAmountLiters ?? machine.water_amount_liters;
+  const waterAmount = Number(rawWaterAmount);
+  const hasWaterAmount =
+    rawWaterAmount !== null &&
+    rawWaterAmount !== undefined &&
+    rawWaterAmount !== "" &&
+    Number.isFinite(waterAmount);
+  const waterLevelPercent =
+    waterType === "bottle" && hasWaterAmount
+      ? Math.max(0, Math.min(100, (waterAmount / 19) * 100))
+      : undefined;
+  const waterIndicator = health?.water || noData;
+
   const items = [
     {
       title: "Online",
@@ -246,7 +292,14 @@ export function MachineHealthStrip({
       title: "Water",
       dialog: "water" as const,
       icon: FaTint,
-      indicator: health?.water || noData,
+      indicator:
+        waterLevelPercent !== undefined
+          ? {
+              ...waterIndicator,
+              label: `${waterAmount.toFixed(1)} L / 19 L`,
+            }
+          : waterIndicator,
+      levelPercent: waterLevelPercent,
     },
     {
       title: "Powders",

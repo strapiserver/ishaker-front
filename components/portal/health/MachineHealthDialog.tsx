@@ -15,7 +15,12 @@ import { WaterDialogContent } from "./WaterDialogContent";
 import { WifiDialogContent } from "./WifiDialogContent";
 
 export type HealthDialogKind =
-  "wifi" | "nayax" | "water" | "powders" | "cups" | "lock";
+  | "wifi"
+  | "nayax"
+  | "water"
+  | "powders"
+  | "cups"
+  | "lock";
 
 const titles: Record<HealthDialogKind, string> = {
   wifi: "Machine Wi-Fi",
@@ -45,7 +50,7 @@ export function MachineHealthDialog({
       size={kind === "powders" ? "2xl" : "lg"}
     >
       <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(4px)" />
-      <ModalContent bg="bg.900" color="bg.50">
+      <ModalContent color="bg.50" bg="bg.1000">
         <ModalHeader pr="12">
           {kind ? titles[kind] : "Machine health"}
         </ModalHeader>

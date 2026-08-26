@@ -8,6 +8,7 @@ import {
   Input,
   InputGroup,
   InputRightElement,
+  Select,
   SimpleGrid,
   VStack,
   Text,
@@ -25,6 +26,7 @@ import { requirePortalSession } from "../lib/portal/auth";
 import { requestStrapiRestAsService } from "../services/server/strapiClient";
 import type { PortalSession, PromoCode } from "../types/portal";
 import { formatMoney, getCurrencySymbol } from "../lib/portal/currency";
+import { hasPromoCodeScopeConflict } from "../lib/portal/promoScope";
 import {
   formatPromoCountdown,
   getPromoEndTime,
@@ -113,6 +115,7 @@ export default function PromosPage({
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [code, setCode] = useState("");
+  const [machineId, setMachineId] = useState("");
   const [discountType, setDiscountType] = useState<"PERCENT" | "FIXED">(
     "PERCENT",
   );
@@ -192,6 +195,15 @@ export default function PromosPage({
     event.preventDefault();
     setError("");
 
+    if (hasPromoCodeScopeConflict(promos, code, machineId || null)) {
+      setError(
+        machineId
+          ? "This promo code already exists on the selected machine."
+          : "This promo code overlaps an existing promo on one or more machines.",
+      );
+      return;
+    }
+
     const confirmed = window.confirm(
       "Create this promo code in the live client portal? Clients will be able to use it immediately once activated downstream.",
     );
@@ -204,6 +216,7 @@ export default function PromosPage({
       body: JSON.stringify({
         title,
         code,
+        machineId: machineId || null,
         discountType,
         amount: Number(amount),
         qty: Number(qty),
@@ -303,7 +316,7 @@ export default function PromosPage({
                                 currentTime,
                               ) || ""}
                         </Text>
-                        <Text color="bg.300">
+                      <Text color="bg.300">
                           {promo.discount_type === "PERCENT"
                             ? `${promo.amount}% off • ${promo.used_count ?? 0} of ${promo.qty ?? "\u221e"} used`
                             : `${formatMoney(
@@ -311,8 +324,15 @@ export default function PromosPage({
                                 promo.machine?.currency ||
                                   session.client.currency ||
                                   session.machines[0]?.currency,
-                              )} off • ${promo.used_count ?? 0} of ${promo.qty ?? "\u221e"} used`}
-                        </Text>
+                            )} off • ${promo.used_count ?? 0} of ${promo.qty ?? "\u221e"} used`}
+                      </Text>
+                      <Text color="bg.400" fontSize="sm">
+                        {promo.machine
+                          ? promo.machine.title ||
+                            promo.machine.serial_number ||
+                            `Machine #${promo.machine.id}`
+                          : "All machines"}
+                      </Text>
                       </Box>
                       <Box minW="100px">
                         <Box3D
@@ -391,6 +411,22 @@ export default function PromosPage({
                 onChange={(event) => setCode(event.target.value.toUpperCase())}
                 placeholder="Send this to your clients. Ex: SUNDAY50"
               />
+            </FormControl>
+            <FormControl>
+              <FormLabel>Target machine</FormLabel>
+              <Select
+                value={machineId}
+                onChange={(event) => setMachineId(event.target.value)}
+              >
+                <option value="">All machines</option>
+                {session.machines.map((machine) => (
+                  <option key={machine.id} value={machine.id}>
+                    {machine.title ||
+                      machine.serial_number ||
+                      `Machine #${machine.id}`}
+                  </option>
+                ))}
+              </Select>
             </FormControl>
             <FormControl>
               <FormLabel>Discount</FormLabel>
