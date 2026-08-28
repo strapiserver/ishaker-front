@@ -105,7 +105,7 @@ export default function AdminTranslationSetsPage() {
                 <Td>{set.based_on?.name || "—"}</Td>
                 <Td whiteSpace="normal">
                   {(set.machines || []).length
-                    ? set.machines.map((machine: any) => machine.title || machine.serial_number || `#${machine.id}`).join(", ")
+                    ? set.machines.map((machine: any) => machine.serial_number || `#${machine.id}`).join(", ")
                     : "—"}
                 </Td>
                 <Td><Badge colorScheme={set.isActive === false ? "gray" : "green"}>{set.isActive === false ? "Inactive" : "Active"}</Badge></Td>

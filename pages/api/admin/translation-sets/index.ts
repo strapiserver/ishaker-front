@@ -31,7 +31,7 @@ export default async function handler(
       ),
       loadAllEntrySetLinks(),
       requestStrapiRestAsService<any[]>(
-        "/api/machines?fields[0]=id&fields[1]=title&fields[2]=serial_number&populate[translation_set][fields][0]=id&pagination[pageSize]=2000",
+        "/api/machines?fields[0]=id&fields[1]=serial_number&populate[translation_set][fields][0]=id&pagination[pageSize]=2000",
       ),
     ]);
     const entryCounts = new Map<string, number>();

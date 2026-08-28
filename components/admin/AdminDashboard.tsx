@@ -59,7 +59,7 @@ type FailureOccurrence = {
 };
 
 const machineName = (machine: Machine) =>
-  machine.title || machine.nickname || `Machine #${machine.id}`;
+  machine.serial_number || machine.title || `Machine #${machine.id}`;
 
 const groupFailureOccurrences = (occurrences: FailureOccurrence[]) => {
   const groups = new Map<string, FailureOccurrence[]>();
@@ -150,7 +150,6 @@ export function AdminDashboard({
       return [
         machine.id,
         machine.title,
-        machine.nickname,
         machine.serial_number,
         machine.anydesk_id,
         machine.client?.company,

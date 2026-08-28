@@ -631,7 +631,7 @@ export default function AdminPresetsPage() {
                 <Text color="acid.300" fontWeight="800" mb="3">Apply to machine</Text>
                 <SimpleGrid columns={{ base: 1, md: 3 }} spacing="3">
                   <Select value={targetMachineId} onChange={(event) => setTargetMachineId(event.target.value)} placeholder="Target machine">
-                    {(data?.options?.machines || []).map((machine: any) => <option key={machine.id} value={machine.id}>{machine.title || machine.serial_number}</option>)}
+                    {(data?.options?.machines || []).map((machine: any) => <option key={machine.id} value={machine.id}>{machine.serial_number}</option>)}
                   </Select>
                   <Select value={applyMode} onChange={(event) => setApplyMode(event.target.value as any)}>
                     <option value="merge">Merge listed positions</option>

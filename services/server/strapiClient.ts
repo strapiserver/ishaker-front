@@ -201,6 +201,7 @@ const requestStrapiRest = async <T = any>(
   path: string,
   init?: RequestInit,
   jwt?: string,
+  shouldNormalize = true,
 ) => {
   const isMultipart =
     typeof FormData !== "undefined" && init?.body instanceof FormData;
@@ -225,7 +226,7 @@ const requestStrapiRest = async <T = any>(
     throw error;
   }
 
-  return normalize(payload) as T;
+  return (shouldNormalize ? normalize(payload) : payload) as T;
 };
 
 export const requestStrapiRestAsService = async <T = any>(
@@ -242,6 +243,22 @@ export const requestStrapiRestAsService = async <T = any>(
 
     jwt = await getStrapiJwt(true);
     return requestStrapiRest<T>(path, init, jwt);
+  }
+};
+
+/** Keep Strapi's `meta.pagination` while still using the service account. */
+export const requestStrapiRestPayloadAsService = async <T = any>(
+  path: string,
+  init?: RequestInit,
+) => {
+  let jwt = await getStrapiJwt(false);
+
+  try {
+    return await requestStrapiRest<T>(path, init, jwt, false);
+  } catch (error) {
+    if ((error as { status?: number }).status !== 401) throw error;
+    jwt = await getStrapiJwt(true);
+    return requestStrapiRest<T>(path, init, jwt, false);
   }
 };
 

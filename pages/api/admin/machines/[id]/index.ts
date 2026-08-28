@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdminApiSession } from "../../../../../lib/admin/auth";
+import { withoutMachineNickname } from "../../../../../lib/portal/machinePrivacy";
 import { requestStrapiRestAsService } from "../../../../../services/server/strapiClient";
 
 const idFrom = (value: string | string[] | undefined) => {
@@ -33,7 +34,9 @@ export default async function handler(
         }),
       },
     );
-    return res.status(200).json({ machine });
+    return res.status(200).json({
+      machine: withoutMachineNickname(machine as Record<string, unknown>),
+    });
   } catch (error) {
     console.error("[admin/machines/:id] update failed:", error);
     return res.status(500).json({ error: "machine_update_failed" });

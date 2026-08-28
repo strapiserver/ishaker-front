@@ -21,6 +21,14 @@ export const getMachineCells = async (
     "url",
   );
   params.set(
+    "populate[product][populate][custom_main][fields][0]",
+    "name",
+  );
+  params.set(
+    "populate[product][populate][custom_main][fields][1]",
+    "url",
+  );
+  params.set(
     "populate[product][populate][taste][populate][default_circle][fields][0]",
     "color",
   );

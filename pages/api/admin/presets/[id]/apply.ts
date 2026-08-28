@@ -57,7 +57,7 @@ export default async function handler(
           `/api/presets/${presetId}?populate[0]=currency&populate[1]=language&populate[2]=machine_type`,
         ),
         requestStrapiRestAsService(
-          `/api/machines/${machineId}?populate[0]=currency&populate[1]=language&populate[2]=machine_type`,
+          `/api/machines/${machineId}?fields[0]=serial_number&populate[0]=currency&populate[1]=language&populate[2]=machine_type`,
         ),
         requestStrapiRestAsService(
           `/api/preset-cells?filters[preset][id][$eq]=${presetId}&populate[product]=*&sort[0]=position:ASC&pagination[pageSize]=2000`,
@@ -186,7 +186,7 @@ export default async function handler(
         : [];
     const diff = {
       preset: { id: preset.id, name: preset.name },
-      machine: { id: machine.id, title: machine.title, serial_number: machine.serial_number },
+      machine: { id: machine.id, serial_number: machine.serial_number },
       mode,
       replacePrices,
       settings: {

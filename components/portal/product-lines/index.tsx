@@ -39,6 +39,7 @@ import { capitalizeName } from "../../../lib/formatName";
 import { getSmallestMediaUrl } from "../../../lib/portal/media";
 import { PortalShell } from "../PortalShell";
 import { MachineCellsSection } from "../machines/MachineCellsSection";
+import { MachineConsumptionSection } from "../machines/MachineConsumptionSection";
 import { OrphanProductCard } from "./OrphanProductCard";
 import { ProductLineCard } from "./ProductLineCard";
 import { getProductLineIcon } from "./NewProductLinePage";
@@ -357,6 +358,12 @@ export function ProductLinesPage({
                 replaceMachineCells(selectedAssignment.machine.id, cells)
               }
             />
+            <Box mt="4">
+              <MachineConsumptionSection
+                machine={selectedAssignment.machine}
+                initialCells={selectedCells}
+              />
+            </Box>
           </>
         ) : (
           <Text color="orange.200">

@@ -17,6 +17,7 @@ import { MachineRegistrationEditor } from "../../components/portal/machines/Mach
 import { MachineDoorUnlock } from "../../components/portal/machines/MachineDoorUnlock";
 import { MachineHealthStrip } from "../../components/portal/machines/MachineHealthStrip";
 import { MachineKioskTexts } from "../../components/portal/machines/MachineKioskTexts";
+import { MachineConsumptionSection } from "../../components/portal/machines/MachineConsumptionSection";
 import { MachineFreeMode } from "../../components/machines/MachineFreeMode";
 import { NayaxSettingsSection } from "../../components/portal/NayaxSettingsSection";
 import { PortalShell } from "../../components/portal/PortalShell";
@@ -167,6 +168,9 @@ export default function MachineDetailPage({
             languages={languages}
             currencies={currencies}
           />
+        </Box>
+        <Box gridColumn={{ xl: "1 / -1" }}>
+          <MachineConsumptionSection machine={machine} />
         </Box>
         <Box gridColumn={{ xl: "1 / -1" }}>
           <NayaxSettingsSection client={session.client} machine={machine} />

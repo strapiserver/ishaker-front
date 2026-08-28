@@ -152,7 +152,7 @@ export default async function handler(
               "sort[0]=name:ASC&pagination[pageSize]=2000",
           ),
           requestStrapiRestAsService(
-            "/api/machines?populate[0]=currency&populate[1]=language&sort[0]=title:ASC&pagination[pageSize]=2000",
+            "/api/machines?fields[0]=id&fields[1]=serial_number&sort[0]=serial_number:ASC&pagination[pageSize]=2000",
           ),
         ]);
       return res.status(200).json({

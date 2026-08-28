@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { withoutMachineNickname } from "../../../../../lib/portal/machinePrivacy";
 import {
   assertMachineBelongsToSessionClient,
   getPortalSessionFromApiRequest,
@@ -63,7 +64,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: "PUT",
       body: JSON.stringify({ data }),
     });
-    return res.status(200).json({ machine: updated });
+    return res.status(200).json({
+      machine: withoutMachineNickname(updated as Record<string, unknown>),
+    });
   } catch (error) {
     console.error("[portal/machines/:id/inventory] update failed:", error);
     const schemaUnavailable = (error as { status?: number }).status === 500;

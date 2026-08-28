@@ -208,17 +208,81 @@ export type Client = {
 
 export type Sale = {
   id: string | number;
+  sale_uuid?: string | null;
+  source?: "kiosk" | "csv_harvest" | "nayax" | "manual";
+  outcome?: "dispensed" | "failed" | "refunded" | "unknown";
   nayax_transaction_id?: string | null;
   nayax_terminal_id?: string | null;
   machine?: Machine | null;
+  client?: Client | null;
+  serial_number?: string | null;
+  occurred_at_local?: string | null;
+  machine_tz?: string | null;
+  reported_at?: string | null;
+  machine_cell?: { id: string | number; position?: number | null } | null;
+  cell_position?: number | null;
+  product?: { id: string | number; name?: string | null } | null;
+  product_line?: { id: string | number; name?: string | null } | null;
+  taste?: { id: string | number; name?: string | null } | null;
+  cup?: { id: string | number; name?: string | null } | null;
+  product_2?: { id: string | number; name?: string | null } | null;
+  taste_2?: { id: string | number; name?: string | null } | null;
+  is_mix?: boolean;
   amount?: number | string | null;
+  list_price?: number | string | null;
+  discount_amount?: number | string | null;
+  promo_code?: string | null;
+  is_free?: boolean;
   currency?: Currency | null;
   currency_code?: string | null;
   payment_method?: string | null;
   card_brand?: string | null;
   product_name?: string | null;
+  cup_size?: "full" | "medium" | string | null;
+  drink_volume_ml?: number | null;
+  powder_g?: number | string | null;
+  water_ml?: number | string | null;
+  cups_used?: number | null;
+  addon_product?: { id: string | number; name?: string | null } | null;
+  addon_g?: number | string | null;
+  writeoffs?: Array<{
+    position?: number | null;
+    product_id?: string | number | null;
+    grams?: number | string | null;
+    unit?: string | null;
+  }> | null;
+  remains_after?: {
+    containers?: Record<string, number | string | null>;
+    water_ml?: number | string | null;
+    cups?: number | string | null;
+  } | null;
+  patch_slug?: string | null;
+  raw?: { clock_suspect?: unknown; [key: string]: unknown } | null;
   status?: "authorized" | "settled" | "refunded" | "declined" | "unknown";
   occurred_at?: string | null;
+};
+
+export type SalesSummaryTotals = {
+  cups: number;
+  revenue: number;
+  free_cups: number;
+  powder_g: number;
+  water_ml: number;
+  cups_used: number;
+  avg_check?: number;
+};
+
+export type SalesSummaryGroup = Omit<SalesSummaryTotals, "avg_check"> & {
+  key: string;
+};
+
+export type SalesSummary = {
+  range: { from: string | null; to: string | null };
+  group: "day" | "product" | "machine" | "cell";
+  currency: string | null;
+  truncated: boolean;
+  totals: SalesSummaryTotals;
+  groups: SalesSummaryGroup[];
 };
 
 export type MachineLookupResponse = {
