@@ -1,0 +1,33 @@
+name: Mirror repository
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure mirror key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.MIRROR_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+
+      - name: Mirror all branches and tags
+        env:
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          MIRROR_REPOSITORY: ${{ vars.MIRROR_REPOSITORY }}
+        run: |
+          git clone --bare "https://github.com/${SOURCE_REPOSITORY}.git" source.git
+          git -C source.git push --mirror "git@github.com:${MIRROR_REPOSITORY}.git"
