@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   mirror:
+    if: github.repository_owner == 'strapiserver'
     runs-on: ubuntu-latest
     steps:
       - name: Configure mirror key
