@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getPortalSessionFromApiRequest } from "../../../../../lib/portal/auth";
+import {
+  assertMachineBelongsToSessionClient,
+  getPortalSessionFromApiRequest,
+} from "../../../../../lib/portal/auth";
 import { getMachineCatalogProducts } from "../../../../../services/server/machineCells";
 
 const asId = (value: string | string[] | undefined) => {
@@ -14,16 +17,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const session = await getPortalSessionFromApiRequest(req);
-  if (!session) return res.status(401).json({ error: "unauthorized" });
+  if (!session || session.access !== "client") {
+    return res.status(401).json({ error: "unauthorized" });
+  }
 
   const machineId = asId(req.query.id);
-  const allowed = new Set(session.machines.map((machine) => String(machine.id)));
-  if (!machineId || !allowed.has(machineId)) {
+  const machine = machineId
+    ? await assertMachineBelongsToSessionClient(session, machineId)
+    : null;
+  if (!machine) {
     return res.status(403).json({ error: "machine_access_denied" });
   }
 
   try {
-    const products = await getMachineCatalogProducts(machineId, session.client.id);
+    res.setHeader("Cache-Control", "private, no-store");
+    const products = await getMachineCatalogProducts(machine.id, session.client.id);
     return res.status(200).json(products);
   } catch (error) {
     console.error("[portal/machines/:id/catalog-products] loading failed:", error);

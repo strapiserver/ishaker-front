@@ -268,6 +268,17 @@ export const requestStrapiRestWithJwt = async <T = any>(
   init?: RequestInit,
 ) => requestStrapiRest<T>(path, init, jwt);
 
+export const registerPortalUserAsService = <T = any>(data: {
+  username: string;
+  email: string;
+  password: string;
+  client: string | number;
+}) =>
+  requestStrapiRestAsService<T>("/api/auth/local/register", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
 export const fetchStrapiCatalogEndpoint = async (
   path: string,
   init?: RequestInit,

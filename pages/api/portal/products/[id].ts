@@ -111,6 +111,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const params = new URLSearchParams();
+  params.set("filters[id][$eq]", productId);
+  if (session.access === "client") {
+    params.set("filters[$or][0][author][username][$eq]", "root");
+    params.set(
+      "filters[$or][1][author][client][id][$eq]",
+      String(session.client.id),
+    );
+  } else {
+    params.set("filters[author][id][$eq]", String(session.user.id));
+  }
   params.set("fields[0]", "name");
   params.set("fields[1]", "description");
   params.set("fields[2]", "product_type");
@@ -142,11 +152,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   params.set("populate[brand][fields][0]", "name");
   params.set("populate[brand][populate][logo][fields][0]", "url");
   params.set("populate[brand][populate][logo][fields][1]", "formats");
+  params.set("pagination[pageSize]", "1");
 
   try {
-    const product = await requestStrapiRestAsService<PortalProduct>(
-      `/api/products/${productId}?${params.toString()}`,
+    const products = await requestStrapiRestAsService<PortalProduct[]>(
+      `/api/products?${params.toString()}`,
     );
+    const product = products[0];
+    if (!product) {
+      return res.status(404).json({
+        error: "product_not_found",
+        message: "Product could not be loaded.",
+      });
+    }
+    res.setHeader("Cache-Control", "private, no-store");
     return res.status(200).json({ product });
   } catch (error) {
     console.error("[portal/products/:id] loading failed:", error);

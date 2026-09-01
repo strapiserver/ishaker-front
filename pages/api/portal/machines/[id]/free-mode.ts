@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { parseFreeModeMinutes } from "../../../../../lib/freeMode";
-import { getPortalSessionFromApiRequest } from "../../../../../lib/portal/auth";
+import {
+  assertMachineBelongsToSessionClient,
+  getPortalSessionFromApiRequest,
+} from "../../../../../lib/portal/auth";
 import {
   getMachineFreeModeState,
   setMachineFreeMode,
@@ -27,9 +30,9 @@ export default async function handler(
   }
 
   const machineId = asId(req.query.id);
-  const machine = session.machines.find(
-    (item) => String(item.id) === String(machineId),
-  );
+  const machine = machineId
+    ? await assertMachineBelongsToSessionClient(session, machineId)
+    : null;
   if (!machine) {
     return res.status(403).json({ error: "machine_access_denied" });
   }

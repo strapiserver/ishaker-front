@@ -285,6 +285,8 @@ export const assertMachineBelongsToSessionClient = async (
   session: PortalSession,
   machineId: string | number,
 ) => {
+  if (session.access !== "client" || !session.client?.id) return null;
+
   if (machineBelongsToSessionClient(session, machineId)) {
     return (
       session.machines.find(
@@ -293,7 +295,11 @@ export const assertMachineBelongsToSessionClient = async (
     );
   }
 
-  const machine = await fetchMachineByIdAsService(machineId);
+  const machine = await fetchMachineByIdAsService(machineId).catch((error) => {
+    const status = (error as { status?: number }).status;
+    if (status === 404) return null;
+    throw error;
+  });
   if (
     !machine?.client ||
     String(machine.client.id) !== String(session.client.id)

@@ -5,7 +5,10 @@ import {
   resolveDoorSerial,
 } from "../../../../../lib/portal/doorAccess";
 import { buildDoorKey } from "../../../../../lib/portal/doorKey";
-import { getPortalSessionFromApiRequest } from "../../../../../lib/portal/auth";
+import {
+  assertMachineBelongsToSessionClient,
+  getPortalSessionFromApiRequest,
+} from "../../../../../lib/portal/auth";
 
 const idFrom = (value: string | string[] | undefined) => {
   const id = Array.isArray(value) ? value[0] : value;
@@ -34,9 +37,9 @@ export default async function handler(
   }
 
   const machineId = idFrom(req.query.id);
-  const machine = session.machines.find(
-    (candidate) => String(candidate.id) === machineId,
-  );
+  const machine = machineId
+    ? await assertMachineBelongsToSessionClient(session, machineId)
+    : null;
   if (!machine) return res.status(404).json({ error: "not_found" });
   if (machine.has_door_lock !== true) {
     return res.status(409).json({ error: "no_door_lock" });

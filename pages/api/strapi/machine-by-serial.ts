@@ -13,7 +13,11 @@ import {
   MachineSerialIssueError,
 } from "../../../lib/portal/machineSerial";
 import { WHATSAPP_SUPPORT_URL } from "../../../lib/portal/support";
-import { addPortalMachineFields } from "../../../lib/portal/machinePrivacy";
+import {
+  addPortalMachineFields,
+  registrationSafeMachineLookup,
+} from "../../../lib/portal/machinePrivacy";
+import { resolvePortalSession } from "../../../lib/portal/auth";
 
 const normalizeMachineClient = (machine: Machine | null): MachineLookupResponse => {
   const client = (machine?.client || null) as Client | null;
@@ -92,27 +96,34 @@ export default async function handler(
   }
 
   try {
+    const session = await resolvePortalSession(req.headers.cookie).catch(() => null);
+    const respond = (result: MachineLookupResponse) =>
+      res
+        .status(200)
+        .json(registrationSafeMachineLookup(result, session?.access === "client" ? session.client : null));
+
+    res.setHeader("Cache-Control", "private, no-store");
     const serviceRestResult = await loadViaServiceRest(serial);
     if (serviceRestResult.machine) {
-      return res.status(200).json(serviceRestResult);
+      return respond(serviceRestResult);
     }
 
     const restResult = await loadViaRest(serial);
     if (restResult.machine) {
-      return res.status(200).json(restResult);
+      return respond(restResult);
     }
 
     const serviceResult = await loadViaServiceGraphql(serial);
     if (serviceResult.machine) {
-      return res.status(200).json(serviceResult);
+      return respond(serviceResult);
     }
 
     const graphqlResult = await loadViaGraphql(serial);
     if (graphqlResult.machine) {
-      return res.status(200).json(graphqlResult);
+      return respond(graphqlResult);
     }
 
-    return res.status(200).json(restResult);
+    return respond(restResult);
   } catch (error) {
     if (error instanceof MachineSerialIssueError) {
       return res.status(409).json({

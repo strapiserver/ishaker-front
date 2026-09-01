@@ -9,7 +9,10 @@ import {
   normalizeNickname,
 } from "../../../lib/portal/nickname";
 import { getStrapiBaseUrl } from "../../../services/fetchers";
-import { requestStrapiRestAsService } from "../../../services/server/strapiClient";
+import {
+  registerPortalUserAsService,
+  requestStrapiRestAsService,
+} from "../../../services/server/strapiClient";
 import {
   changeTelemetryMachineOrganization,
   createTelemetryOrganization,
@@ -594,22 +597,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const registerResponse = await fetch(
-      `${getStrapiBaseUrl()}/api/auth/local/register`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          username: nickname.toLowerCase(),
-          email,
-          password,
-          client: client.id,
-        }),
-      },
-    );
-    const registerPayload = await registerResponse.json().catch(() => null);
+    let registerPayload: any = null;
+    let registerError: any = null;
+    try {
+      registerPayload = await registerPortalUserAsService({
+        username: nickname.toLowerCase(),
+        email,
+        password,
+        client: client.id,
+      });
+    } catch (error) {
+      registerError = error;
+    }
 
-    if (!registerResponse.ok || !registerPayload?.jwt) {
+    if (!registerPayload?.jwt) {
       await requestStrapiRestAsService(`/api/clients/${client.id}`, {
         method: "DELETE",
       }).catch((error) => {
@@ -618,14 +619,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           error,
         );
       });
-      return res.status(registerResponse.status || 500).json({
+      const registerErrorPayload = getErrorPayload(
+        registerError || new Error("Portal account creation returned no session."),
+      );
+      return res.status(registerErrorPayload.status || 500).json({
         error: "registration_submission_failed",
         message:
-          registerPayload?.error?.message ||
-          registerPayload?.message ||
+          registerErrorPayload.message ||
           "Portal account could not be created.",
-        details:
-          registerPayload?.error?.details || registerPayload?.details || null,
+        details: registerErrorPayload.details || null,
       });
     }
 
