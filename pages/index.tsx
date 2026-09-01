@@ -6,6 +6,7 @@ import { FeaturesSection } from "../components/home/FeaturesSection";
 import { Header } from "../components/home/Header";
 import { HeroSection } from "../components/home/HeroSection";
 import { ShakerScene } from "../components/home/shaker-scene";
+import { Stats } from "../components/home/Stats";
 import { StatsSection } from "../components/home/StatsSection";
 
 export default function Home() {
@@ -34,13 +35,9 @@ export default function Home() {
           />
 
           <Cups />
-          <StatsSection
-            panelBg={panelBg}
-            borderColor={borderColor}
-            muted={muted}
-          />
 
           <ShakerScene />
+          <Stats />
           <Brands />
           <FeaturesSection
             panelBg={panelBg}
