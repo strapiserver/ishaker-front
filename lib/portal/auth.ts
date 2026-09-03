@@ -180,9 +180,19 @@ export const resolvePortalSession = async (
   if (!credential) return null;
 
   const impersonatedUserId = readAdminImpersonationUserId(credential);
-  const user = impersonatedUserId
-    ? await fetchPortalUserAsService(impersonatedUserId)
-    : await fetchPortalUser(credential);
+  let user: PortalUser;
+  try {
+    user = impersonatedUserId
+      ? await fetchPortalUserAsService(impersonatedUserId)
+      : await fetchPortalUser(credential);
+  } catch (error) {
+    const status = (error as { status?: number }).status;
+    // Expired, revoked, and pre-deployment cookies are simply signed-out
+    // sessions. Treat them as absent instead of failing public registration
+    // pages and logging a server error on every visit.
+    if (status === 401 || status === 403) return null;
+    throw error;
+  }
   if (!user?.id) return null;
 
   if (!user.client?.id) {

@@ -12,9 +12,15 @@ import RouteLoadingOverlay from "../components/shared/RouteLoadingOverlay";
 
 function MyApp({ Component, pageProps }: AppProps) {
   useEffect(() => {
-    import("@lottiefiles/dotlottie-react").then(({ setWasmUrl }) => {
-      setWasmUrl("/dotlottie-player.wasm");
-    });
+    import("@lottiefiles/dotlottie-react")
+      .then(({ setWasmUrl }) => {
+        setWasmUrl("/dotlottie-player.wasm");
+      })
+      .catch((error) => {
+        // Animations are decorative. A stale optional chunk should never take
+        // down the whole application while Next rebuilds in development.
+        console.warn("[iShaker] Lottie initialization skipped:", error);
+      });
   }, []);
 
   return (

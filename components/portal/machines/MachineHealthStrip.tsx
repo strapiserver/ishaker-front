@@ -9,22 +9,18 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import type { IconType } from "react-icons";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { BiSolidInfoCircle } from "react-icons/bi";
 import { CiCoffeeCup } from "react-icons/ci";
-import {
-  FaBoxOpen,
-  FaCreditCard,
-  FaLock,
-  FaTint,
-  FaWifi,
-} from "react-icons/fa";
+import { FaBoxOpen, FaChartLine, FaLock, FaTint, FaWifi } from "react-icons/fa";
+import Link from "next/link";
+import { formatMoney } from "../../../lib/portal/currency";
 import type {
   HealthState,
   MachineHealthIndicator,
   MachineHealthRow,
 } from "../../../types/machineHealth";
-import type { Machine } from "../../../types/strapi";
+import type { Currency, Machine } from "../../../types/strapi";
 import {
   MachineHealthDialog,
   type HealthDialogKind,
@@ -33,6 +29,12 @@ import {
 type MachineHealthStripProps = {
   machine: Machine;
   health?: MachineHealthRow;
+  salesToday?: {
+    revenue: number;
+    cups: number;
+    currency?: Currency | null;
+  };
+  isSalesLoading?: boolean;
   isLoading?: boolean;
   onHealthChanged?: () => void;
 };
@@ -242,16 +244,86 @@ const noData: MachineHealthIndicator = {
   source: "none",
 };
 
+const TodaySalesItem = ({
+  machineId,
+  sales,
+  isLoading,
+}: {
+  machineId: string | number;
+  sales?: MachineHealthStripProps["salesToday"];
+  isLoading: boolean;
+}) => {
+  const today = new Date();
+  const date = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+
+  if (isLoading) return <Skeleton h="58px" borderRadius="lg" />;
+
+  return (
+    <HStack
+      as={Link}
+      href={`/sales?machineId=${machineId}&from=${date}&to=${date}`}
+      aria-label={`Open today's sales: ${sales?.cups ?? 0} cups sold`}
+      spacing="1.5"
+      minW="0"
+      py="2"
+      px="1"
+      borderRadius="lg"
+      bg="rgba(34, 197, 94, 0.14)"
+      cursor="pointer"
+      textAlign="left"
+      transition="background 140ms ease, transform 140ms ease"
+      _hover={{ bg: "rgba(34, 197, 94, 0.22)", transform: "translateY(-1px)" }}
+      _focusVisible={{ boxShadow: "outline" }}
+    >
+      <Box
+        display="grid"
+        placeItems="center"
+        boxSize="7"
+        px="1"
+        flex="0 0 auto"
+        borderRadius="full"
+        bg="green.800"
+        color="green.200"
+        boxShadow="0 0 0 1px var(--chakra-colors-green-700)"
+      >
+        <Icon as={FaChartLine} boxSize="3.5" />
+      </Box>
+      <Box minW="0">
+        <Text color="bg.400" fontSize="9px" lineHeight="1" noOfLines={1}>
+          Sales today
+        </Text>
+        <HStack spacing="1.5" mt="1" minW="0">
+          <Text color="bg.50" fontSize="xs" fontWeight="700" noOfLines={1}>
+            {sales ? formatMoney(sales.revenue, sales.currency) : "—"}
+          </Text>
+          <Text color="green.300" fontSize="10px" aria-hidden="true">
+            •
+          </Text>
+          <Text color="bg.50" fontSize="xs" fontWeight="700" noOfLines={1}>
+            {sales ? sales.cups : "—"} cups
+          </Text>
+        </HStack>
+      </Box>
+    </HStack>
+  );
+};
+
 export function MachineHealthStrip({
   machine,
   health,
+  salesToday,
+  isSalesLoading = false,
   isLoading = false,
   onHealthChanged = () => undefined,
 }: MachineHealthStripProps) {
   const [dialog, setDialog] = useState<HealthDialogKind | null>(null);
   if (isLoading) {
     return (
-      <SimpleGrid columns={4} spacing="2" aria-label="Loading machine health">
+      <SimpleGrid columns={3} spacing="2" aria-label="Loading machine health">
         {Array.from({ length: 6 }).map((_, index) => (
           <Skeleton key={index} h="58px" borderRadius="lg" />
         ))}
@@ -276,17 +348,11 @@ export function MachineHealthStrip({
 
   const items = [
     {
-      title: "Online",
+      title: "Remote access",
       dialog: "wifi" as const,
       icon: FaWifi,
       indicator: health?.online || noData,
       showLastOnline: true,
-    },
-    {
-      title: "Nayax",
-      dialog: "nayax" as const,
-      icon: FaCreditCard,
-      indicator: health?.terminal || noData,
     },
     {
       title: "Water",
@@ -309,18 +375,18 @@ export function MachineHealthStrip({
       powderLevels: health?.powderLevels,
     },
     {
-      title: "Cups",
+      title: "Empty Cups",
       dialog: "cups" as const,
       icon: CiCoffeeCup,
       indicator: health?.cups || noData,
     },
     {
-      title: "Door lock",
+      title: "Door Lock",
       dialog: "lock" as const,
       icon: FaLock,
       indicator:
         machine.has_door_lock === true
-          ? ({ state: "ok", label: "Installed", source: "ops" } as const)
+          ? ({ state: "ok", label: "QR code", source: "ops" } as const)
           : machine.has_door_lock === false
             ? ({
                 state: "unknown",
@@ -334,16 +400,21 @@ export function MachineHealthStrip({
   return (
     <>
       <SimpleGrid
-        columns={{ base: 2, sm: 4 }}
+        columns={{ base: 2, sm: 3 }}
         spacing="2"
         aria-label="Machine health"
       >
-        {items.map((item) => (
-          <HealthItem
-            key={item.title}
-            {...item}
-            onClick={() => setDialog(item.dialog)}
-          />
+        {items.map((item, index) => (
+          <Fragment key={item.title}>
+            {index === 1 ? (
+              <TodaySalesItem
+                machineId={machine.id}
+                sales={salesToday}
+                isLoading={isSalesLoading}
+              />
+            ) : null}
+            <HealthItem {...item} onClick={() => setDialog(item.dialog)} />
+          </Fragment>
         ))}
       </SimpleGrid>
       <MachineHealthDialog

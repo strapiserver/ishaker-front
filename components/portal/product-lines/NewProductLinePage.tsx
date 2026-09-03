@@ -31,8 +31,8 @@ import {
   FaTint,
   FaWater,
   FaWeight,
-  FaWeightHanging,
 } from "react-icons/fa";
+import { GiBiceps } from "react-icons/gi";
 import useSWR from "swr";
 import { CupPreview } from "./CupPreview";
 import { CupSelector } from "./CupSelector";
@@ -84,7 +84,7 @@ const productLineIcons: Record<string, SearchableImageOption["icon"]> = {
   "bucked up": <FaBolt />,
   classic: <FaStar />,
   collagen: <FaSpa />,
-  creatine: <FaWeightHanging />,
+  creatine: <GiBiceps />,
   "diet protein": <FaBalanceScale />,
   "energy drink": <FaBolt />,
   "fat burner": <FaFire />,

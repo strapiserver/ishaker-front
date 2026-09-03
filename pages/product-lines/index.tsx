@@ -30,9 +30,22 @@ const createProductLineParams = (session: PortalSession) => {
   } else {
     params.set("filters[author][id][$eq]", String(session.user.id));
   }
-  params.set("populate[0]", "author");
-  params.set("populate[1]", "cups.image");
-  params.set("populate[2]", "base_product_line");
+  params.set("populate[author][fields][0]", "username");
+  params.set("populate[cups][populate][image][fields][0]", "url");
+  params.set("populate[cups][populate][image][fields][1]", "formats");
+  params.set(
+    "populate[cups][populate][default_splash][populate][images][fields][0]",
+    "url",
+  );
+  params.set(
+    "populate[cups][populate][default_splash][populate][images][fields][1]",
+    "formats",
+  );
+  params.set(
+    "populate[cups][populate][default_splash][populate][images][fields][2]",
+    "name",
+  );
+  params.set("populate[base_product_line][fields][0]", "name");
   params.set("sort[0]", "name:ASC");
   params.set("pagination[pageSize]", "2000");
   return params;
@@ -48,12 +61,55 @@ const createProductParams = (session: PortalSession) => {
   params.set("fields[0]", "name");
   params.set("fields[1]", "isActive");
   params.set("fields[2]", "product_type");
-  params.set("populate[0]", "custom_main");
-  params.set("populate[1]", "taste.main");
-  params.set("populate[2]", "product_line");
-  params.set("populate[3]", "brand.logo");
-  params.set("populate[4]", "dosage");
-  params.set("populate[5]", "cup.image");
+  params.set("populate[custom_main][fields][0]", "url");
+  params.set("populate[custom_main][fields][1]", "formats");
+  params.set("populate[taste][populate][main][fields][0]", "url");
+  params.set("populate[taste][populate][main][fields][1]", "formats");
+  params.set(
+    "populate[taste][populate][default_splash][populate][images][fields][0]",
+    "url",
+  );
+  params.set(
+    "populate[taste][populate][default_splash][populate][images][fields][1]",
+    "formats",
+  );
+  params.set(
+    "populate[taste][populate][default_splash][populate][images][fields][2]",
+    "name",
+  );
+  params.set("populate[product_line][fields][0]", "name");
+  params.set("populate[brand][fields][0]", "name");
+  params.set("populate[brand][populate][logo][fields][0]", "url");
+  params.set("populate[brand][populate][logo][fields][1]", "formats");
+  params.set("populate[dosage]", "*");
+  params.set("populate[cup][fields][0]", "name");
+  params.set("populate[cup][populate][image][fields][0]", "url");
+  params.set("populate[cup][populate][image][fields][1]", "formats");
+  params.set(
+    "populate[cup][populate][default_splash][populate][images][fields][0]",
+    "url",
+  );
+  params.set(
+    "populate[cup][populate][default_splash][populate][images][fields][1]",
+    "formats",
+  );
+  params.set(
+    "populate[cup][populate][default_splash][populate][images][fields][2]",
+    "name",
+  );
+  params.set("populate[custom_splash][fields][0]", "name");
+  params.set(
+    "populate[custom_splash][populate][images][fields][0]",
+    "url",
+  );
+  params.set(
+    "populate[custom_splash][populate][images][fields][1]",
+    "formats",
+  );
+  params.set(
+    "populate[custom_splash][populate][images][fields][2]",
+    "name",
+  );
   params.set("sort[0]", "name:ASC");
   params.set("pagination[pageSize]", "2000");
   return params;

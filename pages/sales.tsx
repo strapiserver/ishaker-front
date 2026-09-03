@@ -4,6 +4,7 @@ import {
   TableContainer, Tbody, Td, Text, Th, Thead, Tr, useToast,
 } from "@chakra-ui/react";
 import type { GetServerSideProps } from "next";
+import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip,
@@ -23,6 +24,7 @@ type SalesPayload = {
   nayax: { status: "unconfigured" | "ok" | "error"; error?: string | null; lastSyncAt?: string | null };
 };
 type Group = "product" | "machine" | "cell";
+type SalesFilters = { machineId: string; from: string; to: string };
 
 const currencyFrom = (code: string | null | undefined, session: PortalSession): Currency => {
   const known = session.client.currency || session.machines.find((machine) => machine.currency?.code === code)?.currency;
@@ -51,6 +53,7 @@ const filterParams = (machineId: string, from: string, to: string) => {
 };
 
 export default function SalesPage({ session }: SalesPageProps) {
+  const router = useRouter();
   const toast = useToast();
   const [payload, setPayload] = useState<SalesPayload | null>(null);
   const [daily, setDaily] = useState<SalesSummary | null>(null);
@@ -62,10 +65,14 @@ export default function SalesPage({ session }: SalesPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const load = async (page = 1, nextGroup: Group = group) => {
+  const load = async (
+    page = 1,
+    nextGroup: Group = group,
+    filters: SalesFilters = { machineId, from, to },
+  ) => {
     setIsLoading(true);
     setError("");
-    const base = filterParams(machineId, from, to);
+    const base = filterParams(filters.machineId, filters.from, filters.to);
     const listParams = new URLSearchParams(base);
     listParams.set("page", String(page));
     listParams.set("pageSize", "25");
@@ -94,7 +101,24 @@ export default function SalesPage({ session }: SalesPageProps) {
     }
   };
 
-  useEffect(() => { void load(); /* initial filters apply explicitly */ }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!router.isReady) return;
+    const queryValue = (value: string | string[] | undefined) =>
+      Array.isArray(value) ? value[0] || "" : value || "";
+    const initialMachineId = queryValue(router.query.machineId);
+    const initialFrom = queryValue(router.query.from);
+    const initialTo = queryValue(router.query.to);
+    setMachineId(initialMachineId);
+    setFrom(initialFrom);
+    setTo(initialTo);
+
+    const initialFilters = {
+      machineId: initialMachineId,
+      from: initialFrom,
+      to: initialTo,
+    };
+    void load(1, "product", initialFilters);
+  }, [router.isReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const changeGroup = (next: Group) => {
     setGroup(next);

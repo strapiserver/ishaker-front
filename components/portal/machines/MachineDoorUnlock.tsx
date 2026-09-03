@@ -104,10 +104,6 @@ export function MachineDoorUnlock({ machine }: { machine: Machine }) {
 
   return (
     <>
-      <Button leftIcon={<FaLockOpen />} colorScheme="green" onClick={openModal}>
-        Open door
-      </Button>
-
       <Modal isOpen={modal.isOpen} onClose={modal.onClose} isCentered size="sm">
         <ModalOverlay />
         <ModalContent bg="bg.900" color="bg.50">

@@ -1,7 +1,6 @@
 import {
   Box,
   Button,
-  Grid,
   HStack,
   IconButton,
   Menu,
@@ -9,6 +8,7 @@ import {
   MenuItem,
   MenuList,
   Portal,
+  SimpleGrid,
   Text,
   useDisclosure,
 } from "@chakra-ui/react";
@@ -25,13 +25,20 @@ import {
 import { capitalizeName } from "../../../lib/formatName";
 import type { PortalProductLine } from "../../../types/portal";
 import { DeleteProductLineDialog } from "./DeleteProductLineDialog";
+import { getProductLineIcon } from "./NewProductLinePage";
 import { ProductCard } from "./ProductCard";
 import { Box3D } from "../../../styles/theme/custom";
+import { IoMdAdd } from "react-icons/io";
+
 type ProductLineCardProps = {
   productLine: PortalProductLine;
+  onAddProduct: () => void;
 };
 
-export function ProductLineCard({ productLine }: ProductLineCardProps) {
+export function ProductLineCard({
+  productLine,
+  onAddProduct,
+}: ProductLineCardProps) {
   const router = useRouter();
   const deleteDialog = useDisclosure();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -103,7 +110,7 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
       setIsDeleting(false);
     }
   };
-
+  const isFull = productCount > 0 && productCount % 3 === 0;
   return (
     <>
       <Box3D
@@ -123,16 +130,27 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
         >
           <HStack spacing="3">
             <Box
-              boxSize="10px"
-              borderRadius="full"
-              bg={isActive ? "#62e85b" : "whiteAlpha.300"}
-              boxShadow={isActive ? "0 0 10px rgba(98,232,91,.5)" : "none"}
-            />
+              display="grid"
+              placeItems="center"
+              boxSize="34px"
+              flexShrink="0"
+              borderRadius="md"
+              bg="whiteAlpha.100"
+              color={isActive ? "acid.300" : "whiteAlpha.400"}
+              fontSize="lg"
+            >
+              {getProductLineIcon(productLine.name)}
+            </Box>
             <Text
               color="white"
               fontWeight="700"
               fontSize="md"
             >{`${productLineName} (${productCount})`}</Text>
+            {productCount ? (
+              <Text color="whiteAlpha.500" fontSize="xs">
+                {brandCount} {brandCount === 1 ? "brand" : "brands"}
+              </Text>
+            ) : null}
           </HStack>
           <HStack spacing="4">
             <Menu placement="bottom-end">
@@ -182,24 +200,9 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
             </Menu>
           </HStack>
         </HStack>
-        <Box overflowX="auto">
-          <Grid
-            templateColumns="minmax(210px,1.45fr) minmax(180px,1.25fr) minmax(90px,.7fr) 90px"
-            minW="680px"
-            px="5"
-            h="37px"
-            alignItems="center"
-            borderBottom="1px solid"
-            borderColor="rgba(255,255,255,0.08)"
-          >
-            {["PRODUCT", "BRAND", "CUP", "ACTIONS"].map((label) => (
-              <Text key={label} color="whiteAlpha.500" fontSize="10px">
-                {label}
-              </Text>
-            ))}
-          </Grid>
+        <Box p={{ base: "3", md: "4" }}>
           {productLine.products?.length ? (
-            <Box minW="680px">
+            <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing="4">
               {productLine.products.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -208,23 +211,60 @@ export function ProductLineCard({ productLine }: ProductLineCardProps) {
                   defaultCup={productLine.cups?.[0]}
                 />
               ))}
-            </Box>
+              {!isFull && (
+                <Box3D
+                  w="100%"
+                  display={{ base: "none", xl: "flex" }}
+                  justifyContent="center"
+                  alignItems="center"
+                  p="20"
+                >
+                  <Box
+                    minH="100px"
+                    as="button"
+                    type="button"
+                    aria-label="Add product"
+                    borderWidth="2px"
+                    borderStyle="dashed"
+                    borderColor="bg.500"
+                    borderRadius="xl"
+                    w="full"
+                    h="full"
+                    display="flex"
+                    justifyContent="center"
+                    alignItems="center"
+                    onClick={onAddProduct}
+                    _hover={{
+                      bg: "rgba(101,223,92,.07)",
+                      borderColor: "#65df5c",
+                      cursor: "pointer",
+                    }}
+                    color="#65df5c"
+                  >
+                    <IoMdAdd size="1.5rem" />
+                  </Box>
+                </Box3D>
+              )}
+            </SimpleGrid>
           ) : null}
           <Button
-            as={Link}
-            href={`/product-lines/${productLine.id}/products/new`}
+            display={{
+              base: "flex",
+              xl: isFull || productCount === 0 ? "flex" : "none",
+            }}
+            onClick={onAddProduct}
             variant="ghost"
-            justifyContent="flex-start"
-            minW="680px"
             w="full"
-            h="46px"
-            px="5"
-            borderRadius="0"
+            h="52px"
+            mt={productCount ? "4" : "0"}
+            border="2px dashed"
+            borderColor="whiteAlpha.500"
+            borderRadius="xl"
             color="#65df5c"
             fontSize="sm"
-            fontWeight="500"
+            fontWeight="700"
             leftIcon={<FiPlus />}
-            _hover={{ bg: "whiteAlpha.50" }}
+            _hover={{ bg: "rgba(101,223,92,.07)", borderColor: "#65df5c" }}
           >
             Add product
           </Button>

@@ -1,4 +1,11 @@
-import { FaGlassCheers, FaRegClock, FaWhatsapp, FaCloudDownloadAlt, FaMobileAlt, FaShieldAlt } from "react-icons/fa";
+import {
+  FaGlassCheers,
+  FaRegClock,
+  FaWhatsapp,
+  FaCloudDownloadAlt,
+  FaMobileAlt,
+  FaShieldAlt,
+} from "react-icons/fa";
 import type { IconType } from "react-icons";
 
 export type StatItem = {
@@ -13,9 +20,11 @@ export type FeatureItem = {
 };
 
 export const stats: StatItem[] = [
-  { label: "Protein shakes, BCAA, Creatine & more", value: "30+" },
-  { label: "Machines deployed across the US", value: "60+" },
-  { label: "Remote monitoring & support", value: "24/7" },
+  // These two values are marketing claims; they are not fleet-telemetry counts.
+  { label: "Machines sold", value: "107" },
+  { label: "Countries covered", value: "17" },
+  // StatsSection replaces this fallback with totals.cups_total at runtime.
+  { label: "Drinks made", value: "2.5k+" },
 ];
 
 export const features: FeatureItem[] = [

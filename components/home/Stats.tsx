@@ -4,86 +4,111 @@ import {
   Container,
   Flex,
   HStack,
-  Icon,
   SimpleGrid,
   Skeleton,
   Stack,
   Text,
+  Wrap,
+  WrapItem,
   useColorModeValue,
 } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
-import { FaDroplet, FaGlassWater, FaTag } from "react-icons/fa6";
 import CustomTitle from "./CutsomTitle";
 
 const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 
-type RecentSale = {
-  id: string;
+type NamedRelation = { id: number | null; name: string | null } | null;
+
+type RecentTransaction = {
+  at: string;
   country: string;
-  machineType: string;
-  serialNumber: string;
+  machine_type: string;
+  serial_masked: string;
   amount: number;
   currency: string;
-  isFree: boolean;
-  drink: string;
-  brand: string;
-  cup: string;
-  flavor: string;
-  soldAt: string | null;
-  machineRevenue?: number;
-  machineRevenueCurrency?: string;
-  machineRevenueApproximate?: boolean;
-  machineTransactionCount?: number;
+  product_line: NamedRelation;
+  taste: NamedRelation;
+  brand: NamedRelation;
+  powder_g: number;
 };
 
-type RecentSalesResponse = {
-  sales?: RecentSale[];
-  revenue?: {
-    totalUsd: number;
-    includedMachineCount: number;
-    omittedCurrencyCount: number;
-    ratesDate: string | null;
-  } | null;
-  updatedAt?: string;
+type FleetMachine = {
+  serial_masked: string;
+  machine_type: string;
+  country: string;
+  country_source: "machine" | "client" | "timezone";
+  active_tastes: string[];
+  active_tastes_source: "planogram" | "recent_sales";
+  cups_total: number;
+  free_cups: number;
+  days_operating: number;
+  first_sale_at: string | null;
+  last_sale_at: string | null;
+  currency: string;
+  revenue_last_week: number;
+  revenue_last_month: number;
+  revenue_total: number;
+  revenue_total_charged: number;
+  revenue_total_usd_approx: number;
+  powder_g_total: number;
 };
+
+type FleetStatsPayload = {
+  generated_at: string;
+  recent_transactions: RecentTransaction[];
+  machines: FleetMachine[];
+  totals: {
+    machines_reporting: number;
+    machines_listed: number;
+    cups_total: number;
+    free_cups_total: number;
+    revenue_by_currency: Record<
+      string,
+      { cups: number; revenue: number; charged: number }
+    >;
+    revenue_usd_approx: number;
+    unconverted_currencies: string[];
+  };
+  fx: {
+    basis: string;
+    approximate: boolean;
+    note: string;
+    rates_to_usd: Record<string, number>;
+  };
+};
+
+type StatsProps = { showMachines?: boolean };
 
 const COUNTRY_CODES: Record<string, string> = {
-  usa: "US",
-  "united states": "US",
-  "united states of america": "US",
-  canada: "CA",
-  mexico: "MX",
-  uk: "GB",
-  "united kingdom": "GB",
+  argentina: "AR",
   australia: "AU",
-  greece: "GR",
-  germany: "DE",
+  canada: "CA",
   france: "FR",
-  spain: "ES",
+  germany: "DE",
+  greece: "GR",
   italy: "IT",
+  mexico: "MX",
   poland: "PL",
+  spain: "ES",
+  turkey: "TR",
+  türkiye: "TR",
+  uk: "GB",
   ukraine: "UA",
+  "united kingdom": "GB",
+  "united states": "US",
 };
 
-function countryFlag(country: string) {
+function countryFlag(country = "") {
   const normalized = country.trim();
-  const code =
-    (normalized.length === 2 ? normalized : COUNTRY_CODES[normalized.toLowerCase()])?.toUpperCase();
+  const code = (
+    normalized.length === 2
+      ? normalized
+      : COUNTRY_CODES[normalized.toLocaleLowerCase()]
+  )?.toUpperCase();
   if (!code || !/^[A-Z]{2}$/.test(code)) return "🌎";
-  return String.fromCodePoint(...[...code].map((letter) => 127397 + letter.charCodeAt(0)));
-}
-
-function formatPrice(sale: RecentSale) {
-  if (sale.isFree) return "Free";
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: sale.currency,
-      maximumFractionDigits: 2,
-    }).format(sale.amount);
-  } catch {
-    return `${sale.currency} ${sale.amount.toFixed(2)}`;
-  }
+  return String.fromCodePoint(
+    ...[...code].map((letter) => 127397 + letter.charCodeAt(0)),
+  );
 }
 
 function formatMoney(amount: number, currency: string) {
@@ -92,17 +117,45 @@ function formatMoney(amount: number, currency: string) {
       style: "currency",
       currency,
       maximumFractionDigits: 2,
-    }).format(amount);
+    }).format(Number(amount) || 0);
   } catch {
-    return `${currency} ${amount.toFixed(2)}`;
+    return `${currency || ""} ${(Number(amount) || 0).toFixed(2)}`.trim();
   }
 }
 
-function SaleCard({ sale, index }: { sale: RecentSale; index: number }) {
+function formatCount(value: number) {
+  return new Intl.NumberFormat("en-US").format(Number(value) || 0);
+}
+
+function formatPowder(grams: number) {
+  const value = Number(grams) || 0;
+  return value >= 1000 ? `${(value / 1000).toFixed(1)} kg` : `${value} g`;
+}
+
+function updatedLabel(value?: string) {
+  if (!value) return "Update time unavailable";
+  const elapsedMinutes = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(value).getTime()) / 60_000),
+  );
+  if (!Number.isFinite(elapsedMinutes)) return "Update time unavailable";
+  if (elapsedMinutes < 1) return "Updated just now";
+  if (elapsedMinutes < 60) return `Updated ${elapsedMinutes} min ago`;
+  const hours = Math.floor(elapsedMinutes / 60);
+  if (hours < 24) return `Updated ${hours} hr ago`;
+  return `Updated ${Math.floor(hours / 24)} days ago`;
+}
+
+function relationName(relation: NamedRelation) {
+  return relation?.name?.trim() || "—";
+}
+
+function RecentSaleCard({ sale }: { sale: RecentTransaction }) {
   const cardBg = useColorModeValue("white", "bg.800");
   const detailBg = useColorModeValue("bg.50", "bg.900");
   const borderColor = useColorModeValue("blackAlpha.100", "whiteAlpha.100");
   const muted = useColorModeValue("bg.500", "bg.300");
+  const isFree = Number(sale.amount) === 0;
 
   return (
     <Box
@@ -121,94 +174,235 @@ function SaleCard({ sale, index }: { sale: RecentSale; index: number }) {
             {countryFlag(sale.country)}
           </Text>
           <Box minW="0">
-            <Text fontWeight="700" noOfLines={1}>{sale.machineType}</Text>
-            <Text color={muted} fontSize="xs" noOfLines={1}>{sale.serialNumber}</Text>
+            <Text fontWeight="700" textTransform="capitalize" noOfLines={1}>
+              {sale.machine_type || "iShaker"}
+            </Text>
+            <Text color={muted} fontSize="xs" noOfLines={1}>
+              {sale.serial_masked || "—"} · {sale.country || "—"}
+            </Text>
           </Box>
         </HStack>
-        <Badge colorScheme="green" borderRadius="full" px="2.5" py="1">
-          {index === 0 ? "Just sold" : "Sold"}
+        <Badge
+          colorScheme={isFree ? "purple" : "green"}
+          borderRadius="full"
+          px="2.5"
+          py="1"
+        >
+          {isFree ? "Free" : formatMoney(sale.amount, sale.currency)}
         </Badge>
       </Flex>
 
-      <Flex mt="5" align="end" justify="space-between" gap="3">
-        <Box minW="0">
-          <Text color={muted} fontSize="xs" textTransform="uppercase" letterSpacing="wide">
-            Drink
-          </Text>
-          <Text fontSize="lg" fontWeight="800" noOfLines={1}>{sale.drink}</Text>
-        </Box>
-        <Text color="acid.600" fontSize="xl" fontWeight="800" whiteSpace="nowrap">
-          {formatPrice(sale)}
+      <Box mt="5">
+        <Text
+          color={muted}
+          fontSize="xs"
+          textTransform="uppercase"
+          letterSpacing="wide"
+        >
+          Product line
         </Text>
-      </Flex>
+        <Text fontSize="lg" fontWeight="800" noOfLines={1}>
+          {relationName(sale.product_line)}
+        </Text>
+      </Box>
 
       <SimpleGrid columns={3} spacing="2" mt="5">
         {[
-          { icon: FaTag, label: "Brand", value: sale.brand },
-          { icon: FaGlassWater, label: "Cup", value: sale.cup },
-          { icon: FaDroplet, label: "Flavor", value: sale.flavor },
+          { label: "Brand", value: relationName(sale.brand) },
+          { label: "Flavor", value: relationName(sale.taste) },
+          { label: "Powder", value: formatPowder(sale.powder_g) },
         ].map((detail) => (
-          <Box key={detail.label} bg={detailBg} borderRadius="xl" p="2.5" minW="0">
-            <HStack spacing="1" color={muted}>
-              <Icon as={detail.icon} boxSize="2.5" />
-              <Text fontSize="10px" textTransform="uppercase">{detail.label}</Text>
-            </HStack>
-            <Text mt="1" fontSize="xs" fontWeight="700" noOfLines={1}>{detail.value}</Text>
+          <Box
+            key={detail.label}
+            bg={detailBg}
+            borderRadius="xl"
+            p="2.5"
+            minW="0"
+          >
+            <Text color={muted} fontSize="10px" textTransform="uppercase">
+              {detail.label}
+            </Text>
+            <Text mt="1" fontSize="xs" fontWeight="700" noOfLines={1}>
+              {detail.value}
+            </Text>
           </Box>
         ))}
       </SimpleGrid>
 
-      {sale.machineRevenue !== undefined && sale.machineRevenueCurrency ? (
-        <Flex mt="4" pt="4" borderTop="1px solid" borderColor={borderColor} justify="space-between" gap="3">
-          <Box>
-            <Text color={muted} fontSize="sm">
-              {sale.machineRevenueApproximate ? "Approx. machine total revenue" : "Machine total revenue"}
-            </Text>
-            {sale.machineTransactionCount !== undefined ? (
-              <Text color={muted} fontSize="xs">
-                Sum of {sale.machineTransactionCount} {sale.machineTransactionCount === 1 ? "transaction" : "transactions"}
-              </Text>
-            ) : null}
-          </Box>
-          <Text fontSize="sm" fontWeight="800">
-            {formatMoney(sale.machineRevenue, sale.machineRevenueCurrency)}
-          </Text>
-        </Flex>
-      ) : null}
+      <Text color={muted} fontSize="xs" mt="4">
+        {sale.at ? new Date(sale.at).toLocaleString() : "—"}
+      </Text>
     </Box>
   );
 }
 
-export function Stats() {
-  const [sales, setSales] = useState<RecentSale[]>([]);
-  const [revenue, setRevenue] = useState<RecentSalesResponse["revenue"]>(null);
+const countrySourceLabel: Record<FleetMachine["country_source"], string> = {
+  machine: "Machine location",
+  client: "Client location",
+  timezone: "Estimated from timezone",
+};
+
+function MachineCard({ machine }: { machine: FleetMachine }) {
+  const cardBg = useColorModeValue("white", "bg.800");
+  const detailBg = useColorModeValue("bg.50", "bg.900");
+  const borderColor = useColorModeValue("blackAlpha.100", "whiteAlpha.100");
+  const muted = useColorModeValue("bg.500", "bg.300");
+
+  return (
+    <Box
+      bg={cardBg}
+      border="1px solid"
+      borderColor={borderColor}
+      borderRadius="2xl"
+      p="5"
+    >
+      <Flex justify="space-between" align="start" gap="3">
+        <HStack minW="0" align="start">
+          <Text fontSize="2xl">{countryFlag(machine.country)}</Text>
+          <Box minW="0">
+            <Text fontWeight="800" textTransform="capitalize" noOfLines={1}>
+              {machine.machine_type || "iShaker"}
+            </Text>
+            <Text color={muted} fontSize="xs">
+              {machine.serial_masked || "—"}
+            </Text>
+          </Box>
+        </HStack>
+        <Badge colorScheme="green" borderRadius="full">
+          {formatCount(machine.cups_total)} cups
+        </Badge>
+      </Flex>
+      <Text color={muted} fontSize="xs" mt="3">
+        {machine.country || "—"} ·{" "}
+        {countrySourceLabel[machine.country_source] ||
+          "Location source unavailable"}
+      </Text>
+
+      <SimpleGrid columns={2} spacing="2" mt="4">
+        {[
+          ["Free cups", formatCount(machine.free_cups)],
+          ["Powder used", formatPowder(machine.powder_g_total)],
+          ["Days of recorded sales", formatCount(machine.days_operating)],
+          [
+            "Last sale",
+            machine.last_sale_at
+              ? new Date(machine.last_sale_at).toLocaleDateString()
+              : "—",
+          ],
+        ].map(([label, value]) => (
+          <Box key={label} bg={detailBg} borderRadius="xl" p="3">
+            <Text color={muted} fontSize="10px" textTransform="uppercase">
+              {label}
+            </Text>
+            <Text fontWeight="800" mt="1">
+              {value}
+            </Text>
+          </Box>
+        ))}
+      </SimpleGrid>
+
+      <Box mt="4" pt="4" borderTop="1px solid" borderColor={borderColor}>
+        <Text fontWeight="800">Drink value</Text>
+        <Text color={muted} fontSize="xs" mb="2">
+          Includes free cups at list price
+        </Text>
+        <SimpleGrid columns={3} spacing="2">
+          {[
+            ["7 days", machine.revenue_last_week],
+            ["30 days", machine.revenue_last_month],
+            ["Total", machine.revenue_total],
+          ].map(([label, value]) => (
+            <Box key={String(label)}>
+              <Text color={muted} fontSize="10px" textTransform="uppercase">
+                {label}
+              </Text>
+              <Text fontSize="sm" fontWeight="800">
+                {formatMoney(Number(value), machine.currency)}
+              </Text>
+            </Box>
+          ))}
+        </SimpleGrid>
+      </Box>
+
+      <Box mt="4">
+        <Text color={muted} fontSize="xs" mb="2">
+          {machine.active_tastes_source === "planogram"
+            ? "Active menu"
+            : "Recently poured flavors"}
+        </Text>
+        {machine.active_tastes?.length ? (
+          <Wrap spacing="1.5">
+            {machine.active_tastes.map((taste) => (
+              <WrapItem key={taste}>
+                <Badge
+                  borderRadius="full"
+                  px="2"
+                  py="1"
+                  textTransform="none"
+                >
+                  {taste}
+                </Badge>
+              </WrapItem>
+            ))}
+          </Wrap>
+        ) : (
+          <Text color={muted} fontSize="sm">
+            No flavor data yet
+          </Text>
+        )}
+      </Box>
+    </Box>
+  );
+}
+
+export function Stats({ showMachines = false }: StatsProps) {
+  const [fleet, setFleet] = useState<FleetStatsPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const muted = useColorModeValue("bg.500", "bg.300");
   const totalBg = useColorModeValue("bg.100", "bg.800");
-  const uniqueCountries = useMemo(() => new Set(sales.map((sale) => sale.country)).size, [sales]);
+  const reportingMachines = useMemo(
+    () =>
+      [...(fleet?.machines || [])]
+        .filter((machine) => Number(machine.cups_total) > 0)
+        .sort((left, right) => right.cups_total - left.cups_total),
+    [fleet],
+  );
+  const telemetryCountryCount = useMemo(
+    () =>
+      new Set(
+        (fleet?.machines || [])
+          .map((machine) => machine.country)
+          .filter(Boolean),
+      ).size,
+    [fleet],
+  );
 
   useEffect(() => {
     let active = true;
     let controller: AbortController | null = null;
 
-    async function loadSales() {
+    async function loadStats() {
       controller?.abort();
       controller = new AbortController();
       try {
-        const response = await fetch("/api/public/recent-sales", {
+        const response = await fetch("/api/public/fleet-stats", {
           cache: "no-store",
           signal: controller.signal,
         });
-        if (!response.ok) throw new Error(`Recent sales request failed with ${response.status}`);
-        const payload = (await response.json()) as RecentSalesResponse;
+        if (!response.ok) {
+          throw new Error(`Fleet stats request failed: ${response.status}`);
+        }
+        const payload = (await response.json()) as FleetStatsPayload;
         if (active) {
-          setSales(payload.sales || []);
-          setRevenue(payload.revenue || null);
+          setFleet(payload);
           setHasError(false);
         }
       } catch (error) {
-        if (active && !(error instanceof DOMException && error.name === "AbortError")) {
+        if (
+          active &&
+          !(error instanceof DOMException && error.name === "AbortError")
+        ) {
           setHasError(true);
         }
       } finally {
@@ -216,8 +410,8 @@ export function Stats() {
       }
     }
 
-    void loadSales();
-    const interval = window.setInterval(loadSales, REFRESH_INTERVAL_MS);
+    void loadStats();
+    const interval = window.setInterval(loadStats, REFRESH_INTERVAL_MS);
     return () => {
       active = false;
       controller?.abort();
@@ -225,62 +419,116 @@ export function Stats() {
     };
   }, []);
 
+  const sales = fleet?.recent_transactions || [];
+  const totals = fleet?.totals;
+
   return (
     <Container maxW="7xl" py={{ base: "10", md: "16" }}>
       <CustomTitle
-        as="h2"
-        title="Shakes happening now"
-        subtitle="A live look at the 10 most recent drinks served across iShaker machines."
+        as={showMachines ? "h1" : "h2"}
+        title={showMachines ? "Realtime fleet stats" : "Shakes happening now"}
+        subtitle="Recent drinks and hourly fleet telemetry from iShaker machines around the world."
         mt="0"
-        mb={{ base: "7", md: "10" }}
+        mb={{ base: "5", md: "7" }}
         fontSize={{ base: "3xl", md: "6xl" }}
       />
 
-      <Flex justify="center" mb="6">
-        <HStack spacing="4" color={muted} fontSize="sm">
-          <HStack spacing="2"><Box boxSize="2" bg="acid.500" borderRadius="full" /><Text>Live · updates every hour</Text></HStack>
-          {sales.length ? <Text>{sales.length} sales · {uniqueCountries} {uniqueCountries === 1 ? "country" : "countries"}</Text> : null}
+      <Flex justify="center" mb="7">
+        <HStack spacing="2" color={muted} fontSize="sm">
+          <Box boxSize="2" bg="acid.500" borderRadius="full" />
+          <Text>Hourly data · {updatedLabel(fleet?.generated_at)}</Text>
         </HStack>
       </Flex>
 
-      {revenue ? (
-        <Box
-          mb="6"
-          mx="auto"
-          maxW="560px"
-          borderRadius="2xl"
-          bg={totalBg}
-          px={{ base: "5", md: "7" }}
-          py="5"
-          textAlign="center"
-        >
-          <Text color={muted} fontSize="xs" textTransform="uppercase" letterSpacing="widest">
-            Approximate total revenue
-          </Text>
-          <Text color="acid.600" fontSize={{ base: "3xl", md: "4xl" }} fontWeight="800">
-            {formatMoney(revenue.totalUsd, "USD")}
-          </Text>
-          <Text color={muted} fontSize="xs">
-            Converted to USD{revenue.ratesDate ? ` using ${revenue.ratesDate} rates` : ""}
-            {revenue.omittedCurrencyCount ? ` · ${revenue.omittedCurrencyCount} unsupported ${revenue.omittedCurrencyCount === 1 ? "currency" : "currencies"} omitted` : ""}
-          </Text>
-        </Box>
+      {totals ? (
+        <SimpleGrid columns={{ base: 2, lg: 4 }} spacing="3" mb="8">
+          {[
+            [
+              "Approx. drink value (USD)",
+              formatMoney(totals.revenue_usd_approx, "USD"),
+            ],
+            ["Drinks made", formatCount(totals.cups_total)],
+            [
+              "Machines reporting",
+              `${totals.machines_reporting} / ${totals.machines_listed}`,
+            ],
+            ["Telemetry countries", formatCount(telemetryCountryCount)],
+          ].map(([label, value]) => (
+            <Box
+              key={label}
+              bg={totalBg}
+              borderRadius="2xl"
+              p={{ base: "4", md: "5" }}
+            >
+              <Text
+                color="acid.600"
+                fontSize={{ base: "xl", md: "2xl" }}
+                fontWeight="800"
+              >
+                {value}
+              </Text>
+              <Text color={muted} fontSize="xs">
+                {label}
+              </Text>
+            </Box>
+          ))}
+          {totals.unconverted_currencies.length ? (
+            <Text color="orange.300" fontSize="xs" gridColumn="1 / -1">
+              Approximate USD total excludes:{" "}
+              {totals.unconverted_currencies.join(", ")}.
+            </Text>
+          ) : null}
+        </SimpleGrid>
       ) : null}
 
+      <Text fontSize="2xl" fontWeight="800" mb="4">
+        Recent transactions
+      </Text>
       {isLoading ? (
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing="4">
-          {[0, 1, 2, 3].map((item) => <Skeleton key={item} h="220px" borderRadius="2xl" />)}
+          {[0, 1, 2, 3].map((item) => (
+            <Skeleton key={item} h="220px" borderRadius="2xl" />
+          ))}
         </SimpleGrid>
       ) : sales.length ? (
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing="4">
-          {sales.map((sale, index) => <SaleCard key={sale.id} sale={sale} index={index} />)}
+          {sales.map((sale) => (
+            <RecentSaleCard
+              key={`${sale.at}-${sale.serial_masked}`}
+              sale={sale}
+            />
+          ))}
         </SimpleGrid>
       ) : (
         <Stack align="center" py="10" color={muted}>
-          <Text fontWeight="700">{hasError ? "Live sales are reconnecting…" : "The next fresh shake will appear here."}</Text>
-          <Text fontSize="sm">This feed checks automatically every hour.</Text>
+          <Text fontWeight="700">
+            {hasError
+              ? "Fleet stats are reconnecting…"
+              : "No recent transactions yet."}
+          </Text>
+          <Text fontSize="sm">
+            This page checks for a new hourly snapshot automatically.
+          </Text>
         </Stack>
       )}
+
+      {showMachines && fleet ? (
+        <Box mt={{ base: "12", md: "16" }}>
+          <Text fontSize={{ base: "2xl", md: "3xl" }} fontWeight="800">
+            Machines with recorded drinks
+          </Text>
+          <Text color={muted} mt="1" mb="6">
+            Showing {reportingMachines.length} of{" "}
+            {totals?.machines_listed || fleet.machines.length} listed machines.
+            Machines with no sales data yet are omitted.
+          </Text>
+          <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing="4">
+            {reportingMachines.map((machine) => (
+              <MachineCard key={machine.serial_masked} machine={machine} />
+            ))}
+          </SimpleGrid>
+        </Box>
+      ) : null}
     </Container>
   );
 }

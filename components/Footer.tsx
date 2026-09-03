@@ -11,14 +11,14 @@ import Image from "next/image";
 import Link from "next/link";
 
 const productLinks = [
+  { href: "/shop", label: "iShaker Shop" },
   { href: "/shaker-s", label: "iShaker S" },
   { href: "/shaker-touch", label: "iShaker Touch" },
-  { href: "/get-started", label: "Get started" },
 ];
 
 const resourceLinks = [
-  { href: "/articles", label: "Articles" },
-  { href: "/login", label: "Client portal" },
+  { href: "/get-started", label: "Register" },
+  { href: "/login", label: "Login" },
 ];
 
 const FooterLink = ({ href, label }: { href: string; label: string }) => (

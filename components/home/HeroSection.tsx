@@ -49,9 +49,7 @@ export function HeroSection({ muted, headingColor }: HeroSectionProps) {
           <CustomTitle
             as="h1"
             title="Automated protein shakes for your facility"
-            subtitle=" iShaker vending machines serve fresh protein shakes, BCAA, creatine
-            and more — on demand, 24/7. Cloud-managed with remote support, so
-            you focus on your business while we keep the shakes flowing."
+            subtitle="Get your vending business to the next level"
             mt="0"
             mb="0"
             textAlign={{ base: "center", lg: "left" }}

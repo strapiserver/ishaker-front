@@ -19,6 +19,7 @@ const TASTE_SOURCE_QUERY = [
   "populate[default_circle][populate][images][fields][1]=formats",
 ].join("&");
 const TASTE_SOURCE_URL = `${STRAPI_URL}/api/tastes?${TASTE_SOURCE_QUERY}`;
+const preloadedAnimationFrames = new Set<string>();
 
 type StrapiMedia = {
   attributes?: {
@@ -106,7 +107,7 @@ function getSplashSet(taste: Taste) {
 }
 
 function isTasteWebsiteVisible(taste: Taste) {
-  return taste.attributes?.isWebsiteVisible !== false;
+  return taste.attributes?.isWebsiteVisible === true;
 }
 
 function getTasteSlides(response: TastesResponse) {
@@ -223,6 +224,30 @@ export function Cups() {
     };
   }, [tastes.length]);
 
+  useEffect(() => {
+    if (!tastes.length) return undefined;
+
+    const backgroundImages = Array.from(
+      new Set(tastes.flatMap((taste) => taste.splashFrames)),
+    )
+      .filter((frame) => !preloadedAnimationFrames.has(frame))
+      .map((frame) => {
+        preloadedAnimationFrames.add(frame);
+        const image = new window.Image();
+        image.decoding = "async";
+        image.fetchPriority = "low";
+        image.onerror = () => preloadedAnimationFrames.delete(frame);
+        image.src = frame;
+        return image;
+      });
+
+    return () => {
+      backgroundImages.forEach((image) => {
+        image.onerror = null;
+      });
+    };
+  }, [tastes]);
+
   return (
     <Container maxW="7xl" py={{ base: "8", md: "12" }}>
       <SimpleGrid
@@ -239,12 +264,11 @@ export function Cups() {
         >
           <CustomTitle
             as="h2"
-            title="20+ flavors"
-            subtitle="We create out own branded flavors and collaborate with other brands to create unique flavors."
+            title="Mix any powders"
+            subtitle="Put your favorite powders in the machine and let it do the rest. iShaker can mix protein, BCAA, creatine, and more."
             mt="0"
             mb="0"
             textAlign={{ base: "center", lg: "left" }}
-            fontSize={{ base: "3xl", md: "8xl" }}
             subtitleProps={{
               fontSize: { base: "md", md: "lg" },
               lineHeight: "1.8",

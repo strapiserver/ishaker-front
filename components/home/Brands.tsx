@@ -95,9 +95,14 @@ function BrandTile({ brand }: { brand: BrandLogo }) {
       m="0"
       textAlign="center"
       role="group"
+      w="full"
       minW="0"
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
     >
       <Box
+        w="full"
         h={{ base: "42px", md: "76px" }}
         display="flex"
         alignItems="center"
@@ -109,9 +114,12 @@ function BrandTile({ brand }: { brand: BrandLogo }) {
           alt={`${brand.name} logo`}
           loading="lazy"
           decoding="async"
+          display="block"
+          mx="auto"
           maxW="100%"
           maxH="100%"
           objectFit="contain"
+          objectPosition="center center"
           filter="grayscale(1)"
           opacity="0.72"
           transition="filter 0.1s ease, opacity 0.1s ease"
@@ -142,6 +150,7 @@ function BrandGrid({ brands, mt = "0" }: { brands: BrandLogo[]; mt?: string }) {
       columns={{ base: 5, md: 8 }}
       spacing={{ base: "3", md: "5" }}
       alignItems="start"
+      justifyItems="center"
       mt={mt}
     >
       {brands.map((brand) => (

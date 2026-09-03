@@ -1,4 +1,5 @@
 import { Box, Container, SimpleGrid, Text } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
 import { stats } from "./data";
 
 type StatsSectionProps = {
@@ -12,6 +13,22 @@ export function StatsSection({
   borderColor,
   muted,
 }: StatsSectionProps) {
+  const [drinksMade, setDrinksMade] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/public/fleet-stats", { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        const cups = Number(payload?.totals?.cups_total);
+        if (Number.isFinite(cups)) {
+          setDrinksMade(new Intl.NumberFormat("en-US").format(cups));
+        }
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+
   return (
     <Box
       borderTop="1px solid"
@@ -24,7 +41,9 @@ export function StatsSection({
           {stats.map((item) => (
             <Box key={item.label} px="1">
               <Text fontSize="4xl" fontWeight="700" color="acid.300">
-                {item.value}
+                {item.label === "Drinks made" && drinksMade
+                  ? drinksMade
+                  : item.value}
               </Text>
               <Text color={muted}>{item.label}</Text>
             </Box>

@@ -260,13 +260,10 @@ export function ProductLinesPage({
       headerAction={
         <Button
           onClick={startNewProduct}
-          bg="#69e65d"
-          color="#071008"
+          variant="primary"
           size="md"
           px="5"
           fontWeight="700"
-          boxShadow="0 8px 24px rgba(70, 220, 84, 0.18)"
-          _hover={{ bg: "#80ef75", transform: "translateY(-1px)" }}
         >
           +&nbsp; New product
         </Button>
@@ -291,9 +288,7 @@ export function ProductLinesPage({
             _active={{ bg: "bg.800", borderColor: "acid.300" }}
             _expanded={{ bg: "bg.800", borderColor: "acid.300" }}
           >
-            <MachineSelectorContent
-              machine={selectedAssignment.machine}
-            />
+            <MachineSelectorContent machine={selectedAssignment.machine} />
           </MenuButton>
           <MenuList
             bg="bg.900"
@@ -335,7 +330,11 @@ export function ProductLinesPage({
 
       <SimpleGrid columns={1} spacing="4">
         {productLines.map((productLine) => (
-          <ProductLineCard key={productLine.id} productLine={productLine} />
+          <ProductLineCard
+            key={productLine.id}
+            productLine={productLine}
+            onAddProduct={startNewProduct}
+          />
         ))}
       </SimpleGrid>
 

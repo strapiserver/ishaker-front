@@ -1,19 +1,21 @@
 import {
   Box,
-  Grid,
+  Divider,
+  Flex,
+  HStack,
   IconButton,
   Image,
   Text,
   useDisclosure,
 } from "@chakra-ui/react";
 import { useRouter } from "next/router";
-import { type MouseEvent, useState } from "react";
+import { type KeyboardEvent, type MouseEvent, useState } from "react";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { capitalizeName } from "../../../lib/formatName";
 import { getSmallestMediaUrl } from "../../../lib/portal/media";
 import type { PortalCup, PortalProduct } from "../../../types/portal";
-import { CupThumbnailStack } from "./CupThumbnailStack";
 import { DeleteProductDialog } from "./DeleteProductDialog";
+import { Box3D } from "../../../styles/theme/custom";
 
 type ProductCardProps = {
   product: PortalProduct;
@@ -37,6 +39,22 @@ export function ProductCard({
   const brandName = capitalizeName(product.brand?.name);
   const brandImage = getSmallestMediaUrl(product.brand?.logo);
   const displayCup = product.cup || defaultCup;
+  const cupImage = getSmallestMediaUrl(displayCup?.image);
+  const splash =
+    product.custom_splash ||
+    product.taste?.default_splash ||
+    displayCup?.default_splash;
+  const finalSplashImage = getSmallestMediaUrl(
+    [...(splash?.images || [])]
+      .sort((left, right) =>
+        (left.name || left.url || "").localeCompare(
+          right.name || right.url || "",
+          undefined,
+          { numeric: true, sensitivity: "base" },
+        ),
+      )
+      .at(-1),
+  );
 
   const updateActiveState = async (nextIsActive: boolean) => {
     const previousIsActive = isActive;
@@ -94,28 +112,24 @@ export function ProductCard({
 
   return (
     <>
-      <Grid
-        templateColumns="minmax(210px,1.45fr) minmax(180px,1.25fr) minmax(90px,.7fr) 90px"
-        minH="50px"
-        px="5"
-        alignItems="center"
-        borderBottom="1px solid"
-        borderColor="rgba(255,255,255,0.075)"
-        cursor="pointer"
+      <Box3D
+        position="relative"
         minW="0"
+        minH="230px"
+        p="4"
+        cursor="pointer"
         opacity={isActive ? 1 : 0.8}
         role="link"
         tabIndex={0}
         w="full"
-        _hover={{ bg: "whiteAlpha.50" }}
-        transition="background 0.2s ease, opacity 0.2s ease"
-        onClick={(event) => {
+        transition="background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease"
+        onClick={(event: MouseEvent<HTMLDivElement>) => {
           event.stopPropagation();
           void router.push(
             `/product-lines/${productLineId}/products/new?productId=${product.id}`,
           );
         }}
-        onKeyDown={(event) => {
+        onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
           if (
             event.currentTarget === event.target &&
             (event.key === "Enter" || event.key === " ")
@@ -128,64 +142,175 @@ export function ProductCard({
           }
         }}
       >
-        <Grid
-          templateColumns="10px 38px 1fr"
-          gap="3"
-          alignItems="center"
-          minW="0"
-        >
-          <Box
-            as="button"
-            type="button"
-            aria-label={`Set ${productName} ${isActive ? "inactive" : "active"}`}
-            title={isActive ? "Active" : "Inactive"}
-            boxSize="10px"
-            borderRadius="full"
-            bg={isActive ? "#62e85b" : "whiteAlpha.300"}
-            boxShadow={isActive ? "0 0 8px rgba(98,232,91,.45)" : "none"}
-            cursor={isUpdatingActive ? "wait" : "pointer"}
-            disabled={isUpdatingActive}
-            transition="background 0.2s ease, box-shadow 0.2s ease"
-            onClick={(event: MouseEvent<HTMLButtonElement>) => {
-              event.stopPropagation();
-              void updateActiveState(!isActive);
-            }}
-          />
-          <Box aria-label={`${productName} preview`} role="img" boxSize="36px">
-            {mainImage ? (
-              <Image
-                src={mainImage}
-                alt={productName}
-                position="relative"
-                w="full"
-                h="full"
-                objectFit="contain"
-              />
-            ) : (
-              <Box
-                h="full"
-                display="grid"
-                placeItems="center"
-                color="bg.500"
-                fontSize="xs"
-                textAlign="center"
+        <Flex h="200px" my="3" w="full" align="stretch" gap="3">
+          <Flex direction="column" flex="1 1 0" minW="0" h="200px">
+            <Flex
+              position="relative"
+              h="100px"
+              align="center"
+              justify="center"
+              borderBottom="1px solid"
+              borderColor="whiteAlpha.100"
+              borderTopRadius="xl"
+              p="2"
+            >
+              <Text
+                position="absolute"
+                top="2"
+                left="2"
+                color="whiteAlpha.400"
+                fontSize="8px"
+                letterSpacing=".08em"
               >
-                No preview
-              </Box>
-            )}
+                BRAND
+              </Text>
+              {brandImage ? (
+                <Image
+                  src={brandImage}
+                  alt={`${brandName} logo`}
+                  maxW="full"
+                  maxH="72px"
+                  objectFit="contain"
+                />
+              ) : (
+                <Text color="whiteAlpha.400" fontSize="xs">
+                  No brand logo
+                </Text>
+              )}
+            </Flex>
+            <Flex
+              position="relative"
+              h="100px"
+              align="center"
+              justify="center"
+              borderBottomRadius="xl"
+              p="2"
+            >
+              <Text
+                position="absolute"
+                top="2"
+                left="2"
+                color="whiteAlpha.400"
+                fontSize="8px"
+                letterSpacing=".08em"
+              >
+                TASTE
+              </Text>
+              {mainImage ? (
+                <Image
+                  src={mainImage}
+                  alt={`${productName} taste`}
+                  maxW="full"
+                  maxH="78px"
+                  objectFit="contain"
+                />
+              ) : (
+                <Text color="whiteAlpha.400" fontSize="xs">
+                  No taste image
+                </Text>
+              )}
+            </Flex>
+          </Flex>
+          <Divider orientation="vertical" />
+          <Box
+            aria-label={`${productName} cup with final splash frame`}
+            role="img"
+            flex="1 1 0"
+            minW="0"
+            h="200px"
+            borderRadius="xl"
+            position="relative"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            p="3"
+          >
+            <Text
+              position="absolute"
+              zIndex="4"
+              top="2"
+              left="2"
+              color="whiteAlpha.400"
+              fontSize="8px"
+              letterSpacing=".08em"
+            >
+              CUP
+            </Text>
+            <Box
+              position="relative"
+              h="full"
+              w="auto"
+              maxW="full"
+              sx={{ aspectRatio: "3 / 4" }}
+            >
+              {finalSplashImage ? (
+                <Image
+                  src={finalSplashImage}
+                  alt=""
+                  aria-hidden="true"
+                  position="absolute"
+                  zIndex="3"
+                  left="0"
+                  bottom="62.5%"
+                  w="full"
+                  h="75%"
+                  objectFit="contain"
+                  pointerEvents="none"
+                />
+              ) : null}
+              {cupImage ? (
+                <Image
+                  src={cupImage}
+                  alt={displayCup?.name || `${productName} cup`}
+                  position="absolute"
+                  zIndex="2"
+                  left="0"
+                  bottom="0"
+                  w="full"
+                  h="75%"
+                  objectFit="contain"
+                  filter="drop-shadow(0 14px 18px rgba(0,0,0,.35))"
+                />
+              ) : (
+                <Flex h="full" align="center" justify="center">
+                  <Text color="whiteAlpha.400" fontSize="xs">
+                    No cup
+                  </Text>
+                </Flex>
+              )}
+            </Box>
           </Box>
-          <Text color="whiteAlpha.900" fontSize="sm" noOfLines={1}>{productName}</Text>
-        </Grid>
-        <Grid templateColumns={brandImage ? "38px 1fr" : "1fr"} gap="3" alignItems="center" minW="0">
-          {brandImage ? <Image src={brandImage} alt={`${brandName} logo`} w="38px" h="28px" objectFit="contain" /> : null}
-          <Text color="whiteAlpha.800" fontSize="sm" noOfLines={1}>{brandName || "No brand"}</Text>
-        </Grid>
-        <CupThumbnailStack cups={displayCup ? [displayCup] : []} />
-        <Box onClick={(event) => event.stopPropagation()}>
-          <IconButton aria-label={`Edit ${productName}`} icon={<FiEdit2 />} variant="ghost" size="sm" color="whiteAlpha.800" onClick={() => void router.push(`/product-lines/${productLineId}/products/new?productId=${product.id}`)} />
-          <IconButton aria-label={`Delete ${productName}`} icon={<FiTrash2 />} variant="ghost" size="sm" color="whiteAlpha.800" isLoading={isDeleting} _hover={{ color: "red.300", bg: "whiteAlpha.100" }} onClick={deleteDialog.onOpen} />
-        </Box>
-      </Grid>
+        </Flex>
+        <HStack justify="space-between" align="center" gap="3">
+          <Text color="white" fontSize="md" fontWeight="750" noOfLines={1}>
+            {`${productName} | ${brandName || "No brand"}`}
+          </Text>
+          <Box onClick={(event) => event.stopPropagation()}>
+            <IconButton
+              aria-label={`Edit ${productName}`}
+              icon={<FiEdit2 />}
+              variant="ghost"
+              size="sm"
+              color="whiteAlpha.700"
+              onClick={() =>
+                void router.push(
+                  `/product-lines/${productLineId}/products/new?productId=${product.id}`,
+                )
+              }
+            />
+            <IconButton
+              aria-label={`Delete ${productName}`}
+              icon={<FiTrash2 />}
+              variant="ghost"
+              size="sm"
+              color="whiteAlpha.700"
+              isLoading={isDeleting}
+              _hover={{ color: "red.300", bg: "whiteAlpha.100" }}
+              onClick={deleteDialog.onOpen}
+            />
+          </Box>
+        </HStack>
+      </Box3D>
       <DeleteProductDialog
         isDeleting={isDeleting}
         isOpen={deleteDialog.isOpen}

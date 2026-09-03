@@ -1,6 +1,5 @@
 import {
   AspectRatio,
-  Badge,
   Box,
   Button,
   SimpleGrid,
@@ -17,14 +16,12 @@ import type { GetServerSideProps } from "next";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { MachineHealthStrip } from "../../components/portal/machines/MachineHealthStrip";
-import { RemoteAccessDialog } from "../../components/portal/machines/RemoteAccessDialog";
 import { requirePortalSession } from "../../lib/portal/auth";
 import { getSmallestMediaUrl } from "../../lib/portal/media";
 import type { PortalMachineSummary, PortalSession } from "../../types/portal";
-import type { Machine } from "../../types/strapi";
+import type { Machine, SalesSummary } from "../../types/strapi";
 import type { MachineHealthRow } from "../../types/machineHealth";
-import { FaPlus, FaWrench } from "react-icons/fa";
-import { MdAddToHomeScreen } from "react-icons/md";
+import { FaPlus } from "react-icons/fa";
 import { Box3D } from "../../styles/theme/custom";
 import { ImInfo } from "react-icons/im";
 type MachinesPageProps = {
@@ -61,7 +58,11 @@ const deriveStatusLabel = (machine: Machine) => {
 export default function MachinesPage({ session, machines }: MachinesPageProps) {
   const [healthRows, setHealthRows] = useState<MachineHealthRow[]>([]);
   const [isHealthLoading, setIsHealthLoading] = useState(true);
-  const [remoteMachine, setRemoteMachine] = useState<Machine | null>(null);
+  const [salesToday, setSalesToday] = useState<Map<
+    string,
+    SalesSummary["groups"][number]
+  > | null>(null);
+  const [isSalesLoading, setIsSalesLoading] = useState(true);
 
   const loadHealth = useCallback(async (showLoading = false) => {
     if (showLoading) setIsHealthLoading(true);
@@ -79,9 +80,42 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
     }
   }, []);
 
+  const loadSalesToday = useCallback(async () => {
+    setIsSalesLoading(true);
+    const now = new Date();
+    const date = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-");
+    const params = new URLSearchParams({
+      group: "machine",
+      from: date,
+      to: date,
+    });
+
+    try {
+      const response = await fetch(`/api/portal/sales-summary?${params}`, {
+        cache: "no-store",
+      });
+      const payload = (await response
+        .json()
+        .catch(() => null)) as SalesSummary | null;
+      if (!response.ok || !payload) {
+        throw new Error("Today's sales could not be loaded.");
+      }
+      setSalesToday(new Map(payload.groups.map((row) => [row.key, row])));
+    } catch (error) {
+      console.error("[machines] today's sales loading failed:", error);
+    } finally {
+      setIsSalesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadHealth(true);
-  }, [loadHealth]);
+    void loadSalesToday();
+  }, [loadHealth, loadSalesToday]);
 
   const healthByMachineId = useMemo(
     () => new Map(healthRows.map((row) => [String(row.id), row])),
@@ -178,13 +212,6 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                           </Text>
                         ) : null}
                       </Stack>
-                      <IconButton
-                        as={Link}
-                        href={`/machines/${machine.id}`}
-                        aria-label={`Open details for ${machine.title || `machine ${machine.id}`}`}
-                        icon={<ImInfo />}
-                        variant="contrast"
-                      />
                     </HStack>
                     {machine.last_seen_at ? (
                       <Text color="bg.400" fontSize="xs" noOfLines={1}>
@@ -193,41 +220,35 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
                       </Text>
                     ) : null}
                   </VStack>
+                  <IconButton
+                    as={Link}
+                    href={`/machines/${machine.id}`}
+                    aria-label={`Open details for ${machine.title || `machine ${machine.id}`}`}
+                    icon={<ImInfo />}
+                    variant="contrast"
+                    flex="0 0 auto"
+                  />
                 </HStack>
 
                 <MachineHealthStrip
                   machine={machine}
                   health={healthByMachineId.get(String(machine.id))}
+                  salesToday={
+                    salesToday
+                      ? {
+                          revenue:
+                            salesToday.get(machine.serial_number)?.revenue ?? 0,
+                          cups:
+                            salesToday.get(machine.serial_number)?.cups ?? 0,
+                          currency:
+                            machine.currency || session.client.currency,
+                        }
+                      : undefined
+                  }
+                  isSalesLoading={isSalesLoading}
                   isLoading={isHealthLoading}
                   onHealthChanged={() => void loadHealth()}
                 />
-
-                <HStack
-                  spacing="2"
-                  pt="3"
-                  mt="auto"
-                  borderTop="1px solid"
-                  borderColor="whiteAlpha.100"
-                  flexWrap="wrap"
-                >
-                  <Button
-                    variant="contrast"
-                    as={Link}
-                    href={`/product-lines/machines/${machine.id}`}
-                    size="sm"
-                    rightIcon={<Icon as={FaPlus} boxSize="3" />}
-                  >
-                    Add product
-                  </Button>
-                  <Button
-                    variant="contrast"
-                    size="sm"
-                    rightIcon={<Icon as={MdAddToHomeScreen} boxSize="3" />}
-                    onClick={() => setRemoteMachine(machine)}
-                  >
-                    Remote access
-                  </Button>
-                </HStack>
               </VStack>
             </Box3D>
           );
@@ -252,11 +273,6 @@ export default function MachinesPage({ session, machines }: MachinesPageProps) {
           Register another machine
         </Button>
       </HStack>
-      <RemoteAccessDialog
-        machine={remoteMachine}
-        isOpen={Boolean(remoteMachine)}
-        onClose={() => setRemoteMachine(null)}
-      />
     </PortalShell>
   );
 }

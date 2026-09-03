@@ -2,22 +2,37 @@ import {
   Box,
   Button,
   Container,
+  Drawer,
+  DrawerBody,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerHeader,
+  DrawerOverlay,
   Flex,
   HStack,
   Icon,
+  IconButton,
   Image,
   VStack,
   Text,
+  useDisclosure,
 } from "@chakra-ui/react";
 import { NextSeo } from "next-seo";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { PropsWithChildren, ReactNode } from "react";
+import {
+  PropsWithChildren,
+  ReactNode,
+  TouchEvent,
+  useEffect,
+  useRef,
+} from "react";
 import { FaExclamationCircle, FaWhatsapp } from "react-icons/fa";
 import {
   FiBookOpen,
   FiBox,
   FiLogOut,
+  FiMenu,
   FiPackage,
   FiTag,
   FiUsers,
@@ -52,10 +67,30 @@ export function PortalShell({
   children,
 }: PortalShellProps) {
   const router = useRouter();
+  const mobileNav = useDisclosure();
+  const touchStartX = useRef<number | null>(null);
   const visibleNavItems =
     access === "product"
       ? navItems.filter((item) => item.href === "/product-lines")
       : navItems;
+
+  useEffect(() => {
+    router.events.on("routeChangeStart", mobileNav.onClose);
+    return () => router.events.off("routeChangeStart", mobileNav.onClose);
+  }, [mobileNav.onClose, router.events]);
+
+  const startSwipe = (event: TouchEvent) => {
+    touchStartX.current = event.touches[0]?.clientX ?? null;
+  };
+
+  const finishSwipe = (event: TouchEvent) => {
+    const startX = touchStartX.current;
+    const endX = event.changedTouches[0]?.clientX;
+    touchStartX.current = null;
+    if (startX !== null && endX !== undefined && endX - startX > 55) {
+      mobileNav.onClose();
+    }
+  };
 
   const handleLogout = async () => {
     await fetch("/api/portal/logout", { method: "POST" });
@@ -108,12 +143,12 @@ export function PortalShell({
                   <Text
                     color="white"
                     fontWeight="700"
-                    fontSize={{ base: "xs", sm: "sm", md: "md" }}
+                    fontSize={{ base: "md", sm: "lg", md: "xl" }}
                     letterSpacing="0.01em"
                     textTransform="uppercase"
                     noOfLines={1}
                   >
-                    iShaker Client Portal
+                    Admin Panel
                   </Text>
                 </HStack>
 
@@ -186,45 +221,17 @@ export function PortalShell({
                   </Flex>
                 </HStack>
 
-                <Button
-                  display={{ base: "flex", md: "none" }}
-                  onClick={handleLogout}
+                <IconButton
+                  display={{ base: "inline-flex", md: "none" }}
+                  onClick={mobileNav.onOpen}
                   variant="ghost"
-                  size="sm"
-                  color="whiteAlpha.700"
-                  px="2"
-                  aria-label="Log out"
-                >
-                  <Icon as={FiLogOut} boxSize="18px" />
-                </Button>
+                  color="white"
+                  border="1px solid"
+                  borderColor="whiteAlpha.200"
+                  aria-label="Open portal navigation"
+                  icon={<FiMenu size="22px" />}
+                />
               </Flex>
-
-              <HStack
-                display={{ base: "flex", md: "none" }}
-                spacing="1"
-                overflowX="auto"
-                pb="3"
-              >
-                {visibleNavItems.map((item) => {
-                  const active =
-                    router.pathname === item.href ||
-                    router.pathname.startsWith(`${item.href}/`);
-                  return (
-                    <Button
-                      key={item.href}
-                      as={Link}
-                      href={item.href}
-                      variant="ghost"
-                      size="sm"
-                      flexShrink={0}
-                      color={active ? "#76f85f" : "whiteAlpha.600"}
-                      leftIcon={<Icon as={item.icon} />}
-                    >
-                      {item.label}
-                    </Button>
-                  );
-                })}
-              </HStack>
             </Container>
           </Box>
 
@@ -394,6 +401,111 @@ export function PortalShell({
           </Container>
         </Box>
       </VStack>
+
+      <Drawer
+        isOpen={mobileNav.isOpen}
+        placement="right"
+        onClose={mobileNav.onClose}
+        size="xs"
+      >
+        <DrawerOverlay bg="blackAlpha.700" backdropFilter="blur(4px)" />
+        <DrawerContent
+          bg="#151717"
+          color="white"
+          borderLeft="1px solid"
+          borderColor="whiteAlpha.100"
+          onTouchStart={startSwipe}
+          onTouchEnd={finishSwipe}
+        >
+          <DrawerCloseButton mt="2" color="whiteAlpha.700" />
+          <DrawerHeader
+            pt="7"
+            pb="5"
+            borderBottom="1px solid"
+            borderColor="whiteAlpha.100"
+          >
+            <HStack spacing="3">
+              <Image
+                src="/s.png"
+                alt="iShaker"
+                boxSize="42px"
+                objectFit="contain"
+              />
+              <Box minW="0">
+                <Text fontSize="sm" fontWeight="800" textTransform="uppercase">
+                  iShaker Client Portal
+                </Text>
+                {clientName ? (
+                  <Text color="whiteAlpha.500" fontSize="xs" noOfLines={1}>
+                    {clientName}
+                  </Text>
+                ) : null}
+              </Box>
+            </HStack>
+          </DrawerHeader>
+          <DrawerBody px="4" py="5">
+            <VStack
+              as="nav"
+              aria-label="Portal navigation"
+              align="stretch"
+              spacing="2"
+            >
+              {visibleNavItems.map((item) => {
+                const active =
+                  router.pathname === item.href ||
+                  router.pathname.startsWith(`${item.href}/`);
+                return (
+                  <Flex
+                    key={item.href}
+                    as={Link}
+                    href={item.href}
+                    align="center"
+                    gap="3"
+                    p="3.5"
+                    borderRadius="xl"
+                    color={active ? "acid.300" : "whiteAlpha.800"}
+                    bg={active ? "rgba(118,248,95,.09)" : "transparent"}
+                    border="1px solid"
+                    borderColor={
+                      active ? "rgba(118,248,95,.22)" : "transparent"
+                    }
+                    fontWeight="750"
+                    _hover={{ bg: "whiteAlpha.100", color: "white" }}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <Flex
+                      boxSize="9"
+                      align="center"
+                      justify="center"
+                      borderRadius="lg"
+                      bg="whiteAlpha.100"
+                    >
+                      <Icon as={item.icon} boxSize="18px" />
+                    </Flex>
+                    <Text>{item.label}</Text>
+                  </Flex>
+                );
+              })}
+            </VStack>
+
+            <Button
+              mt="7"
+              w="full"
+              minH="12"
+              onClick={handleLogout}
+              variant="ghost"
+              color="red.200"
+              borderTop="1px solid"
+              borderColor="whiteAlpha.100"
+              borderRadius="0"
+              leftIcon={<FiLogOut />}
+              _hover={{ color: "white", bg: "whiteAlpha.100" }}
+            >
+              Log out
+            </Button>
+          </DrawerBody>
+        </DrawerContent>
+      </Drawer>
     </>
   );
 }

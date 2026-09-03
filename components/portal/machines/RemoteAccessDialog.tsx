@@ -112,64 +112,7 @@ export function RemoteAccessDialog({
         <ModalHeader pr="12">Access your machine remotely</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <VStack spacing="5" align="stretch">
-            <VStack spacing="3">
-              <Image
-                src="/rustdesk.png"
-                alt="RustDesk"
-                width="240px"
-                maxW="80%"
-                objectFit="contain"
-              />
-              <Text color="bg.300" fontSize="sm" textAlign="center">
-                Download RustDesk, then use the login and password below.
-              </Text>
-              <HStack spacing="3" width="100%">
-                <Button
-                  as="a"
-                  href={APPLE_DOWNLOAD_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  colorScheme="purple"
-                  leftIcon={<Icon as={FaApple} boxSize="5" />}
-                  flex="1"
-                >
-                  Apple
-                </Button>
-                <Button
-                  as="a"
-                  href={ANDROID_DOWNLOAD_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  colorScheme="green"
-                  leftIcon={<Icon as={FaAndroid} boxSize="5" />}
-                  flex="1"
-                >
-                  Android
-                </Button>
-              </HStack>
-            </VStack>
-
-            <VStack spacing="4" align="stretch">
-              <Alert
-                status="warning"
-                bg="yellow.900"
-                color="yellow.50"
-                borderRadius="md"
-                border="1px solid"
-                borderColor="yellow.700"
-              >
-                <AlertIcon color="yellow.300" />
-                <Text fontWeight="700">
-                  Before connecting:
-                  <br />
-                  Go to Settings -&gt; Login with Google
-                </Text>
-              </Alert>
-              <CopyField label="ID" value={machine?.rustdesk_id} />
-              <CopyField label="Password" value={machine?.rustdesk_password} />
-            </VStack>
-          </VStack>
+          <RemoteAccessContent machine={machine} />
         </ModalBody>
         <ModalFooter>
           <Button variant="ghost" onClick={onClose}>
@@ -178,5 +121,68 @@ export function RemoteAccessDialog({
         </ModalFooter>
       </ModalContent>
     </Modal>
+  );
+}
+
+export function RemoteAccessContent({ machine }: { machine: Machine | null }) {
+  return (
+    <VStack spacing="5" align="stretch">
+      <VStack spacing="3">
+        <Image
+          src="/rustdesk.png"
+          alt="RustDesk"
+          width="240px"
+          maxW="80%"
+          objectFit="contain"
+        />
+        <Text color="bg.300" fontSize="sm" textAlign="center">
+          Download RustDesk, then use the login and password below.
+        </Text>
+        <HStack spacing="3" width="100%">
+          <Button
+            as="a"
+            href={APPLE_DOWNLOAD_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            colorScheme="purple"
+            leftIcon={<Icon as={FaApple} boxSize="5" />}
+            flex="1"
+          >
+            Apple
+          </Button>
+          <Button
+            as="a"
+            href={ANDROID_DOWNLOAD_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            colorScheme="green"
+            leftIcon={<Icon as={FaAndroid} boxSize="5" />}
+            flex="1"
+          >
+            Android
+          </Button>
+        </HStack>
+      </VStack>
+
+      <VStack spacing="4" align="stretch">
+        <Alert
+          status="warning"
+          bg="yellow.900"
+          color="yellow.50"
+          borderRadius="md"
+          border="1px solid"
+          borderColor="yellow.700"
+        >
+          <AlertIcon color="yellow.300" />
+          <Text fontWeight="700">
+            Before connecting:
+            <br />
+            Go to Settings -&gt; Login with Google
+          </Text>
+        </Alert>
+        <CopyField label="ID" value={machine?.rustdesk_id} />
+        <CopyField label="Password" value={machine?.rustdesk_password} />
+      </VStack>
+    </VStack>
   );
 }

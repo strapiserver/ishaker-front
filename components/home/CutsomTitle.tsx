@@ -58,7 +58,7 @@ export default function ({
           mx="2"
           as="p"
           fontSize={{ base: "sm", lg: "2xl" }}
-          mt={2}
+          mt={{ base: "2", lg: "4" }}
           color="bg.400"
           fontWeight="light"
           {...subtitleProps}
