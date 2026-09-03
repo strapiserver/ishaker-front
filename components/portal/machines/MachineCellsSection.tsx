@@ -726,9 +726,8 @@ export function MachineCellsSection({
           <Text color="acid.300" fontWeight="800" fontSize="lg">
             Container assignment
           </Text>
-          <Text color="bg.300" mt="1">
-            Each card is one physical machine container. The product library is
-            not a machine binding.
+          <Text color="bg.300" mt="1" fontSize="sm">
+            Click and hold a container powder level to edit it.
           </Text>
         </Box>
         {loadError ? (
@@ -843,7 +842,7 @@ export function MachineCellsSection({
             }}
           />
         ) : null}
-        <SimpleGrid columns={{ base: 1, xl: 2 }} spacing="4">
+        <SimpleGrid columns={{ base: 1, xl: 3 }} spacing="4">
           {primaryCells.map((cell) => renderSlot(cell))}
         </SimpleGrid>
         {invalidLegacyCells.length ? (
@@ -860,7 +859,7 @@ export function MachineCellsSection({
           onClick={() => void save()}
           variant="primary"
           size="lg"
-          alignSelf="start"
+          alignSelf="end"
           isLoading={isSaving}
           isDisabled={hasValidationError}
         >

@@ -1,8 +1,12 @@
-import { Box, Flex, Text } from "@chakra-ui/react";
+import { Box, SimpleGrid, Text } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
 import { getSmallestMediaUrl } from "../../../lib/portal/media";
 import type { PortalMachineCell } from "../../../types/portal";
-import { MAX_POWDER_HEIGHT, PowderContainer } from "./PowderContainer";
+import {
+  CONTAINER_WIDTH,
+  MAX_POWDER_HEIGHT,
+  PowderContainer,
+} from "./PowderContainer";
 
 export type ContainersPreviewProps = {
   containerCount: number;
@@ -51,46 +55,50 @@ export function ContainersPreview({
 
   return (
     <Box>
-      <Text color="whiteAlpha.700" fontSize="sm" fontWeight="700" mb="3">
-        Set container powder amounts
-      </Text>
       <Box w="full" pb="2">
-        <Flex align="flex-start" gap={{ base: "2", md: "3" }} w="full">
+        <SimpleGrid
+          columns={{ base: 4, md: containerCount }}
+          spacing={{ base: "2", md: "3" }}
+          alignItems="start"
+          justifyItems="center"
+          w="full"
+        >
           {Array.from({ length: containerCount }, (_, index) => {
             const position = index + 1;
             const cell = cellsByPosition.get(position);
             const hasProduct = Boolean(cell?.product);
 
             return (
-              <PowderContainer
-                key={position}
-                color={productColor(cell)}
-                height={powderHeights[index] ?? 0}
-                maxWeightKg={maxWeightKg}
-                containerNumber={position}
-                productName={cell?.product?.name}
-                productImageUrl={getSmallestMediaUrl(
-                  cell?.product?.custom_main || cell?.product?.taste?.main,
-                )}
-                cupImageUrl={getSmallestMediaUrl(
-                  cell?.product?.cup?.image ||
-                    cell?.product?.product_line?.cups?.[0]?.image,
-                )}
-                cupCount={cell?.product ? 1 : 0}
-                isDisabled={!hasProduct}
-                onHeightChange={(height) => setPowderHeight(index, height)}
-                onHeightChangeEnd={(height) =>
-                  onAmountChange(
-                    position,
-                    Number(
-                      ((height / MAX_POWDER_HEIGHT) * maxWeightKg).toFixed(2),
-                    ),
-                  )
-                }
-              />
+              <Box key={position} w="full" maxW={`${CONTAINER_WIDTH}px`}>
+                <PowderContainer
+                  color={productColor(cell)}
+                  height={powderHeights[index] ?? 0}
+                  maxWeightKg={maxWeightKg}
+                  containerNumber={position}
+                  productName={cell?.product?.name}
+                  productImageUrl={getSmallestMediaUrl(
+                    cell?.product?.custom_main || cell?.product?.taste?.main,
+                  )}
+                  cupImageUrl={getSmallestMediaUrl(
+                    cell?.product?.cup?.image ||
+                      cell?.product?.product_line?.cups?.[0]?.image,
+                  )}
+                  cupCount={cell?.product ? 1 : 0}
+                  isDisabled={!hasProduct}
+                  onHeightChange={(height) => setPowderHeight(index, height)}
+                  onHeightChangeEnd={(height) =>
+                    onAmountChange(
+                      position,
+                      Number(
+                        ((height / MAX_POWDER_HEIGHT) * maxWeightKg).toFixed(2),
+                      ),
+                    )
+                  }
+                />
+              </Box>
             );
           })}
-        </Flex>
+        </SimpleGrid>
       </Box>
     </Box>
   );

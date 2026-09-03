@@ -1,5 +1,6 @@
 import { Box, Image, Text, Tooltip } from "@chakra-ui/react";
 import type { KeyboardEvent, PointerEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type PowderContainerProps = {
   color?: string | null;
@@ -84,6 +85,8 @@ export function PowderContainer({
   cupCount = 0,
   isDisabled = false,
 }: PowderContainerProps) {
+  const [touchTooltipOpen, setTouchTooltipOpen] = useState<true | undefined>();
+  const touchTooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const powderHeight = Math.min(
     MAX_POWDER_HEIGHT,
     Math.max(0, Math.round(height)),
@@ -97,6 +100,26 @@ export function PowderContainer({
     : (visualPowderHeight / CONTAINER_HEIGHT) * 100;
   const weight = fillRatio * maxWeightKg;
   const powderColor = resolvePowderColor(color);
+
+  useEffect(
+    () => () => {
+      if (touchTooltipTimer.current) clearTimeout(touchTooltipTimer.current);
+    },
+    [],
+  );
+
+  const showTouchTooltip = () => {
+    if (touchTooltipTimer.current) clearTimeout(touchTooltipTimer.current);
+    setTouchTooltipOpen(true);
+  };
+
+  const hideTouchTooltipAfterDelay = () => {
+    if (touchTooltipTimer.current) clearTimeout(touchTooltipTimer.current);
+    touchTooltipTimer.current = setTimeout(() => {
+      setTouchTooltipOpen(undefined);
+      touchTooltipTimer.current = null;
+    }, 1400);
+  };
 
   const getHeightFromPointer = (event: PointerEvent<HTMLDivElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -112,6 +135,9 @@ export function PowderContainer({
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (isDisabled) return;
+    if (event.pointerType === "touch" || event.pointerType === "pen") {
+      showTouchTooltip();
+    }
     event.currentTarget.setPointerCapture(event.pointerId);
     onHeightChange(getHeightFromPointer(event));
   };
@@ -119,6 +145,9 @@ export function PowderContainer({
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
     if (isDisabled) return;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      if (event.pointerType === "touch" || event.pointerType === "pen") {
+        showTouchTooltip();
+      }
       onHeightChange(getHeightFromPointer(event));
     }
   };
@@ -129,6 +158,16 @@ export function PowderContainer({
     onHeightChange(nextHeight);
     onHeightChangeEnd?.(nextHeight);
     event.currentTarget.releasePointerCapture(event.pointerId);
+    if (event.pointerType === "touch" || event.pointerType === "pen") {
+      hideTouchTooltipAfterDelay();
+    }
+  };
+
+  const handlePointerCancel = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    hideTouchTooltipAfterDelay();
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -161,13 +200,15 @@ export function PowderContainer({
       label={
         isDisabled
           ? "Empty container"
-          : `${productName ? `${productName} · ` : ""}${weight.toFixed(2)} kg${
+          : `${productName ? `${productName} · ` : ""}${Math.round(weight * 1000)} g${
               cupCount > 1 ? ` · ${cupCount} screen cups, one physical cup` : ""
             }`
       }
+      isOpen={touchTooltipOpen}
       hasArrow
       placement="top"
       openDelay={0}
+      closeOnClick={false}
     >
       <Box
         position="relative"
@@ -185,10 +226,11 @@ export function PowderContainer({
         aria-valuemin={0}
         aria-valuemax={maxWeightKg}
         aria-valuenow={Number(weight.toFixed(2))}
-        aria-valuetext={`${weight.toFixed(2)} kilograms`}
+        aria-valuetext={`${Math.round(weight * 1000)} grams`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         onKeyDown={handleKeyDown}
         bg="transparent"
         opacity={isDisabled ? 0.5 : 1}
